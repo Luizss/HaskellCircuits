@@ -1,0 +1,250 @@
+type data abc123
+====
+""
+""""""{-asdasdasd-}
+""
+====
+"asdasdasdsk" "hey\
+    	       \now\
+               \brown\
+               \cow" --asdasdasdasd
+====
+-- eunaiuern
+λx -> classify x
+\y -> hey y
+====
+classify age = 
+  case age of
+    {- 11111 -}
+    0 -> "newborn\ 
+          \ waaaat"
+    1 -> "infant"
+    2 -> "toddler"
+====
+classify age =
+  case age of {
+    0 -> "newborn";
+    1 -> "infant";
+    2 -> "toddler"
+    }
+====
+classify = λx -> case x of
+        0 -> "newborn"
+    	1 -> "infant"
+    	2 -> "toddler"
+====
+classify age =
+  case age of
+    0 -> "newborn"
+    1 -> case "infant" of
+      "hey" -> "yo"
+      "now" -> "browncow"
+      "" -> ""
+      x -> "hmmmm"
+    2 -> "toddler" g
+====
+a x y = 4 where b = 5
+====
+a x y = 4 where b = 5; k = 6
+====
+a x y = 4 where b = 5
+                where k = 6 -- erro
+====
+a x y = 4 where b = 5
+                  where k = 6
+====
+a x y = 4 where b = 5 where k = 6
+b z v = 4 where g = 5
+====
+f x y z
+  | 5 = 9
+  | 7 = 8
+f q e r
+  | 2 = 2
+====
+f x y z
+  | 5 = 9
+  | 7 = 8
+  
+f q e r
+  | 2 = 2
+====
+not True = 0
+not False = 1
+====
+area (Circle r) (Triangle a h) =  5
+====
+area (Circle (Radius r) (Point x y) _) =  5
+====
+area (Circle (Radius r) (Point x y) _) =  5
+  where mul2 2 = 4
+====
+a = m k x
+a = m (k x)
+a = (m k) x
+a = (m k x)
+====
+func = hey (now brown) (cow (with yellow) dots)
+====
+func = hey (now brown (cow (with yellow dots) -- error
+====
+fix f = let x = f x in x
+====
+fix f = let x = f x; g = 5 in x
+====
+fix f = let x = f x
+        in x
+====
+fix f = let x = f x
+      	    y = g y
+	    z = k z
+        in x
+====
+fix f = let x = f x
+      	    y = g y;
+	    z = k z
+        in x
+====
+fix f = let { x = f x;
+      	      y = g y;
+	      z = k z
+	    } in x
+====
+not bool = case bool of
+  True -> False
+  False -> True
+====
+hey now brown = case now of
+  Now -> Nothing
+  NotNow (R x y) -> Just x
+====
+hey now brown = case now of
+  Now -> Nothing
+  NotNow (R x y) -> case x of
+   3 -> Just 4
+   5 -> Just 10
+====
+hey now brown = case now of
+  Now -> Nothing
+  NotNow (R x y) -> Just (case x of {
+   3 -> Just 4;
+   5 -> Just 10
+   })
+====
+f x = Just (case x of {
+   3 -> Just 4;
+   5 -> Just 10
+})
+====
+f x = Just (let f x = x
+            in x)
+====
+f x = Just (
+  let f x = x
+  in x)
+====
+f x = Just (
+  let f x = x
+  in x
+  )
+==== -- arrumar
+f x = Just (case x of
+   3 -> 4
+   5 -> 10)
+==== -- arrumar
+f x = Just (case x of
+   3 -> 4
+   5 -> 10
+   )
+==== -- arrumar
+f x = Just (case x of
+   3 -> 4
+   5 -> 10
+)
+==== -- arrumar
+f x = Just (
+  case x of
+    3 -> 4
+    5 -> 10)
+====
+type State i a = StateT i (Either String) a
+====
+type FileName = String
+====
+data Bool = True | False
+====
+data Maybe x = Nothing | Just x
+====
+data Either a b = Left a | Right b
+====
+five :: Int
+five = 5
+====
+five :: Maybe Int
+five = Just 5
+====
+fromMaybe :: Maybe a -> a
+====
+fromMaybe :: Maybe a -> a
+fromMaybe Nothing = error "Nothing"
+fromMaybe (Just x) = x
+====
+bind :: m a -> (a -> m b) -> m b
+====
+expr = 4 > 45
+====
+expr = 4 > 53 > 76 -- erro nonassoc
+====
+expr = a + b + c -- left assoc ()
+====
+expr = (a + b) + c -- left assoc
+====
+expr = a + (b + c) -- right assoc
+====
+expr = a + b * c -- a + (b*c)
+====
+unState :: State s a b -> s -> (State s a b,b)
+unState :: State s a b -> (s) -> (State s a b,b)
+====
+unState :: State s a b -> (s -> b) -> (State s a b,b)
+====
+map :: (a -> b) -> [a] -> [b]
+====
+map :: (a -> b) -> [a->b] -> [b]
+map :: (a -> b) -> [Maybe a] -> [a]
+====
+ones = 1 : ones
+====
+onetwo = 1 : 2 : onetwo
+====
+onetwo = 1 : 2 * 1 : onetwo
+====
+tup :: (Maybe String, Bool, Int, [a])
+tup = (Just "jaja", False, 1000, undefined:[])
+====
+singleton :: a -> [a]
+singleton = \x -> [x]
+====
+single z = z : []
+====
+isEmpty :: [a] -> Bool
+isEmpty ls = ls == []
+====
+numbers = [1,2,4 * 2,5]
+====
+map :: (a -> b) -> [a] -> [b]
+map f [] = []
+map f (x:xs) = f x : map f xs
+====
+head [] = error "error"
+head (x:y) = x
+====
+forth [a,b,c,d,e,f] = d
+====
+snd (_,y) = y
+third (_,_,t) = t
+====
+tail [] = []
+tail (x:xs) = xs
+====
+pattern (Constr (t,x,w,[a,b,Nothing,c,Just (s:ss:sss:ssss)])) k = k
