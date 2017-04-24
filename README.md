@@ -15,21 +15,29 @@ As versões do sistema serão baseadas nas versões e nas funcionalidades implem
 
 ### CORE 0.0 (versão atual)
 
-CORE com tipos baixo nível (ou seja, representa a linguagem CORE C). Suporta aplicação de funções, tipos de baixo nível atemporais (não recursivos), funções primitivas built-in (como adição, por exemplo). Não suporta recursão por enquanto.
+CORE com tipos baixo nível (ou seja, representa a linguagem CORE C). Suporta aplicação de funções, tipos de baixo nível atemporais (não recursivos), funções primitivas built-in (como adição, por exemplo). Não suporta condições e recursão.
 Ao fim da implementação dos processos 3 e 4 será possível gerar código para sistemas combinacionais de funções.
 
 ### CORE 1.0
 
-Adição de recursão e tipos temporais (recursivos) ainda de baixo nível.
+Adição de condições.
 
 ### CORE 2.0
 
-Implementação da etapa 2 de síntese de tipos. CORE vira CORE B. 
+Adição de recursão ainda sem tipos temporais (recursivos).
 
 ### CORE 3.0
 
-Implementação da linguagem Haskell e suas transformaçes para até o CORE.
+Adição de tipos temporais (recursivos) ainda de baixo nível.
 
 ### CORE 4.0
 
-????????????
+Implementação da etapa 2 de síntese de tipos. CORE vira CORE B (tipos agora são de alto nível). 
+
+### HaskellCircuits 1.0
+
+Implementação da linguagem Haskell e suas transformaçes até o CORE.
+
+### HaskellCircuits 5.0
+
+Otimizações e melhoramentos??????
