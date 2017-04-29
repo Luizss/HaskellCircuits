@@ -4,13 +4,16 @@ import Control.Monad.Except
 import Data.List.Split
 import Control.Monad.State
 
-import Lexer
-import Layout (layout)
-import Parser
+import LexerCore
+import LayoutCore (layout)
+import ParserCore
+
+--import Layout (layout)
+--import Parser
 
 getTestInputs :: IO [String]
 getTestInputs = do
-  contents <- readFile "testLex"
+  contents <- readFile "testLexCore"
   let (first:spliteds) = "====" `splitOn` contents
   return (first : map tail spliteds)
 
@@ -26,5 +29,5 @@ test = do
     print (map getTok tks)  -- tokenize
     print (map getTok tks') -- tokenize + layout
     print expr              -- tokenize + layout + parse
-    putStrLn "========================="
+  --  putStrLn "========================="
   return ()
