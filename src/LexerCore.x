@@ -94,10 +94,14 @@ data Buffer = Buf {
 type AlexState = Int
 data AlexInput = AI SrcLoc Buffer AlexState
 
-data LToken = L {
+data L a = L {
   getLoc :: SrcLoc,
-  getTok :: Token
+  getVal :: a
 } deriving Show
+type LToken = L Token
+
+instance Functor L where
+  fmap f (L s x) = L s (f x)
 
 -- If token is Nothing thenoutput can be skipped
 data AlexResult = AR (Maybe Token) SrcLoc AlexState deriving Show
