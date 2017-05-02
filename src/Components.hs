@@ -8,9 +8,9 @@ import Data.Map hiding ((\\), map, findIndex)
 import Data.List ((\\), findIndex)
 import Control.Monad
 
-type Input  = String
-type Output = String
-type Conns = [(String,String)]
+type Input  = (String,String)
+type Output = (String,String)
+type Conns = [((String,String),(String,String))]
 data Proc = Get String Proc
           | Put String String Proc
           | EndProc
@@ -83,7 +83,7 @@ toC = go "main"
           let insts = depInsts ++ consInsts
               inps' = makeInputs name inps
               outs' = makeOutput name
-              (conns,insts'') = makeConns insts inps inps' outs' fexpr
+              (conns,insts'') = makeConns name insts inps inps' outs' fexpr
           return $
             C
             name
@@ -94,11 +94,12 @@ toC = go "main"
             conns
             EndProc
 
-        makeInputs name = zipWith (\x y -> name ++ "_in_" ++ (show x)) [0..]
-        makeOutput name = [name ++ "_out"]
+        makeInputs name = zipWith (\x y -> (spec name, "in_" ++ (show x))) [0..]
+
+        makeOutput name = [(spec name,"out_0")]
         
         makeInstancesFromCons cons = do
-          return $ ConsInstance cons (show cons) ("cons_in_" ++ show cons)
+          return $ ConsInstance cons ("constant_" ++ show cons) (("constant_" ++ show cons,"out_0"))
                 
         makeInstancesFromDep dep = do
           maybeC <- findComponent dep
@@ -119,18 +120,20 @@ toC = go "main"
         makeSpecial s = return $
                         SpecialInstance
                         s
-                        s
-                        [s ++ "_in_0", s ++ "_in_1"]
-                        [s ++ "_out"]
+                        ("special_" ++ s)
+                        [("special_" ++ s, "in_0")
+                        ,("special_" ++ s, "in_1")]
+                        [("special_" ++ s, "out_0")]
 
         makeConns
-          :: [Instance]
-          -> [Input]
+          :: String
+          -> [Instance]
+          -> [FName]
           -> [Input]
           -> [Output]
           -> FExpr
           -> (Conns,[Instance])
-        makeConns insts inps inps' [outp] f = go f [] insts
+        makeConns name insts inps inps' [outp] f = go f [] insts
           where
             go
               :: FExpr
@@ -139,14 +142,17 @@ toC = go "main"
               -> (Conns,[Instance])
             go fexpr cs ins  = case fexpr of
               FApp namef@(L _ n) args
-                -> join $ ([(n ++ "_out", outp)],[]) : mapIndex (go' namef cs ins) args
-              FAExpr (FVar v)
+                -> join $
+                   ([((spec n,"out_0"), specTup outp)]
+                   ,[]) : mapIndex (go' namef cs ins) args
+              FAExpr (FVar v@(L _ vs))
                 -> let maybei = findIndex (== v) (map anyL inps)
                    in case maybei of
                         Nothing -> error "Undefined?"
-                        Just i -> ([(inps' !! i, outp)],[])
-              FAExpr (FCons (L _ v)) -> ([("cons_ins_" ++ (show v), outp)]
-                                  ,[]) --conn c com output
+                        Just i -> ([(specTup (inps' !! i), specTup outp)],[])
+              FAExpr (FCons (L _ v))
+                -> ([(("constant_" ++ show v, "out_0"), specTup outp)]
+                   ,[]) --conn c com output
             go'
               :: L FName
               -> Conns
@@ -156,18 +162,18 @@ toC = go "main"
               -> (Conns,[Instance])
             go' (L _ namef) cs ins i fe = case fe of
               FApp (L _ nameg) args
-                -> let fifo = Fifo "fifo_in" "fifo_out"
+                -> let fifo = Fifo ("fifo","in_0") ("fifo","out_0")
                    in join $
-                      ([(nameg ++ "_out", "fifo_in")
-                       ,("fifo_out",namef ++ "_in_" ++ show i)]
+                      ([((spec nameg, "out_0"), ("fifo","in_0"))
+                       ,(("fifo", "out_0"), (spec namef,"in_" ++ show i))]
                       ,[fifo]) : mapIndex (go' (anyL nameg) cs ins) args
-              FAExpr (FVar  v)
+              FAExpr (FVar v@(L _ vs))
                 -> let maybei = findIndex (== v) (map anyL inps)
                    in case maybei of
                         Nothing -> error "Undefined?"
-                        Just j -> ([(inps' !! j, namef ++ "_in_" ++ show i)],[])
+                        Just j -> ([(inps' !! j, (spec namef,"in_" ++ show i))],[])
               FAExpr (FCons (L _ c))
-                -> ([("cons_in_" ++ show c, namef ++ "_in_" ++ show i)], [])
+                -> ([(("constant_" ++ show c, "out_0"), (spec namef, "in_" ++ show i))], [])
               
           --error $ (show a) ++ (show b) ++ (show c) ++ (show f)
 
@@ -180,11 +186,22 @@ mapIndex = go 0
   where go _ _ [] = []
         go i f (x:xs) = f i x : go (i+1) f xs
 
+spec :: FName -> FName
+spec name
+  | special name = "special_" ++ name
+  | otherwise    = name
+
+specTup :: (FName,a) -> (FName,a)
+specTup (n,x) = (spec n,x)
 
 special :: FName -> Bool
 special n
-  = n `elem` ["*","+","-"]
-  
+  = n `elem` ["add","sub","mul"]
+
+specialSym :: FName -> Bool
+specialSym n
+  = n `elem` ["+","-","*"]
+
 getVariablesFromF :: F -> [FName]
 getVariablesFromF (F fvars expr) = go expr
   where go :: FExpr -> [FName]
@@ -272,5 +289,3 @@ findComponent :: FName -> A (Maybe C)
 findComponent name = do
   cs <- getComponents
   return (lookup name cs)
-
---findFunction :: FName -> [()]

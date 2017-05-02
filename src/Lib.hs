@@ -32,6 +32,9 @@ test = do
           Right e -> interpret e
           Left _ -> []
         c = toComponents f
+        g = case c of
+          Right e -> toSystemC [1..10] (map snd e)
+          Left _ -> []
     putStr inp              -- input
     print (map getVal tks)  -- tokenize
     print (map getVal tks') -- tokenize + layout
@@ -39,5 +42,11 @@ test = do
     print f
     putStrLn ""
     print c
+    if g /= []
+      then forM_ g $ \(x,y) -> do
+        putStrLn x
+        putStrLn y
+      else putStr "aa"
+    makeSystemC g
   --  putStrLn "========================="
   return ()

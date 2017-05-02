@@ -1,3 +1,5 @@
+main x = x * 5 + 3
+=====
 f x z y = g (z y h) k x
 =====
 -- Comentário
@@ -13,5 +15,3 @@ h = f (k 8)
 main x y z = k x (g y z)
 g x = x
 k x y = x
-=====
-main x = x * 5 + 3
