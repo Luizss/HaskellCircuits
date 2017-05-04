@@ -1,0 +1,17 @@
+main x = x * 5 + 3
+=====
+f x z y = g (z y h) k x
+=====
+-- Comentário
+50  2.3123123 0.5e2
+=====
+{-Comentário-}
+-50 -2.3123123 -0.5e2
+=====
+main x = x * 5 * (g x)
+g y = y + 3 + h
+h = f (k 8)
+=====
+main x y z = k x (g y z)
+g x = x
+k x y = x
