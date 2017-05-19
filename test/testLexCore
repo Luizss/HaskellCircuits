@@ -1,3 +1,5 @@
+main x = 5 * x * 5
+=====
 main x = x * 5 + 3
 =====
 f x z y = g (z y h) k x
@@ -10,8 +12,14 @@ f x z y = g (z y h) k x
 =====
 main x = x * 5 * (g x)
 g y = y + 3 + h
-h = f (k 8)
+h = 8
 =====
 main x y z = k x (g y z)
 g x = x
 k x y = x
+=====
+hey = 5 6
+g x = x
+k x y = x
+=====
+hey = 5 + 4

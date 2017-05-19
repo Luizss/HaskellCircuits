@@ -1,210 +1,278 @@
 module Components where
 
-import Prelude hiding (lookup)
+import Prelude hiding (lookup,log)
+
 import Function
-import LexerCore (L(..))
+import LexerCore
+import TransformationMonad
+import Types
+import Aux
+
 import Control.Monad.State
-import Data.Map hiding ((\\), map, findIndex)
-import Data.List ((\\), findIndex)
+import Data.List ((\\), findIndex, nub, nubBy, elem)
 import Control.Monad
 
-type Input  = (String,String)
-type Output = (String,String)
-type Conns = [((String,String),(String,String))]
-data Proc = Get String Proc
-          | Put String String Proc
-          | EndProc
-          deriving Show
-type Id = String
-data Instance = Instance String{-modulename-} Id [Input] [Output]
-              | ConsInstance Int Id Input
-              | SpecialInstance String Id [Input] [Output]
-              | Fifo Input Output
-              | DummyInstance
-              deriving Show
+toComponents :: TM ()
+toComponents = do
+  log "Entering toComponents"
+  toC "main"
+  return ()
 
-data C = C FName F [Instance] [Input] [Output] Conns Proc
-       | Dummy -- in order to get more errors 
-       deriving Show
+-- This logic may change with recursive functions
+toC :: Name -> TMM ()
+toC name
+  | special name = mok
+  | otherwise = do
+      maybeC <- searchComponent name
+      case maybeC of
+        Just c -> mok
+        Nothing -> do
+          maybeF <- searchFunction name
+          case maybeF of
+            Nothing -> throw (TErr
+                              FunctionNotDeclared
+                              Nothing
+                              ("Function "
+                               ++ name
+                               ++ " is not declared.")
+                              NoLoc) >> noRet
+            Just f -> do
+              mC <- synth f
+              cont1 mC $ \c -> do
+                addComp (name, c)
+                ret ()
+            
+synth :: TFunc -> TMM C
+synth tfunc@(name,_,f,_) = do
+  let deps   = getDependencies f
+      consts = getConstantsFromF f
+  cs <- mapM toC (nub deps)
+  cont cs $ do
+    okDeps <- mapM (makeInstancesFromDep name) deps
+    mapM_ (makeInstancesFromConst name) consts
+    -- throw err with okdeps
+    cont okDeps $ do
+      connect tfunc
+      insts <- getInstancesFromComponent name
+      conns <- getConnections name
+      let c = C
+              f
+              insts
+              (getInputsFromF f)
+              "out"
+              conns
+              EndProc
+      ret c
 
-type Errors = [String]
+makeInstancesFromConst :: CompName -> Int -> TM ()
+makeInstancesFromConst compName const = do
+  let nameInst = "const" ++ show const
+  id <- getIdForInstance compName nameInst
+  let inst = (compName
+             , NameId nameInst id
+             , ConstI
+               const
+               "out"
+             , False)
+  addInstance inst
 
-type A a = State (Map (L FName) F, Map FName C, Errors) a
+makeInstancesFromDep :: CompName -> String -> TMM ()
+makeInstancesFromDep compName dep
+  | special dep = makeSpecialInstance compName dep
+  | otherwise = do
+      maybeC <- searchComponent dep
+      case maybeC of
+        Nothing ->
+          throw (TErr
+                 ComponentNotDone
+                 Nothing
+                 ("Component "
+                   ++ dep
+                   ++ " not created")
+                 NoLoc) >> noRet
+        Just (n, C _ _ inps out _ _) -> do
+          id <- getIdForInstance compName n
+          let inst = (compName, NameId n id, I inps out, False)
+          addInstance inst
+          ret ()
 
-instance Eq a => Eq (L a) where
-  L _ x == L _ y = x == y
-instance Ord a => Ord (L a) where
-  compare (L _ x) (L _ y) = compare x y
+makeSpecialInstance :: CompName -> Name -> TMM ()
+makeSpecialInstance compName s = do
+  id <- getIdForInstance compName s
+  let inst = (compName
+             , NameId s id
+             , SpecialI ["in1","in2"] "out"
+             , False)
+  addInstance inst
+  ret ()
+      
+connect :: TFunc -> TMM ()
+connect (comp,_,F inps fexpr,arity) =
+  connectOutter fexpr
+  --go f [] insts
+  where
 
-toComponents :: [(L FName, F)] -> Either String [(FName, C)]
-toComponents fs
-  = case execState toC (fromList fs, fromList [], []) of
-      (_,cs,[])
-        -> Right (toList cs)
-      (_,cs,es)
-        -> Left (Prelude.foldl1 (\a b -> a ++ "\n" ++ b) es)
+    getOut :: I -> Output
+    getOut i = case i of
+      I        _ out -> out
+      ConstI   _ out -> out
+      SpecialI _ out -> out
+      FifoI    _ out -> out
 
-toC :: A ()
-toC = go "main"
-  where go name
-          | special name = do
-              removeFunction name
-          | otherwise = do
-              maybeF <- findFunction name
-              case maybeF of
-                Just f -> do
-                  removeFunction name
-                  c <- synth name f
-                  addComponent name c
-                Nothing -> do
-                  maybeC <- findComponent name
-                  case maybeC of
-                    Just c -> return ()
-                    Nothing -> do        
-                      addError ("Variable " ++ name ++ " not in declared.")
-  
-        synth :: FName -> F -> A C
-        synth name f = do
-          let deps = getDependencies f
-          esBefore <- getErrors
-          mapM_ go deps
-          esAfter <- getErrors
-          if esBefore == esAfter
-            then analyse name f
-            else return Dummy
+    getInput :: Int -> I -> TMM Input
+    getInput i inst = case inst of
+      I inps _
+        | i < length inps -> ret (inps !! i)
+        | otherwise -> error'
+      ConstI inp _
+        | otherwise -> error''
+      SpecialI inps _
+        | i < length inps -> ret (inps !! i)
+        | otherwise -> error'
+      FifoI inp _
+        | i == 0 -> ret inp
+        | otherwise -> error'
+      where error'  = throw (TErr
+                            WrongInstanceNumberInput
+                            Nothing
+                            "Wrong number os inputs of instance"
+                            NoLoc) >> noRet
+            error'' = throw (TErr
+                            ConstantsHaveNoInputs
+                            Nothing
+                            "Constants have no input"
+                            NoLoc) >> noRet
+      
+    connectOutter :: FExpr -> TMM ()
+    connectOutter fexpr = do
+      case fexpr of
+        FApp (L _ instName) args -> do
+          minst <- getNextInstance comp instName
+          mayThrow minst (TErr
+                          CouldntGetNextInstance
+                          Nothing
+                          ("Couldn't get next instance for "
+                           ++ instName)
+                          NoLoc)
+          cont1 minst $ \inst@(_,nid,ins,_) -> do
+            addConnection (comp
+                          ,(nid, getOut ins)
+                          ,(NameId comp 1, "out"))
+            setInstanceUsed comp nid
+            mapM_ (connectInner inst) (zip args [0..])
+            ret ()
+        FAExpr (FVar v@(L _ vs))
+          | elem v inps ->
+              addConnection (comp
+                            ,(NameId comp 1, vs)
+                            ,(NameId comp 1, "out")) >> ret ()
+          | otherwise -> do
+              minst <- getNextInstance comp vs
+              mayThrow minst (TErr
+                              CouldntGetNextInstance
+                              Nothing
+                              ("Couldn't get next instance for "
+                               ++ vs)
+                              NoLoc)
+              cont1 minst $ \inst@(_,nid',ins',_) -> do
+                addConnection (comp
+                              ,(nid', getOut ins')
+                              ,(NameId comp 1, "out"))
+                setInstanceUsed comp nid'
+                ret ()
+            
+        FAExpr (FCons (L _ c)) -> do
+          let instName = "const" ++ show c
+          minst <- getNextInstance comp instName
+          mayThrow minst (TErr
+                          CouldntGetNextInstance
+                          Nothing
+                          ("Couldn't get next instance for "
+                           ++ instName)
+                          NoLoc)
+          cont1 minst $ \inst@(_,nid,ins,_) -> do
+            addConnection (comp
+                          ,(nid, getOut ins)
+                          ,(NameId comp 1, "out"))
+            setInstanceUsed comp nid
 
-        analyse :: FName -> F -> A C
-        analyse name f@(F _ fexpr) = do
-          let inps = getInputsFromF f
-              deps = getDependencies f
-              cons = getConstantsFromF f
-          depInsts <- mapM makeInstancesFromDep deps
-          consInsts <- mapM makeInstancesFromCons cons
-          let insts = depInsts ++ consInsts
-              inps' = makeInputs name inps
-              outs' = makeOutput name
-              (conns,insts'') = makeConns name insts inps inps' outs' fexpr
-          return $
-            C
-            name
-            f
-            (insts ++ insts'')
-            inps'
-            outs'
-            conns
-            EndProc
-
-        makeInputs name = zipWith (\x y -> (spec name, "in_" ++ (show x))) [0..]
-
-        makeOutput name = [(spec name,"out_0")]
-        
-        makeInstancesFromCons cons = do
-          return $ ConsInstance cons ("constant_" ++ show cons) (("constant_" ++ show cons,"out_0"))
-                
-        makeInstancesFromDep dep = do
-          maybeC <- findComponent dep
-          case maybeC of
-            Nothing    ->
-              if special dep
-              then makeSpecial dep
-              else addError "wat" >> return DummyInstance
-            Just Dummy -> return DummyInstance
-            Just (C n _ _ inps outs _ _) -> do
-              return $
-                Instance
-                n
-                n
-                inps
-                outs
+    connectInner :: TInst -> (FExpr,Int) -> TMM ()
+    connectInner inst@(_,nid,ins,_) (expr,n) = case expr of
+      FApp (L _ instName) args' -> do
+          minst <- getNextInstance comp instName
+          mayThrow minst (TErr
+                          CouldntGetNextInstance
+                          Nothing
+                          ("Couldn't get next instance for "
+                           ++ instName)
+                          NoLoc)
+          cont1 minst $ \inst'@(_,nid',ins',_) -> do
+            mayInp <- getInput n ins
+            cont1 mayInp $ \inp -> do
+              let fifoName = "__fifo__"
+              fifoId <- getIdForInstance comp fifoName
+              let fifo = FifoI "in" "out"
+                  fifoNId = NameId fifoName fifoId
+              addInstance (comp, fifoNId, fifo, True)
+              addConnection (comp
+                            ,(nid', getOut ins')
+                            ,(fifoNId, "in"))
+              addConnection (comp
+                            ,(fifoNId, "out")
+                            ,(nid, inp))
+              setInstanceUsed comp nid'
+              mapM_ (connectInner inst') (zip args' [0..])
+              ret ()
               
-        makeSpecial s = return $
-                        SpecialInstance
-                        s
-                        ("special_" ++ s)
-                        [("special_" ++ s, "in_0")
-                        ,("special_" ++ s, "in_1")]
-                        [("special_" ++ s, "out_0")]
+      FAExpr (FVar v@(L _ vs))
+        | elem v inps -> do
+            mayInp <- getInput n ins
+            cont1 mayInp $ \inp ->
+              addConnection (comp
+                            ,(NameId comp 1, vs)
+                            ,(nid, inp)) >> ret ()
+        | otherwise -> do
+            minst <- getNextInstance comp vs
+            mayThrow minst (TErr
+                        CouldntGetNextInstance
+                        Nothing
+                        ("Couldn't get next instance for "
+                         ++ vs)
+                        NoLoc)
+            cont1 minst $ \inst@(_,nid',ins',_) -> do
+              mayInp <- getInput n ins
+              cont1 mayInp $ \inp -> do
+                addConnection (comp
+                              ,(nid', getOut ins')
+                              ,(nid, inp))
+                setInstanceUsed comp nid'
+              ret ()
+            
+      FAExpr (FCons (L _ c)) -> do
+        let instName = "const" ++ show c
+        minst <- getNextInstance comp instName
+        mayThrow minst (TErr
+                        CouldntGetNextInstance
+                        Nothing
+                        ("Couldn't get next instance for "
+                         ++ instName)
+                        NoLoc)
+        cont1 minst $ \inst@(_,nid',ins',_) -> do
+          mayInp <- getInput n ins
+          cont1 mayInp $ \inp -> do
+            addConnection (comp
+                          ,(nid', getOut ins')
+                          ,(nid, inp))
+            setInstanceUsed comp nid'
+            ret ()
 
-        makeConns
-          :: String
-          -> [Instance]
-          -> [FName]
-          -> [Input]
-          -> [Output]
-          -> FExpr
-          -> (Conns,[Instance])
-        makeConns name insts inps inps' [outp] f = go f [] insts
-          where
-            go
-              :: FExpr
-              -> Conns
-              -> [Instance]
-              -> (Conns,[Instance])
-            go fexpr cs ins  = case fexpr of
-              FApp namef@(L _ n) args
-                -> join $
-                   ([((spec n,"out_0"), specTup outp)]
-                   ,[]) : mapIndex (go' namef cs ins) args
-              FAExpr (FVar v@(L _ vs))
-                -> let maybei = findIndex (== v) (map anyL inps)
-                   in case maybei of
-                        Nothing -> error "Undefined?"
-                        Just i -> ([(specTup (inps' !! i), specTup outp)],[])
-              FAExpr (FCons (L _ v))
-                -> ([(("constant_" ++ show v, "out_0"), specTup outp)]
-                   ,[]) --conn c com output
-            go'
-              :: L FName
-              -> Conns
-              -> [Instance]
-              -> Int
-              -> FExpr
-              -> (Conns,[Instance])
-            go' (L _ namef) cs ins i fe = case fe of
-              FApp (L _ nameg) args
-                -> let fifo = Fifo ("fifo","in_0") ("fifo","out_0")
-                   in join $
-                      ([((spec nameg, "out_0"), ("fifo","in_0"))
-                       ,(("fifo", "out_0"), (spec namef,"in_" ++ show i))]
-                      ,[fifo]) : mapIndex (go' (anyL nameg) cs ins) args
-              FAExpr (FVar v@(L _ vs))
-                -> let maybei = findIndex (== v) (map anyL inps)
-                   in case maybei of
-                        Nothing -> error "Undefined?"
-                        Just j -> ([(inps' !! j, (spec namef,"in_" ++ show i))],[])
-              FAExpr (FCons (L _ c))
-                -> ([(("constant_" ++ show c, "out_0"), (spec namef, "in_" ++ show i))], [])
-              
-          --error $ (show a) ++ (show b) ++ (show c) ++ (show f)
-
-            join :: [(Conns,[Instance])] -> (Conns, [Instance])
-            join xs = (cs, ins) where cs = concat (map fst xs)
-                                      ins = concat (map snd xs)
-
-mapIndex :: (Int -> a -> b) -> [a] -> [b]
-mapIndex = go 0
-  where go _ _ [] = []
-        go i f (x:xs) = f i x : go (i+1) f xs
-
-spec :: FName -> FName
-spec name
-  | special name = "special_" ++ name
-  | otherwise    = name
-
-specTup :: (FName,a) -> (FName,a)
-specTup (n,x) = (spec n,x)
-
-special :: FName -> Bool
+special :: Name -> Bool
 special n
   = n `elem` ["add","sub","mul"]
 
-specialSym :: FName -> Bool
-specialSym n
-  = n `elem` ["+","-","*"]
-
-getVariablesFromF :: F -> [FName]
+getVariablesFromF :: F -> [Name]
 getVariablesFromF (F fvars expr) = go expr
-  where go :: FExpr -> [FName]
+  where go :: FExpr -> [Name]
         go (FApp (L _ n) es) = [n] ++ concat (map go es)
         go (FAExpr (FVar x)) = [getVal x]
         go (FAExpr _) = []
@@ -216,76 +284,15 @@ getConstantsFromF (F fvars expr) = go expr
         go (FAExpr (FCons c)) = [getVal c]
         go (FAExpr _) = []
 
-getInputsFromF :: F -> [FName]
+getInputsFromF :: F -> [Name]
 getInputsFromF (F fvars expr) = fmap getVal fvars
 
-getDependencies :: F -> [FName]
-getDependencies f = getVariablesFromF f \\ getInputsFromF f -- less constants less inputs
-
-{-addMaybeComponent :: FName -> Maybe C -> A ()
-addMaybeComponent _ Nothing = return ()
-addMaybeComponent n (Just c) = addComponent n c-}
-
-throwErrors :: A ()
-throwErrors = do
-  errs <- getErrors
-  case errs of
-    [] -> return ()
-    _  -> error (Prelude.foldl1 (\a b -> a ++ "\n\n" ++ b) errs)
-  
-anyL x = L undefined x
-
-getFunctions :: A (Map (L FName) F)
-getFunctions = do
-  (fs,_,_) <- get
-  return fs
-
-putFunctions :: Map (L FName) F -> A ()
-putFunctions fs = do
-  (_,cs,es) <- get
-  put (fs,cs,es)
-
-getComponents :: A (Map FName C)
-getComponents = do
-  (_,cs,_) <- get
-  return cs
-
-putComponents :: Map FName C -> A ()
-putComponents cs = do
-  (fs,_,es) <- get
-  put (fs,cs,es)
-
-addComponent :: FName -> C -> A ()
-addComponent name c = do
-  cs <- getComponents
-  putComponents (insert name c cs)
-
-getErrors :: A Errors
-getErrors = do
-  (_,_,errs) <- get
-  return errs
-
-putErrors :: Errors -> A ()
-putErrors errs = do
-  (fs,cs,_) <- get
-  put (fs,cs,errs)
-
-addError :: String -> A ()
-addError err = do
-  errs <- getErrors
-  putErrors (errs ++ [err])
-  
-findFunction :: FName -> A (Maybe F)
-findFunction name = do
-  fs <- getFunctions
-  return (lookup (anyL name) fs)
-
-removeFunction :: FName -> A ()
-removeFunction name = do
-  fs <- getFunctions
-  putFunctions (delete (anyL name) fs)
-
-findComponent :: FName -> A (Maybe C)
-findComponent name = do
-  cs <- getComponents
-  return (lookup name cs)
+getDependencies :: F -> [Name]
+getDependencies f =
+  let inputs = getInputsFromF f
+      vars = getVariablesFromF f
+      isInput x = elem x inputs
+      inputsOut x
+        | isInput x = False
+        | otherwise = True
+  in filter inputsOut vars
