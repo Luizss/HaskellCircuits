@@ -1,28 +1,30 @@
 module ToSystemC where
 
-import Components
 import Data.Map (fromList,toList)
 import System.Directory
 import Control.Monad
-import Data.List (nub)
+import Data.List (nub,intercalate)
+import Data.String (lines,unlines)
 
-type FileName = String
-type File = (FileName, String)
-type SystemC = [File]
+import LexerCore
+import Components
+import Types
+import TransformationMonad
+import Aux
 
 ------------
 
-selectMain :: [C] -> C
+{-selectMain :: [C] -> C
 selectMain cs = case filter (nameEqual "main") cs of
   [] -> error "No main"
   [x] -> x
-  _  -> error "Multiple main's"
+  _  -> error "Multiple main's"-}
 
-topLevel :: [Int] -> C -> SystemC
-topLevel lst (C _ f _insts inps outs _Conns _Proc)
-  = [("main.cpp", mainContent)
-    ,("top.h", topLevelContent)
-    ,("testbench.h",testbenchContent)]
+topLevel :: [Int] -> TComp -> TM ()
+topLevel lst (_, C _ _ inps out _ _) = do
+  addSystemCFile ("main.cpp", mainContent)
+  addSystemCFile ("top.h", topLevelContent)
+  addSystemCFile ("testbench.h",testbenchContent)
   where mainContent
           = "#include \"systemc.h\"\n"
           ++ "#include \"top.h\"\n\n"
@@ -39,24 +41,26 @@ topLevel lst (C _ f _insts inps outs _Conns _Proc)
           ++ "SC_MODULE(top) {\n\n"
           ++ "mainFunc m;\n"
           ++ "testbench tb;\n"
-          ++ signals inps outs ++ "\n\n"
+          ++ signals inps [out] ++ "\n\n"
           ++ "SC_CTOR(top) : m(\"m\"), tb(\"tb\") {\n"
           ++ topConnections inps
-          ++ topConnections outs ++ "\n\n"
+          ++ topConnections [out] ++ "\n\n"
           ++ "}\n"
           ++ "};"
+          
         topConnections
-          = foldl (\a b -> a ++ "\n" ++ b) ""
-          . map (\(m,p) -> "m." ++ p ++ "(" ++ p ++ "); "
-                           ++ "tb." ++ p ++ "(" ++ p ++ ");")
+          = unlines
+          . map (\p -> "m." ++ p ++ "(" ++ p ++ "); "
+                       ++ "tb." ++ p ++ "(" ++ p ++ ");")
         
         signals is os
-          = foldl (\a b -> a ++ "\n" ++ b) ""
-          $ map (\x -> "sc_fifo<int> " ++ x ++ ";") (map snd is ++ map snd os)
+          = unlines
+          $ map (\x -> "sc_fifo<int> " ++ x ++ ";") (is ++ os)
+          
         testbenchContent
           = "#include \"systemc.h\"\n\n"
           ++ "SC_MODULE(testbench) {\n"
-          ++ inputs outs
+          ++ inputs [out]
           ++ outputs inps
           ++ "\n\nvoid proc();\n\n"
           ++ "SC_CTOR(testbench) {\n"
@@ -66,12 +70,16 @@ topLevel lst (C _ f _insts inps outs _Conns _Proc)
           ++ "void testbench::proc() {"
           ++ fillFifo inps ++ "\n\n"
           ++ "}"
-        fillFifo = foldl (\a b -> a++"\n"++b) "" . map (fill lst)
-        fill ls (_,port)
-          = (foldl1 (\a b -> a ++ "\n" ++ seeOut ++ b) (map write ls)) ++ "\n" ++ seeOut
-          where write cons
-                  = port ++ ".write(" ++ show cons ++ ");"
-                seeOut = "cout << out_0.read() << endl;\n"
+          
+        fillFifo inps = unlines
+                        $ map fill lst
+          where 
+            fill cons
+              = unlines (map
+                         (\p -> p ++ ".write(" ++ show cons ++ ");")
+                         inps)
+                ++ "\n" ++ seeOut
+            seeOut = "cout << out.read() << endl;\n"
                 
 -- faz o test bench e o top level
 -- com base nos inputs e outputs da main
@@ -79,15 +87,56 @@ topLevel lst (C _ f _insts inps outs _Conns _Proc)
 
 ---------------
 
-toSystemC :: [Int] -> [C] -> SystemC
+toSystemC :: TMM ()
+toSystemC = do
+  comps <- getComponents
+  maybeMain <- searchComponent "main"
+  cont1 maybeMain $ \main -> do
+    topLevel [1..10] main
+    mapM componentToSystemC comps
+    ret ()
+        
+{-toSystemC :: [Int] -> [C] -> SystemC
 toSystemC lst cs = let components
                          = concat $ map (component2SystemC cs) cs
                        main = selectMain cs
                        tl = topLevel lst main
-                   in toList (fromList (components ++ tl))
+                   in toList (fromList (components ++ tl))-}
 
-component2SystemC :: [C] -> C -> SystemC
-component2SystemC _ Dummy = error "Dummy component error"
+componentToSystemC :: TComp -> TMM ()
+componentToSystemC (name, C f insts inps out conns _proc) = do
+  msc <- sconnections conns
+  cont1 msc $ \sc -> do
+    addSystemCFile (changeIfMain name ++ ".h", content sc)
+    mapM_ instanceFromFile insts
+    ret ()
+  where
+    content cs = unlines
+      [ includeSystemC
+      , includeInstances insts
+      , ""
+      , scModule name
+      , inputs inps 
+      , outputs [out]
+      , intermediarySignals conns
+      , instanceDeclaration insts
+      , processDeclaration _proc
+      , scCtor name insts
+      , ""
+      , cs
+      , scThread _proc
+      , closingBraces
+      , voidProc name _proc
+      ]
+
+instanceFromFile :: TInst -> TM ()
+instanceFromFile (comp,nid,inst,_) = case inst of
+  ConstI      c out -> addSystemCFile $ makeConstFile nid c out
+  SpecialI inps out -> addSystemCFile $ makeSpecialFile nid inps out 
+  FifoI _ _ -> ok
+  I     _ _ -> ok
+
+{-component2SystemC :: [C] -> C -> SystemC
 component2SystemC cs (C name' _ insts inps outs conns process)
   = (name ++ ".h", content) : filesFromInstances cs insts
   where
@@ -103,101 +152,126 @@ component2SystemC cs (C name' _ insts inps outs conns process)
       ++ instanceDeclaration insts
       ++ processDeclaration process ++ "\n"
       ++ scCtor name insts ++ "\n\n"
-      ++ connections name conns
+      ++ sconnections name conns
       ++ scThread process
       ++ closingBraces
-      ++ voidProc name process
-
+      ++ voidProc name process-}
 
 includeSystemC :: String
 includeSystemC = "#include \"systemc.h\""
 
-includeInstances :: [Instance] -> String
-includeInstances
-  = foldl (\a b -> a++"\n"++b) ""
-    . map (\x -> "#include \"" ++ x ++ ".h\"")
-    . filter (/="")
-    . map includeInstance
-  where includeInstance :: Instance -> String
-        includeInstance ins = case ins of
-          DummyInstance -> error "Dummy instance"
-          Instance _ id _ _ -> id
-          ConsInstance _ id _ -> id
-          SpecialInstance _ id _ _ -> id
-          Fifo _ _ -> ""
-
-scModule name = "SC_MODULE(" ++ name ++ ") {"
-
-inputs = foldl (\a b -> a ++ "\n" ++ b) "" . map input
-  where 
-    input (_,inputName) = "sc_fifo_in<int> " ++ inputName ++ ";"
-
-outputs = foldl (\a b -> a++"\n"++b) "" . map output
-  where 
-    output (_,outputName) = "sc_fifo_out<int> " ++ outputName ++ ";"
-
-instanceDeclaration :: [Instance] -> String
-instanceDeclaration
-  = foldl (\a b -> a++"\n"++b) ""
-    . filter (/="")
-    . map declInst
+includeInstances :: [TInst] -> String
+includeInstances =
+  unlines
+  . map makeInclude
+  . filter (/="")
+  . nub
+  . map getNameFromInstance
   where
-    declInst :: Instance -> String
-    declInst ins = case ins of
-      DummyInstance -> error "Dummy instance"
-      Instance _ id _ _ -> typeAndVar id
-      ConsInstance _ id _ -> typeAndVar id
-      SpecialInstance _ id _ _ -> typeAndVar id
-      Fifo _ _ -> "sc_fifo<int> fifo;"
+    getNameFromInstance :: TInst -> Name
+    getNameFromInstance (_,NameId name _,ins,_) = case ins of
+      FifoI _ _ -> ""
+      _ -> name
 
-    typeAndVar s = s ++ " _" ++ s ++ ";"
+    makeInclude :: Name -> String
+    makeInclude name = "#include \"" ++ name ++ ".h\""
 
-processDeclaration EndProc = "\n"
-processDeclaration _ = "void proc();\n"
+scModule :: Name -> String
+scModule name = "SC_MODULE(" ++ changeIfMain name ++ ") {"
 
+inputs :: [Input] -> String
+inputs = unlines . map makeInput
+  where 
+    makeInput inputName = "sc_fifo_in<int> " ++ inputName ++ ";"
+
+outputs :: [Output] -> String
+outputs = unlines . map makeOutput
+  where
+    makeOutput outputName = "sc_fifo_out<int> " ++ outputName ++ ";"
+
+intermediarySignals :: [TConn] -> String
+intermediarySignals = unlines . filter (/="") . nub . map intSig
+  where intSig :: TConn -> String
+        intSig (comp, (NameId m1 id1, p1), (NameId m2 id2, p2))
+          | isInOrOut m1 ||
+            isFifo m1    ||
+            isInOrOut m2 ||
+            isFifo m2 = ""
+          | otherwise = "sc_fifo<int> "
+                         ++ interSignal m1 id1 p1 m2 id2 p2
+                         ++ ";"
+          where isInOrOut x = x == comp'
+                isFifo    x = x == "__fifo__"
+                comp' = changeIfMain comp
+  
+
+interSignal m1 id1 p1 m2 id2 p2 =
+  m1 ++ (show id1) ++ "_" ++ p1  ++ "__" ++ m2 ++ (show id2) ++ "_" ++ p2
+  
+instanceDeclaration :: [TInst] -> String
+instanceDeclaration
+  = unlines . map declInst
+  where
+    declInst :: TInst -> String
+    declInst (_,NameId name id,inst,_) = case inst of
+      FifoI _ _ -> "sc_fifo<int> __fifo__" ++ (show id) ++ ";"
+      _         -> name ++ " " ++ name ++ (show id) ++ ";"
+
+processDeclaration EndProc = ""
+processDeclaration _ = "void proc();"
+
+scCtor :: Name -> [TInst] -> String
 scCtor name insts
-  = "SC_CTOR(" ++ name ++ ")" ++ initInsts ++ " {"
+  = "SC_CTOR(" ++ changeIfMain name ++ ")" ++ initInsts ++ " {"
   where initInsts = case filter (/="") (map initInst insts) of
                       []  -> ""
                       [x] -> " : " ++ x
-                      xs  -> " : " ++ foldl1 (\a b -> a++", "++b) xs
-        initInst ins = case ins of
-          DummyInstance -> error "Dummy instance"
-          Instance _ id _ _ -> initVar id
-          ConsInstance _ id _ -> initVar id
-          SpecialInstance _ id _ _ -> initVar id
-          Fifo _ _ -> ""
+                      xs  -> " : " ++ intercalate ", " xs
+        --- parei aqui
+        initInst (_,NameId n id,inst,_) = case inst of
+          FifoI _ _ -> ""
+          _         -> n ++ (show id) ++ "(\"" ++ n ++ (show id) ++ "\")"
 
-        initVar s = "_" ++ s ++ "(\"" ++ s ++ "\")"
+sconnections :: [TConn] -> TMM String
+sconnections conns = do
+  maybeTxts <- mapM connToString conns
+  cont maybeTxts $ do
+    let txts = map just maybeTxts
+    ret (unlines txts)
+  where
+    connToString :: TConn -> TMM String
+    connToString (comp,(NameId m1 id1,p1),(NameId m2 id2,p2))
+      | (isInOrOut m1 || isFifo m1)
+        && (isInOrOut m2 || isFifo m2) =
+          throw (TErr
+                 ImpossibleConnection
+                 Nothing
+                 ("Impossible connection between "
+                  ++ m1 ++ (show id1)
+                  ++ " and "
+                  ++ m2 ++ (show id2))
+                 NoLoc) >> noRet
+      | isInOrOut m1 =
+          ret $ m2++(show id2) ++ "." ++ p2 ++ "(" ++ p1 ++ ");"
+      | isInOrOut m2 =
+          ret $ m1++(show id1) ++ "." ++ p1 ++ "(" ++ p2 ++ ");"
+      | isFifo m1 =
+          ret $ m2++(show id2) ++ "." ++ p2 ++ "(" ++ m1++(show id1) ++ ");"
+      | isFifo m2 =
+          ret $ m1++(show id1) ++ "." ++ p1 ++ "(" ++ m2++(show id2) ++ ");"
+      | otherwise =
+          let sig = interSignal m1 id1 p1 m2 id2 p2 
+          in ret $ unlines [
+             m1++(show id1) ++ "." ++ p1 ++ "(" ++ sig ++ ");"
+            ,m2++(show id2) ++ "." ++ p2 ++ "(" ++ sig ++ ");"
+            ]
+      where isInOrOut x = x == comp
+            isFifo    x = x == "__fifo__"
+            comp' = changeIfMain comp
 
-connections :: String -> Conns -> String
-connections name' = foldl1 (\a b -> a++"\n"++b) . map connToString
-  where connToString :: ((String,String),(String,String)) -> String
-        connToString ((m1,p1),(m2,p2))
-          | (m1 == name || m1 == "fifo")
-            && (m2 == name || m2 == "fifo") = "idError"
-          | m1 == name = "_" ++ m2 ++ "." ++ p2 ++ "(" ++ p1 ++ ");"
-          | m2 == name = "_" ++ m1 ++ "." ++ p1 ++ "(" ++ p2 ++ ");"
-          | m1 == "fifo" = "_" ++ m2 ++ "." ++ p2 ++ "(fifo);"
-          | m2 == "fifo" = "_" ++ m1 ++ "." ++ p1 ++ "(fifo);"
-          | otherwise
-          = let ps = m1 ++ "_" ++ p1 ++ "_" ++ m2 ++ "_" ++ p2 
-            in unlines [
-               "_" ++ m1 ++ "." ++ p1 ++ "(" ++ ps ++ ");"
-              ,"_" ++ m2 ++ "." ++ p2 ++ "(" ++ ps ++ ");"
-              ]
-        name = if name' == "mainFunc" then "main" else name'
-
-
-intermediarySignals :: String -> Conns -> String
-intermediarySignals name = foldl (\a b -> a++"\n"++b) "" . filter (/="") . nub . map intSig
-  where intSig :: ((String,String),(String,String)) -> String
-        intSig ((m1,p1),(m2,p2))
-          | (m1 /= name && m1 /= "fifo"
-             && m2 /= name && m2 /= "fifo") = "sc_fifo<int> " ++ m1 ++ "_" ++ p1 ++ "_" ++ m2 ++ "_" ++ p2 ++ ";"          
-          | otherwise = ""
-
-
+changeIfMain :: Name -> Name            
+changeIfMain name = if name == "main" then "mainFunc" else name
+    
 scThread EndProc = ""
 scThread _ = ""
 
@@ -205,7 +279,8 @@ closingBraces = "}\n};"
 
 voidProc name process = ""
 
-filesFromInstances :: [C] -> [Instance] -> SystemC
+{-
+filesFromInstances :: [C] -> [TInst] -> SystemC
 filesFromInstances cs = concat . map (instanceToFile cs)
 
 instanceToFile :: [C] -> Instance -> SystemC
@@ -221,8 +296,27 @@ instanceToFile cs ins = case ins of
   
 nameEqual :: String -> C -> Bool
 nameEqual n (C m _ _ _ _ _ _) = n == m
+-}
 
-makeConsFile cons c (_,inp) = (c ++ ".h", content)
+makeConstFile (NameId name id) cons out =
+  (name ++ ".h", content)
+  where c = name
+        content
+          = "#include \"systemc.h\"\n"
+          ++ "SC_MODULE("++c++") {\n"
+          ++ "sc_fifo_out<int> " ++ out ++ ";\n"
+          ++ "void proc();\n"
+          ++ "SC_CTOR("++c++") {\n"
+          ++ "SC_THREAD(proc);\n"
+          ++ "}\n"
+          ++ "};\n\n"
+          ++ "void " ++ c ++ "::proc() {\n"
+          ++ "while(true) {\n"
+          ++ out ++ ".write(" ++ show cons ++ ");\n"
+          ++ "}\n"
+          ++ "}"
+
+{-makeConsFile cons c (_,inp) = (c ++ ".h", content)
   where content
           = "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
@@ -236,9 +330,33 @@ makeConsFile cons c (_,inp) = (c ++ ".h", content)
           ++ "while(true) {\n"
           ++ inp ++ ".write(" ++ show cons ++ ");\n"
           ++ "}\n"
-          ++ "}"
+          ++ "}"-}
           
-makeSpecFile name id [in1,in2] [out] = (id ++ ".h", content)
+makeSpecialFile (NameId name id) [in1,in2] out
+  = (c ++ ".h", content)
+  where c = name
+        content
+          = "#include \"systemc.h\"\n"
+          ++ "SC_MODULE("++c++") {\n"
+          ++ inputs [in1,in2]
+          ++ outputs [out] ++ "\n\n"
+          ++ "void proc();\n"
+          ++ "SC_CTOR("++c++") {\n"
+          ++ "SC_THREAD(proc);\n"
+          ++ "}\n"
+          ++ "};\n\n"
+          ++ "void " ++ c ++ "::proc() {\n"
+          ++ "while(true) {\n"
+          ++  out ++ ".write(" ++ in1 ++ ".read()" ++ symbol ++ in2 ++ ".read()" ++ ");\n"
+          ++ "}\n"
+          ++ "}"
+        symbol = case name of
+          "mul" -> "*"
+          "add" -> "+"
+          "sub" -> "-"
+          _ -> "&&"
+          
+{-makeSpecFile name id [in1,in2] [out] = (id ++ ".h", content)
   where content
           = "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++id++") {\n"
@@ -253,13 +371,7 @@ makeSpecFile name id [in1,in2] [out] = (id ++ ".h", content)
           ++ "while(true) {\n"
           ++  snd out ++ ".write(" ++ snd in1 ++ ".read()" ++ symbol ++ snd in2 ++ ".read()" ++ ");\n"
           ++ "}\n"
-          ++ "}"
-
-        symbol = case name of
-          "mul" -> "*"
-          "add" -> "+"
-          "sub" -> "-"
-          _ -> "&&"
+          ++ "}"-}
 
 ------------------
 
