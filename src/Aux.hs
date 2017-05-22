@@ -21,3 +21,6 @@ ok = return ()
 
 mok :: Monad m => m (Maybe ())
 mok = return (Just ())
+
+count :: Eq a => a -> [a] -> Int
+count x = length . filter (==x)

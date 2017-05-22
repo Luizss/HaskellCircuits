@@ -207,9 +207,13 @@ getIdForInstance comp name = do
   insts <- searchInstances comp name
   case insts of
     [] -> return 1
-    _  -> return (maximum (map getId insts) + 1)
+    _  -> return (maximum (map getId insts))
   where
-    getId (_,NameId _ id, _,_) = id
+    -- forkid changes id only when its used X times
+    -- X being the number of forks
+    getId (_, _, ForkI _ _  o, False) = 1
+    getId (_, NameId _ id, ForkI _ _  o, True) = id + 1
+    getId (_,NameId _ id, _ , _) = id + 1
 
 getInstancesFromComponent :: CompName -> TM [TInst]
 getInstancesFromComponent comp = do
@@ -288,9 +292,46 @@ addSystemCFile file = do
   st <- get
   put (st { systemC =  file : systemC st })
 
-entering :: String -> TM ()
-entering procName = log $ "Entering process " ++ procName ++ "."
+getTimesForked :: TM [(CompName, Input, Int)]
+getTimesForked = do
+  st <- get
+  return (timesForked st)
 
+putTimesForked :: [(CompName, Input, Int)] -> TM ()
+putTimesForked tf = do
+  st <- get
+  put (st {timesForked = tf })
+
+addForkedIndex :: (CompName, Input, Int) -> TM ()
+addForkedIndex x = do
+  st <- get
+  put (st { timesForked = x : timesForked st })
+
+getForkedIndex :: CompName -> Input -> TM Int
+getForkedIndex comp inp = do
+  tf <- getTimesForked
+  case find (\(c,i,_) -> c == comp && i == inp) tf of
+    Nothing      -> do
+      addForkedIndex (comp, inp, 1)
+      return 1
+    Just (_,_,c) -> return c
+
+putForkedIndex :: CompName -> Input -> Int -> TM ()
+putForkedIndex comp inp index = do
+  tf <- getTimesForked
+  case find (\(c,i,_) -> c == comp && i == inp) tf of
+    Nothing -> return ()
+    Just _ -> putTimesForked (map replace tf)
+  where replace (c,i,ind)
+          | c == comp
+            && i == inp = (c,i,index)
+          | otherwise = (c,i,ind)
+  
+incrementForkedIndex :: CompName -> Input -> TM ()
+incrementForkedIndex comp v = do
+  i <- getForkedIndex comp v
+  putForkedIndex comp v (i + 1)
+  
 --- Example of the use of TM
 
 testF1 :: TM (Maybe Int)

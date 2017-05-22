@@ -144,8 +144,8 @@ connect (comp,_,F inps fexpr,arity) =
                             NoLoc) >> noRet
       
     connectOutter :: FExpr -> TMM ()
-    connectOutter fexpr = do
-      case fexpr of
+    connectOutter fexp = do
+      case fexp of
         FApp (L _ instName) args -> do
           minst <- getNextInstance comp instName
           mayThrow minst (TErr
@@ -162,7 +162,7 @@ connect (comp,_,F inps fexpr,arity) =
             mapM_ (connectInner inst) (zip args [0..])
             ret ()
         FAExpr (FVar v@(L _ vs))
-          | elem v inps ->
+          | elem v inps -> 
               addConnection (comp
                             ,(NameId comp 1, vs)
                             ,(NameId comp 1, "out")) >> ret ()
@@ -226,19 +226,56 @@ connect (comp,_,F inps fexpr,arity) =
               
       FAExpr (FVar v@(L _ vs))
         | elem v inps -> do
-            mayInp <- getInput n ins
-            cont1 mayInp $ \inp ->
-              addConnection (comp
-                            ,(NameId comp 1, vs)
-                            ,(nid, inp)) >> ret ()
+
+            let c = count v (getInputsInBody inps fexpr)
+
+            case c > 1 of
+
+              True -> do
+
+                i <- getForkedIndex comp vs
+
+                let forkName = "__fork" ++ show c ++ "__"
+                forkId <- getIdForInstance comp forkName
+                let forkOuts = map (("out"++). show) [1..c]
+                    fork     = ForkI c "in" forkOuts
+                    forkNId  = NameId forkName forkId
+                    
+                when (i == 1) $ do
+                  addConnection (comp
+                                ,(NameId comp 1, vs)
+                                ,(forkNId, "in"))
+                  addInstance (comp, forkNId, fork, False)
+
+                when (i == c) $ do
+                  setInstanceUsed comp forkNId
+                  return ()
+                  
+                mayInp <- getInput n ins
+                cont1 mayInp $ \inp -> do
+                  addConnection (comp
+                                ,(forkNId, forkOuts !! (i-1))
+                                ,(nid, inp))
+                  incrementForkedIndex comp vs
+                  ret ()
+                
+              False -> do
+                
+                mayInp <- getInput n ins
+                cont1 mayInp $ \inp -> do
+                  addConnection (comp
+                                ,(NameId comp 1, vs)
+                                ,(nid, inp))
+                  ret ()
+                
         | otherwise -> do
             minst <- getNextInstance comp vs
             mayThrow minst (TErr
-                        CouldntGetNextInstance
-                        Nothing
-                        ("Couldn't get next instance for "
-                         ++ vs)
-                        NoLoc)
+                            CouldntGetNextInstance
+                            Nothing
+                            ("Couldn't get next instance for "
+                             ++ vs)
+                            NoLoc)
             cont1 minst $ \inst@(_,nid',ins',_) -> do
               mayInp <- getInput n ins
               cont1 mayInp $ \inp -> do
@@ -296,3 +333,13 @@ getDependencies f =
         | isInput x = False
         | otherwise = True
   in filter inputsOut vars
+
+getInputsInBody :: [L Input] -> FExpr -> [L Name]
+getInputsInBody inps expr = go expr
+  where
+    go exp = case exp of
+      FApp _ es -> concat (map go es)
+      FAExpr (FVar v)
+        | elem v inps -> [v]
+        | otherwise -> []
+      FAExpr (FCons c) -> []

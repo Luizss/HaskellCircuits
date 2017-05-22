@@ -132,7 +132,8 @@ componentToSystemC (name, C f insts inps out conns _proc) = do
 instanceFromFile :: TInst -> TM ()
 instanceFromFile (comp,nid,inst,_) = case inst of
   ConstI      c out -> addSystemCFile $ makeConstFile nid c out
-  SpecialI inps out -> addSystemCFile $ makeSpecialFile nid inps out 
+  SpecialI inps out -> addSystemCFile $ makeSpecialFile nid inps out
+  ForkI n inp outs -> addSystemCFile $ makeForkFile nid n inp outs
   FifoI _ _ -> ok
   I     _ _ -> ok
 
@@ -203,7 +204,6 @@ intermediarySignals = unlines . filter (/="") . nub . map intSig
           where isInOrOut x = x == comp'
                 isFifo    x = x == "__fifo__"
                 comp' = changeIfMain comp
-  
 
 interSignal m1 id1 p1 m2 id2 p2 =
   m1 ++ (show id1) ++ "_" ++ p1  ++ "__" ++ m2 ++ (show id2) ++ "_" ++ p2
@@ -298,6 +298,30 @@ nameEqual :: String -> C -> Bool
 nameEqual n (C m _ _ _ _ _ _) = n == m
 -}
 
+makeForkFile :: NameId -> Int -> Input -> [Output] -> File
+makeForkFile (NameId name id) n inp outs =
+  (name ++ ".h", content)
+  where c = name
+        content
+          = "#include \"systemc.h\"\n"
+          ++ "SC_MODULE("++c++") {\n"
+          ++ "int in_aux;\n"
+          ++ "sc_fifo_in<int> in;\n"
+          ++ (unlines
+              (map (\o -> "sc_fifo_out<int> "++ o ++";") outs))
+          ++ "void proc();\n"
+          ++ "SC_CTOR("++c++") {\n"
+          ++ "SC_THREAD(proc);\n"
+          ++ "}\n"
+          ++ "};\n\n"
+          ++ "void " ++ c ++ "::proc() {\n"
+          ++ "while(true) {\n"
+          ++ "in_aux = in.read();\n"
+          ++ (unlines
+              (map (\o -> o ++".write(in_aux);") outs))
+          ++ "}\n"
+          ++ "}"
+
 makeConstFile (NameId name id) cons out =
   (name ++ ".h", content)
   where c = name
@@ -331,7 +355,7 @@ makeConstFile (NameId name id) cons out =
           ++ inp ++ ".write(" ++ show cons ++ ");\n"
           ++ "}\n"
           ++ "}"-}
-          
+
 makeSpecialFile (NameId name id) [in1,in2] out
   = (c ++ ".h", content)
   where c = name

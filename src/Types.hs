@@ -99,6 +99,7 @@ data TState =
   , instances :: [TInst]
   , connections :: [TConn]
   , systemC :: SystemC
+  , timesForked :: [(CompName, Input, Int)]
   } deriving Show
 
 initialTState :: TState
@@ -112,6 +113,7 @@ initialTState = TState {
   , instances = []
   , connections = []
   , systemC = []
+  , timesForked = []
   }
 
 type TM a = State TState a
@@ -134,6 +136,7 @@ data I = I [Input] Output
        | ConstI Int Output
        | SpecialI [Input] Output
        | FifoI Input Output
+       | ForkI Int Input [Output]
        deriving Show
 
 data C = C F [TInst] [Input] Output [TConn] Proc

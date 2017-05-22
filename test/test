@@ -1,1 +1,3 @@
-main x y z = 5 * x * 5 + 10 - y - z
+main x = x * 5 * (g x)
+g y = y + 3 + h
+h = 8
