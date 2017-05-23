@@ -1,3 +1,5 @@
+#ifndef __FORK2___H_
+#define __FORK2___H_
 #include "systemc.h"
 SC_MODULE(__fork2__) {
 int in_aux;
@@ -17,3 +19,4 @@ out1.write(in_aux);
 out2.write(in_aux);
 }
 }
+#endif

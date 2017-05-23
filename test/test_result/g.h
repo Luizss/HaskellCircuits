@@ -1,3 +1,6 @@
+#ifndef G_H_
+#define G_H_
+
 #include "systemc.h"
 #include "const3.h"
 #include "h.h"
@@ -36,3 +39,4 @@ add1.out(out);
 }
 };
 
+#endif

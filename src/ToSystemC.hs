@@ -4,6 +4,7 @@ import Data.Map (fromList,toList)
 import Control.Monad
 import Data.List (nub,intercalate)
 import Data.String (lines,unlines)
+import Data.Char (toUpper)
 
 import LexerCore
 import Components
@@ -12,12 +13,6 @@ import TransformationMonad
 import Aux
 
 ------------
-
-{-selectMain :: [C] -> C
-selectMain cs = case filter (nameEqual "main") cs of
-  [] -> error "No main"
-  [x] -> x
-  _  -> error "Multiple main's"-}
 
 topLevel :: [[Int]] -> TComp -> TM ()
 topLevel lst (_, C _ _ inps out _ _) = do
@@ -85,19 +80,9 @@ topLevel lst (_, C _ _ inps out _ _) = do
                       in map fill xs ++ [seeOut] ++ go (n+1)
                 seeOut = "cout << out.read() << endl;"
                 fill (i,v) = i ++ ".write(" ++ show v ++ ");"
-          
-        {-fillFifo inps = unlines $ map fill lst
-          where 
-            fill cons
-              = unlines (map
-                         (\p -> p ++ ".write(" ++ show cons ++ ");")
-                         inps)
-                ++ "\n" ++ seeOut
-            seeOut = "cout << out.read() << endl;\n"-}
                 
 -- faz o test bench e o top level
 -- com base nos inputs e outputs da main
-
 
 ---------------
 
@@ -109,13 +94,6 @@ toSystemC tbs = do
     topLevel tbs main
     mapM componentToSystemC comps
     ret ()
-        
-{-toSystemC :: [Int] -> [C] -> SystemC
-toSystemC lst cs = let components
-                         = concat $ map (component2SystemC cs) cs
-                       main = selectMain cs
-                       tl = topLevel lst main
-                   in toList (fromList (components ++ tl))-}
 
 componentToSystemC :: TComp -> TMM ()
 componentToSystemC (name, C f insts inps out conns _proc) = do
@@ -126,7 +104,8 @@ componentToSystemC (name, C f insts inps out conns _proc) = do
     ret ()
   where
     content cs = unlines
-      [ includeSystemC
+      [ ifndef (changeIfMain name)
+      , includeSystemC
       , includeInstances insts
       , ""
       , scModule name
@@ -141,7 +120,22 @@ componentToSystemC (name, C f insts inps out conns _proc) = do
       , scThread _proc
       , closingBraces
       , voidProc name _proc
+      , endif
       ]
+
+toHeader :: Name -> String
+toHeader name = map toUpper name ++ "_H_"
+
+ifndef :: Name -> String
+ifndef name =
+  let pragma = toHeader name
+  in unlines
+     [ "#ifndef " ++ pragma
+     , "#define " ++ pragma
+     ]
+
+endif :: String
+endif = "#endif"
 
 instanceFromFile :: TInst -> TM ()
 instanceFromFile (comp,nid,inst,_) = case inst of
@@ -150,28 +144,7 @@ instanceFromFile (comp,nid,inst,_) = case inst of
   ForkI n inp outs -> addSystemCFile $ makeForkFile nid n inp outs
   FifoI _ _ -> ok
   I     _ _ -> ok
-
-{-component2SystemC :: [C] -> C -> SystemC
-component2SystemC cs (C name' _ insts inps outs conns process)
-  = (name ++ ".h", content) : filesFromInstances cs insts
-  where
-    name = if name' == "main" then "mainFunc" else name'
-    f x = x
-    content
-      = includeSystemC ++ "\n"
-      ++ includeInstances insts ++ "\n\n"
-      ++ scModule name ++ "\n"
-      ++ inputs inps 
-      ++ outputs outs ++ "\n"
-      ++ intermediarySignals name conns ++ "\n"
-      ++ instanceDeclaration insts
-      ++ processDeclaration process ++ "\n"
-      ++ scCtor name insts ++ "\n\n"
-      ++ sconnections name conns
-      ++ scThread process
-      ++ closingBraces
-      ++ voidProc name process-}
-
+  
 includeSystemC :: String
 includeSystemC = "#include \"systemc.h\""
 
@@ -293,31 +266,13 @@ closingBraces = "}\n};"
 
 voidProc name process = ""
 
-{-
-filesFromInstances :: [C] -> [TInst] -> SystemC
-filesFromInstances cs = concat . map (instanceToFile cs)
-
-instanceToFile :: [C] -> Instance -> SystemC
-instanceToFile cs ins = case ins of
-  DummyInstance -> error "dummy"
-  ConsInstance cons id inp -> [makeConsFile cons id inp]
-  SpecialInstance n id inps outs -> [makeSpecFile n id inps outs]
-  Fifo _ _ -> []
-  Instance name id inps outs -> case filter (nameEqual name) cs of
-    []  -> error "no component for instance"
-    [x] -> component2SystemC cs x
-    xs  -> component2SystemC cs (head xs)
-  
-nameEqual :: String -> C -> Bool
-nameEqual n (C m _ _ _ _ _ _) = n == m
--}
-
 makeForkFile :: NameId -> Int -> Input -> [Output] -> File
 makeForkFile (NameId name id) n inp outs =
   (name ++ ".h", content)
   where c = name
         content
-          = "#include \"systemc.h\"\n"
+          = ifndef name
+          ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ "int in_aux;\n"
           ++ "sc_fifo_in<int> in;\n"
@@ -334,13 +289,15 @@ makeForkFile (NameId name id) n inp outs =
           ++ (unlines
               (map (\o -> o ++".write(in_aux);") outs))
           ++ "}\n"
-          ++ "}"
+          ++ "}\n"
+          ++ endif
 
 makeConstFile (NameId name id) cons out =
   (name ++ ".h", content)
   where c = name
         content
-          = "#include \"systemc.h\"\n"
+          = ifndef name
+          ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ "sc_fifo_out<int> " ++ out ++ ";\n"
           ++ "void proc();\n"
@@ -352,29 +309,15 @@ makeConstFile (NameId name id) cons out =
           ++ "while(true) {\n"
           ++ out ++ ".write(" ++ show cons ++ ");\n"
           ++ "}\n"
-          ++ "}"
-
-{-makeConsFile cons c (_,inp) = (c ++ ".h", content)
-  where content
-          = "#include \"systemc.h\"\n"
-          ++ "SC_MODULE("++c++") {\n"
-          ++ "sc_fifo_out<int> " ++ inp ++ ";\n"
-          ++ "void proc();\n"
-          ++ "SC_CTOR("++c++") {\n"
-          ++ "SC_THREAD(proc);\n"
           ++ "}\n"
-          ++ "};\n\n"
-          ++ "void " ++ c ++ "::proc() {\n"
-          ++ "while(true) {\n"
-          ++ inp ++ ".write(" ++ show cons ++ ");\n"
-          ++ "}\n"
-          ++ "}"-}
+          ++ endif
 
 makeSpecialFile (NameId name id) [in1,in2] out
   = (c ++ ".h", content)
   where c = name
         content
-          = "#include \"systemc.h\"\n"
+          = ifndef name
+          ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ inputs [in1,in2]
           ++ outputs [out] ++ "\n\n"
@@ -387,26 +330,10 @@ makeSpecialFile (NameId name id) [in1,in2] out
           ++ "while(true) {\n"
           ++  out ++ ".write(" ++ in1 ++ ".read()" ++ symbol ++ in2 ++ ".read()" ++ ");\n"
           ++ "}\n"
-          ++ "}"
+          ++ "}\n"
+          ++ endif
         symbol = case name of
           "mul" -> "*"
           "add" -> "+"
           "sub" -> "-"
           _ -> "&&"
-          
-{-makeSpecFile name id [in1,in2] [out] = (id ++ ".h", content)
-  where content
-          = "#include \"systemc.h\"\n"
-          ++ "SC_MODULE("++id++") {\n"
-          ++ inputs [in1,in2]
-          ++ outputs [out] ++ "\n\n"
-          ++ "void proc();\n"
-          ++ "SC_CTOR("++id++") {\n"
-          ++ "SC_THREAD(proc);\n"
-          ++ "}\n"
-          ++ "};\n\n"
-          ++ "void " ++ id ++ "::proc() {\n"
-          ++ "while(true) {\n"
-          ++  snd out ++ ".write(" ++ snd in1 ++ ".read()" ++ symbol ++ snd in2 ++ ".read()" ++ ");\n"
-          ++ "}\n"
-          ++ "}"-}

@@ -1,3 +1,5 @@
+#ifndef CONST5_H_
+#define CONST5_H_
 #include "systemc.h"
 SC_MODULE(const5) {
 sc_fifo_out<int> out;
@@ -12,3 +14,4 @@ while(true) {
 out.write(5);
 }
 }
+#endif

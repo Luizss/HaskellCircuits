@@ -1,3 +1,5 @@
+#ifndef CONST8_H_
+#define CONST8_H_
 #include "systemc.h"
 SC_MODULE(const8) {
 sc_fifo_out<int> out;
@@ -12,3 +14,4 @@ while(true) {
 out.write(8);
 }
 }
+#endif

@@ -1,3 +1,5 @@
+#ifndef ADD_H_
+#define ADD_H_
 #include "systemc.h"
 SC_MODULE(add) {
 sc_fifo_in<int> in1;
@@ -16,3 +18,4 @@ while(true) {
 out.write(in1.read()+in2.read());
 }
 }
+#endif

@@ -1,3 +1,6 @@
+#ifndef H_H_
+#define H_H_
+
 #include "systemc.h"
 #include "const8.h"
 
@@ -18,3 +21,4 @@ const81.out(out);
 }
 };
 
+#endif
