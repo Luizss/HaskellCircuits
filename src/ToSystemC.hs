@@ -1,7 +1,6 @@
 module ToSystemC where
 
 import Data.Map (fromList,toList)
-import System.Directory
 import Control.Monad
 import Data.List (nub,intercalate)
 import Data.String (lines,unlines)
@@ -20,7 +19,7 @@ selectMain cs = case filter (nameEqual "main") cs of
   [x] -> x
   _  -> error "Multiple main's"-}
 
-topLevel :: [Int] -> TComp -> TM ()
+topLevel :: [[Int]] -> TComp -> TM ()
 topLevel lst (_, C _ _ inps out _ _) = do
   addSystemCFile ("main.cpp", mainContent)
   addSystemCFile ("top.h", topLevelContent)
@@ -68,18 +67,33 @@ topLevel lst (_, C _ _ inps out _ _) = do
           ++ "}\n"
           ++ "};\n\n"
           ++ "void testbench::proc() {"
-          ++ fillFifo inps ++ "\n\n"
+          ++ fillFifos inps lst ++ "\n\n"
           ++ "}"
+
+        fillFifos :: [Input] -> [[Int]] -> String
+        fillFifos inps tbs
+          | length inps /= length tbs
+             = error "Testbench does not match number of inputs of main function (" ++ show (length inps) ++ ")"
+          | not (and (map ((length (head tbs) ==) . length) tbs))
+             = error "Testbenches have different number of inputs"
+          | otherwise = unlines (go 0)
+          where go n
+                  | n == length inps = []
+                  | otherwise =
+                      let vals = map (!!n) tbs
+                          xs = zip inps vals
+                      in map fill xs ++ [seeOut] ++ go (n+1)
+                seeOut = "cout << out.read() << endl;"
+                fill (i,v) = i ++ ".write(" ++ show v ++ ");"
           
-        fillFifo inps = unlines
-                        $ map fill lst
+        {-fillFifo inps = unlines $ map fill lst
           where 
             fill cons
               = unlines (map
                          (\p -> p ++ ".write(" ++ show cons ++ ");")
                          inps)
                 ++ "\n" ++ seeOut
-            seeOut = "cout << out.read() << endl;\n"
+            seeOut = "cout << out.read() << endl;\n"-}
                 
 -- faz o test bench e o top level
 -- com base nos inputs e outputs da main
@@ -87,12 +101,12 @@ topLevel lst (_, C _ _ inps out _ _) = do
 
 ---------------
 
-toSystemC :: TMM ()
-toSystemC = do
+toSystemC :: [[Int]] -> TMM ()
+toSystemC tbs = do
   comps <- getComponents
   maybeMain <- searchComponent "main"
   cont1 maybeMain $ \main -> do
-    topLevel [1..10] main
+    topLevel tbs main
     mapM componentToSystemC comps
     ret ()
         
@@ -396,17 +410,3 @@ makeSpecialFile (NameId name id) [in1,in2] out
           ++  snd out ++ ".write(" ++ snd in1 ++ ".read()" ++ symbol ++ snd in2 ++ ".read()" ++ ");\n"
           ++ "}\n"
           ++ "}"-}
-
-------------------
-
-makeSystemC :: SystemC -> IO ()
-makeSystemC files = do 
-  doesIt <- doesDirectoryExist "./result"
-  case doesIt of
-    True -> do
-      putStrLn "Directory result already exists"
-      return ()
-    False -> do
-      createDirectory "./result"
-      forM_ files $ \(filename, content) ->
-        writeFile ("./result/"++filename) content
