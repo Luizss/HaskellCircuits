@@ -95,10 +95,10 @@ withFile filePath tbs = do
 test :: FileName -> [[Int]] -> IO ()
 test filePath tbs = do
   contents <- readFile filePath
-  test' filePath contents tbs
+  test' contents tbs
 
-test' :: FileName -> String -> [[Int]] -> IO ()
-test' fileName text tbs = do
+test' :: String -> [[Int]] -> IO ()
+test' text tbs = do
   let tks  = tokenize text
       tks' = layout tks
       expr = parse' tks'

@@ -11,18 +11,31 @@ type Name = String
 --- from Functions.hs
 
 type FSymbol = String
-type FVars = [L Name]
+type FVars = [TyL Name]
 
 data F = F FVars FExpr
        | SpecialF
-       deriving (Show,Eq)
-data FVarCons = FVar (L Name)
-              | FCons (L Int)
-              deriving (Show,Eq)
-data FExpr = FApp (L Name) [FExpr]
+       deriving (Show)
+data FVarCons = FVar (TyL Name)
+              | FCons (TyL Int)
+              deriving (Show)
+data FExpr = FApp (TyL Name) [FExpr] -- always variables (lowercase)
            | FAExpr FVarCons
-           deriving (Show,Eq)
+           deriving (Show)
 
+data Ty a = Ty (Maybe FT) a
+          deriving (Show)
+type TyL a = Ty (L a)
+
+data FTVarConsNat = FTVar  (L Name)
+                  | FTCons (L Name)
+                  | FTNat  (L Int)
+                  deriving (Show, Eq)
+data FT = FTArrow SrcLoc [FT]
+        | FTApp (L Name) [FT] -- always constructors (uppercase)
+        | FTAExpr FTVarConsNat
+        deriving (Show,Eq)
+            
 --------
 
 --- Types
@@ -40,6 +53,18 @@ data ErrType = ErrConstantAsFunction
              | WrongInstanceNumberInput
              | ConstantsHaveNoInputs
              | ImpossibleConnection
+             | FunctionWithoutDefinition
+             | FunctionWithoutType
+             | FunctionDeclarationsError
+             | ErrArrowAsTypeFunction
+             | ErrVariableAsTypeFunction
+             | ErrNaturalAsTypeFunction
+             | NamesNotTheSame
+             | NumberOfArgumentsDoesntMatch
+             | EmptyListInTArrow
+             | SingletonListInTArrow
+             | TypeVariablesNotPermited
+             | CantMatchTypes
              | SomeError
              deriving (Show,Eq)
 data TErr = TErr ErrType (Maybe WhereMsg) Msg SrcLoc deriving (Show,Eq)
@@ -63,6 +88,7 @@ instance Ord a => Ord (L a) where
 
 type Arity = Int
 type TFunc = (Name, SrcLoc, F, Arity)
+type TFuncType = (Name, SrcLoc, FT, Arity)
 type TComp = (Name, C)
 type TInst = (CompName, NameId, I, Used)
 
@@ -70,6 +96,20 @@ specialFuncs
   = [("add",NoLoc,SpecialF,2)
     ,("sub",NoLoc,SpecialF,2)
     ,("mul",NoLoc,SpecialF,2)
+    ]
+
+noLoc = L NoLoc
+--flag: should have types
+fType = FTArrow
+        NoLoc
+        [FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]
+        ,FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]
+        ,FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]]
+        
+specialFuncTypes
+  = [("add",NoLoc,fType,2)
+    ,("sub",NoLoc,fType,2)
+    ,("mul",NoLoc,fType,2)
     ]
 
 data Stage = InitialStage
@@ -88,6 +128,13 @@ type Used = Bool
 type File = (Name, String)
 type SystemC = [File]
 
+type FuncName = String
+type VarName = String
+type ContextUnit = (FuncName, SrcLoc, VarName, FT)
+type Context = [ContextUnit]
+
+type TypeCheckState = [FT]
+
 data TState =
   TState {
   sourceCode :: SourceCode
@@ -95,6 +142,9 @@ data TState =
   , program :: Program
   , tLogs   :: [TLog]
   , tFuncs  :: [TFunc]
+  , tFuncTypes :: [TFuncType]
+  , context :: Context
+  , typeCheckState :: TypeCheckState
   , components :: [TComp]
   , instances :: [TInst]
   , connections :: [TConn]
@@ -109,6 +159,9 @@ initialTState = TState {
   , program = Program []
   , tLogs   = []
   , tFuncs  = specialFuncs
+  , tFuncTypes  = specialFuncTypes
+  , context = []
+  , typeCheckState = []
   , components = []
   , instances = []
   , connections = []

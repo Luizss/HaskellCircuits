@@ -1,3 +1,8 @@
+main :: Vec 32 -> Vec 32 -> Vec 32
 main x y = x * 5 * (g x) + y
-g y = y + 3 + h
+
+g :: Vec 32 -> Vec 32
+g y = y + h + 3
+
+h :: Vec 32
 h = 8

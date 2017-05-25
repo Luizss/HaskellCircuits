@@ -20,6 +20,9 @@ import Control.Monad.State (StateT(..), evalStateT)
   ';'    { L _ Semic }
 
   '='    { L _ Equal }
+  
+  '->'   { L _ RArrow }
+  '::'   { L _ DColon }
 
   VARID  { L _ (Low _) }
   CONID  { L _ (Upp _) }
@@ -45,6 +48,7 @@ decls : decls ';' decl { $3 : $1  }
       | {- empty -}    { [] }
 
 decl : function_decl { $1 }
+     | function_type_decl { $1 } 
 
 function_decl : VARID vars '=' expr { Func $1 (r $2) $4 }
 
@@ -63,19 +67,35 @@ binops : expr '+'  expr  { Binop $2 $1 $3 }
        | expr '*'  expr  { Binop $2 $1 $3 }
        | expr '/'  expr  { Binop $2 $1 $3 }
        | expr SYMID expr { Binop $2 $1 $3 }
-       
+
+function_type_decl : VARID '::' type_expr { FuncType $1 $3 }
+
+type_expr : btype '->' type_expr { TArrow $1 $3 }
+          | btype                { $1 }
+btype : btype atype              { TApp $1 $2 }
+      | atype                    { $1 }
+atype : VARID                    { TAExpr $1 }
+      | CONID                    { TAExpr $1 }
+      | INT                      { TAExpr $1 }
+
 {
 
 data PState = NoState deriving Show
 -- 'Either String a' pode ser substituido por 'ParseResult a'
 type P a = StateT PState (Either String) a
 
-data Program = Program [Func] deriving Show
-data Func = Func LToken [LToken] Expr deriving Show
+data Program = Program [Decl] deriving Show
+data Decl = Func LToken [LToken] Expr
+          | FuncType LToken TypeExpr
+          deriving Show
 data Expr = App Expr Expr
           | AExpr LToken
           | Binop LToken Expr Expr
           deriving Show
+data TypeExpr = TArrow TypeExpr TypeExpr
+              | TApp TypeExpr TypeExpr
+              | TAExpr LToken
+              deriving Show
 
 ------------- Top level 'parse' function
 

@@ -1,6 +1,9 @@
 module Aux where
 
+import LexerCore
 import Types
+
+fromLow (Low n) = n
 
 just (Just x) = x
 just _ = error "From Justa"
@@ -24,3 +27,21 @@ mok = return (Just ())
 
 count :: Eq a => a -> [a] -> Int
 count x = length . filter (==x)
+
+getType :: Ty a -> Maybe FT
+getType (Ty x y) = x
+
+getTerm :: Ty a -> a
+getTerm (Ty x y) = y
+
+getLocL :: TyL a -> SrcLoc
+getLocL = getLoc . getTerm
+
+getTermL :: TyL a -> a
+getTermL = getVal . getTerm
+
+noTy :: a -> Ty a
+noTy x = Ty Nothing x
+
+putType :: FT -> Ty a -> Ty a
+putType ty (Ty _ x) = Ty (Just ty) x

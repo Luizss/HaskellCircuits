@@ -144,6 +144,16 @@ addFunc x = do
   state <- get
   put (state { tFuncs =  x : tFuncs state })
 
+putFunctions :: [TFunc] -> TM ()
+putFunctions xs = do
+  state <- get
+  put (state { tFuncs =  xs })
+
+addFuncType :: TFuncType -> TM ()
+addFuncType x = do
+  state <- get
+  put (state { tFuncTypes =  x : tFuncTypes state })
+
 addComp :: TComp -> TM ()
 addComp x = do
   state <- get
@@ -153,6 +163,11 @@ getFunctions :: TM [TFunc]
 getFunctions = do
   st <- get
   return (tFuncs st)
+
+getFunctionTypes :: TM [TFuncType]
+getFunctionTypes = do
+  st <- get
+  return (tFuncTypes st)
 
 getComponents :: TM [TComp]
 getComponents = do
@@ -292,6 +307,36 @@ addSystemCFile file = do
   st <- get
   put (st { systemC =  file : systemC st })
 
+getContext :: TM Context
+getContext = do
+  st <- get
+  return (context st)
+  
+addContext :: ContextUnit -> TM ()
+addContext cUnit = do
+  st <- get
+  put (st { context =  cUnit : context st })
+
+searchContext :: FuncName -> Name -> TMM ContextUnit
+searchContext func var = do
+  ctxt <- getContext
+  let g (f,_,v,_) = f == func && v == var
+  return (find g ctxt)
+
+changeContext cUnit@(f,_,v,_) = do
+  st <- get
+  let cs = context st
+  put (st { context = map replace cs })
+  where replace id@(f',_,v',_)
+          | f == f' && v == v' = cUnit
+          | otherwise = id
+  
+searchFunctionType :: FuncName -> TMM ContextUnit
+searchFunctionType func = do
+  ctxt <- getContext
+  let g (f,_,v,_) = f == func && v == func
+  return (find g ctxt)
+
 getTimesForked :: TM [(CompName, Input, Int)]
 getTimesForked = do
   st <- get
@@ -331,7 +376,45 @@ incrementForkedIndex :: CompName -> Input -> TM ()
 incrementForkedIndex comp v = do
   i <- getForkedIndex comp v
   putForkedIndex comp v (i + 1)
-  
+
+getTypeCheckState :: TMM FT
+getTypeCheckState = do
+  st <- get
+  let tcs = typeCheckState st
+  case tcs of
+    []   -> noRet
+    x:xs -> ret x
+
+putTypeCheckState :: FT -> TM ()
+putTypeCheckState ft = do
+  st <- get
+  let tcs = typeCheckState st
+  put ( st { typeCheckState = ft : tcs } )
+
+popTypeCheckState :: TM ()
+popTypeCheckState = do
+  st <- get
+  let tcs = typeCheckState st
+  case tcs of
+    [] -> error "yyyyy1"
+    x:xs -> put ( st { typeCheckState = xs } )
+
+modifyTypeCheckState :: (FT -> FT) -> TM ()
+modifyTypeCheckState func = do
+  st <- get
+  let tcs = typeCheckState st
+  debugs tcs
+  case tcs of
+    []   -> return ()
+    x:xs -> debug "tudo" >> put ( st { typeCheckState = func x : xs })
+
+isEmptyTypeCheckState :: TM Bool
+isEmptyTypeCheckState = do
+  x <- getTypeCheckState
+  case x of
+    Nothing -> return True
+    Just x  -> return False
+    
 --- Example of the use of TM
 
 testF1 :: TM (Maybe Int)

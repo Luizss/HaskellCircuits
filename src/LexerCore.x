@@ -38,7 +38,9 @@ haskell :-
 
   "--".*                           ;
   "{-"                             { changeState lexComment }
-
+  "->"                             { consLoc RArrow }
+  "::"                             { consLoc DColon }
+  
   \(                               { consLoc LParen }
   \)                               { consLoc RParen }
 
@@ -49,7 +51,7 @@ haskell :-
   $symbol+                              { funLoc (\s -> Sym s) }
   [$alphaLow \_] [$alpha $digit \_ \']* { funLoc (\s -> Low s) }
   $alphaUpp [$alpha $digit \_ \']*      { funLoc (\s -> Upp s) }
-  -- [\-]? @fpoint                         { funLoc (\s -> Real (read s)) }
+  -- [\-]? @fpoint                      { funLoc (\s -> Real (read s)) }
   [\-]? @decimal                        { funLoc (\s -> Int (read s)) }
 
 }
@@ -62,6 +64,9 @@ data Token
   = LParen
   | RParen
   | Equal
+
+  | RArrow
+  | DColon
   
   | Low String
   | Upp String
