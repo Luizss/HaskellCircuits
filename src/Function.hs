@@ -16,51 +16,6 @@ interpret = do
   --zipTypesWithBodies decls
   mapM_ interpretEach decls
 
--- -- checks if every function has a type followed by a body
--- zipTypesWithBodies :: [Decl] -> TMM ()
--- zipTypesWithBodies [] = mok
--- zipTypesWithBodies [FuncType nameLTok _] = do
---   let name = fromLow $ getVal nameLTok
---       loc = getLoc nameLTok
---   throw (TErr
---          FunctionWithoutDefinition
---          Nothing
---          ("Function " ++ name ++ " has no definition")
---          loc)
---   noRet
--- zipTypesWithBodies [Func nameLTok _ _] = do
---   let name = fromLow $ getVal nameLTok
---       loc = getLoc nameLTok
---   throw (TErr
---          FunctionWithoutType
---          Nothing
---          ("Function " ++ name ++ " has no type")
---          loc)
---   noRet
--- zipTypesWithBodies (FuncType fname1 _ : Func fname2 _ _ : ds)
---   | getVal fname1 == getVal fname2 = zipTypesWithBodies ds
---   | otherwise = do
---       let name1 = fromLow $ getVal fname1
---           loc1 = getLoc fname1
---           name2 = fromLow $ getVal fname2
---           loc2 = getLoc fname2
---       throw (TErr
---              FunctionWithoutDefinition
---              Nothing
---              ("Function " ++ name1 ++ " has no definition")
---              loc1)
---       throw (TErr
---              FunctionWithoutType
---              Nothing
---              ("Function " ++ name2 ++ " has no type")
---              loc2)
---       noRet
--- zipTypesWithBodies _ = throw (TErr
---                               FunctionDeclarationsError
---                               Nothing
---                               "Error in declarations of functions (every function must have a type followed by a body)"
---                               NoLoc) >> noRet
-
 interpretEach :: Decl -> TMM ()
 interpretEach decl = case decl of
   Func _ _ _ -> interpretFunction decl
@@ -71,7 +26,7 @@ interpretFunctionType (FuncType name typeExpr) = do
   
   mRes <- getFTExpr typeExpr
 
-  cont1 mRes $ \ ftexpr -> do
+  cont1 mRes $ \ftexpr -> do
     let arity = countArity ftexpr
     addFuncType (funcName, srcLoc, ftexpr, arity)
     ret ()
@@ -200,9 +155,12 @@ interpretFunction (Func name vars body) = do
 
 toName :: String -> String
 toName sym = case sym of
-  "+" -> "add"
-  "-" -> "sub"
-  "*" -> "mul"
+  "+"  -> "add"
+  "-"  -> "sub"
+  "*"  -> "mul"
+  "==" -> "equal"
+  "&&" -> "and"
+  "||" -> "or"
 
 -- obsolete?
 checkForArityErrs :: TM ()

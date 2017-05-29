@@ -14,13 +14,9 @@ createContext :: TM ()
 createContext = do
   fs  <- getFunctions
   fts <- getFunctionTypes
-  debugs $ length fs
-  debugs $ length fts
   let sortByName = sortBy (\(n1,_,_,_) (n2,_,_,_) -> compare n1 n2)
       fsS = sortByName fs
       ftsS = sortByName fts
-  debugs $ map (\(n1,_,_,_) -> n1) fsS
-  debugs $ map (\(n1,_,_,_) -> n1) ftsS
   zipWithM attachTypeAndBody fsS ftsS
   return ()
 
@@ -30,7 +26,7 @@ attachTypeAndBody (n1,l,f,a1) (n2,_,ft,a2)
       throw (TErr
              NamesNotTheSame
              Nothing
-             ("Names " ++ n1 ++ " and " ++ n2 ++ " not the same")
+             ("Names '" ++ n1 ++ "' and '" ++ n2 ++ "' not the same")
              l)
       noRet
   | a1 /= a2  = do
@@ -77,9 +73,8 @@ attachFunctionToType fname f ft = case ft of
 typeCheck :: TMM ()
 typeCheck = do
   fs <- getFunctions
-  newTFuncs <- forM fs typeCheckEach
+  newTFuncs <- mapM typeCheckEach fs
   cont newTFuncs $ do
-    debug "isso"
     let a = map just newTFuncs
     putFunctions a
     ret ()
@@ -88,8 +83,6 @@ typeCheckEach :: TFunc -> TMM TFunc
 typeCheckEach id@(_, _, SpecialF, _) = ret id
 typeCheckEach (fname, loc, F vars fex, a) = do
 
-  debug $ "\nname: " ++ fname ++ "\n"
-  
   mType <- searchFunctionType fname
   mts <- mapM (searchContext fname) (map getTermL vars)
          
@@ -113,39 +106,40 @@ typeCheckEach (fname, loc, F vars fex, a) = do
     typeCheckExpr :: FT -> (FExpr,Int) -> TMM FExpr
     typeCheckExpr ft (fex, i) = case fex of
       
-      FApp tyLName fexs -> do
+      FApp tyLName fexs
+        | getTermL tyLName == "slice"
+          -> typeCheckSlice tyLName fexs i
+        | otherwise -> do
         
-        mTy <- case isInput tyLName of
-          True  -> searchContext fname $ getTermL tyLName
-          False -> searchFunctionType $ getTermL tyLName
+            mTy <- case isInput tyLName of
+              True  -> searchContext fname $ getTermL tyLName
+              False -> searchFunctionType $ getTermL tyLName
 
-        cont1 mTy $ \(_,_,_,ty) -> do
-          
-          putTypeCheckState ty
-          let fexI = zip fexs [0..]
-          mfexs' <- mapM (typeCheckExpr ty) fexI
+            cont1 mTy $ \(_,_,_,ty) -> do
 
-          cont mfexs' $ do
+              putTypeCheckState ty
+              let fexI = zip fexs [0..]
+              -- duas passadas
+              _ <- mapM (typeCheckExpr ty) fexI
+              mfexs' <- mapM (typeCheckExpr ty) fexI
+
+              cont mfexs' $ do
             
-            let fexs' = map just mfexs'
-            mty' <- getTypeCheckState
-
-            cont1 mty' $ \ty' -> do
-              _r <- match (getReturnType ft) (getReturnType ty')
-
-              cont [_r] $ do
+                let fexs' = map just mfexs'
+                
                 mty'' <- getTypeCheckState
                 
                 cont1 mty'' $ \ty'' -> do
-                  
-                  popTypeCheckState
 
+                  popTypeCheckState
+  
                   mTy''' <- getTypeCheckState
 
                   case mTy''' of
 
                     Nothing -> do
-                  
+
+                      match (getReturnType ft) (getReturnType ty'')
                       ret $ FApp (putType ty'' tyLName) fexs'
 
                     Just ty''' -> do
@@ -201,6 +195,99 @@ typeCheckEach (fname, loc, F vars fex, a) = do
                   ret $ FAExpr $ FCons $ putType ty'' c
 
       where
+
+        typeCheckSlice :: TyL Name -> [FExpr] -> Int -> TMM FExpr
+        typeCheckSlice tyLName lst i = case lst of
+      
+          [FAExpr (FCons i1), FAExpr (FCons i2), l] -> do
+        
+            mty <- searchFunctionType "slice"
+        
+            cont1 mty $ \(_,_,_,ty) -> do
+          
+              putTypeCheckState ty
+
+              -- duas passadas
+              _ <- typeCheckExpr ty (l,0)
+              ml' <- typeCheckExpr ty (l,0)
+          
+              cont1 ml' $ \l' -> do
+                
+                mty' <- getTypeCheckState
+            
+                cont1 mty' $ \ty' -> do
+              
+                  popTypeCheckState
+
+                  let vecType = indexTCS 0 ty'
+
+                  case vecType of
+
+                    tyVec@(FTApp
+                           (L _ "Vec")
+                           [FTAExpr (FTNat (L _ n))]) -> do
+
+                      mfpqo <- sliceFunction
+                              (getTermL i1)
+                              (getTermL i2)
+                              n
+
+                      cont1 mfpqo $ \fpqo -> do
+                        
+                        let retType = FTApp
+                                      (noLoc "Vec")
+                                      [FTAExpr (FTNat (noLoc fpqo))]
+                            tySlice = FTArrow
+                                      NoLoc
+                                      [FTApp
+                                       (noLoc "Vec")
+                                       [FTAExpr (FTNat (noLoc n))]
+                                      , retType]
+
+                        mty'' <- getTypeCheckState
+
+                        cont1 mty'' $ \ty'' -> do
+
+                          match (indexTCS i ty'') (retType)
+                          ret $ FApp (putType tySlice tyLName) [FAExpr (FCons i1), FAExpr (FCons i2), l']
+                      
+                    _ -> do throw (TErr
+                                   WrongSliceApplication
+                                   (Just ("In function " ++ fname))
+                                   ("Slice has 3 arguments:"
+                                    ++ "2 constants and a vector")
+                                   NoLoc)
+                            noRet
+              
+          _ -> do throw (TErr
+                         WrongSliceApplication
+                         (Just ("In function " ++ fname))
+                         ("Slice has 3 arguments:"
+                          ++"2 constants and a vector")
+                         NoLoc)
+                  noRet
+
+        sliceFunction :: Int -> Int -> Int -> TMM Int
+        sliceFunction x y z
+          | y - x + 1 > z = do
+            throw (TErr
+                   SliceBiggerThanVector
+                   (Just ("In function " ++ fname))
+                   "Slice bigger than actual vector"
+                   NoLoc)
+            noRet
+          | y < x = do
+            throw (TErr
+                   ImpossibleSlice
+                   (Just ("In function " ++ fname))
+                   ("Impossible slice from "
+                    ++ show y
+                    ++ " to "
+                    ++ show x)
+                   NoLoc)
+            noRet
+          | otherwise = ret $ y - x + 1
+        
         match :: FT -> FT -> TMM FT
         match (FTArrow l _) (FTArrow _ _) = typeMatchErr l
         match (FTApp f args) (FTApp f' args')
@@ -211,39 +298,21 @@ typeCheckEach (fname, loc, F vars fex, a) = do
                 ret $ FTApp f args''
           | otherwise = typeMatchErr (getLoc f)
         match (FTAExpr (FTVar v)) (FTAExpr (FTNat n)) = do
-          debug "varnat"
-          debugs v
-          debugs n
-          a <- getTypeCheckState
           modifyTypeCheckState (subst v n)
-          b <- getTypeCheckState
-          debugs a
-          debugs b
           ret $ FTAExpr (FTNat n)
         match (FTAExpr (FTNat n)) (FTAExpr (FTVar v)) = do
-          debug "natvar"
-          debugs v
-          debugs n
-          a <- getTypeCheckState
           modifyTypeCheckState (subst v n)
-          b <- getTypeCheckState
-          debugs a
-          debugs b
           ret $ FTAExpr (FTNat n)
         match (FTAExpr (FTVar v1)) (FTAExpr (FTVar v2))
           | v1 == v2 = ret $ FTAExpr (FTVar v1)
           | otherwise = do
-              debugs (v1,v2)
-              a<- getTypeCheckState
               modifyTypeCheckState (substVar v2 v1)
-              b<- getTypeCheckState
-              debugs a
-              debugs b
-              
               ret $ FTAExpr (FTVar v1)
-        match (FTAExpr fa1) (FTAExpr fa2)
-          | fa1 == fa2 = do debugs fa1 ;ret (FTAExpr fa1)
-          | otherwise = typeMatchErr (getLoc' fa1)
+        match (FTAExpr (FTCons (L _ "Bit"))) (FTApp (L _ "Vec") [FTAExpr (FTNat (L _ 1))]) = ret $ FTAExpr (FTCons (noLoc "Bit"))
+        match (FTApp (L _ "Vec") [FTAExpr (FTNat (L _ 1))]) (FTAExpr (FTCons (L _ "Bit"))) = ret $ FTAExpr (FTCons (noLoc "Bit"))
+        match fa1 fa2
+          | fa1 == fa2 = ret fa1
+          | otherwise = typeMatchErr (getLoc'' fa1)
 
         typeMatchErr :: SrcLoc -> TMM a
         typeMatchErr l = do
@@ -253,6 +322,10 @@ typeCheckEach (fname, loc, F vars fex, a) = do
                  "Can't match types"
                  l)
           noRet
+      
+getLoc'' (FTArrow l _) = l
+getLoc'' (FTApp  ln _) = getLoc ln
+getLoc'' (FTAExpr   x) = getLoc' x
 
 getLoc' (FTVar  v) = getLoc v
 getLoc' (FTCons c) = getLoc c
@@ -279,105 +352,11 @@ substVar v1 v2 = go
         | v == v1   -> FTAExpr (FTVar v2)
         | otherwise -> FTAExpr (FTVar v)
       x -> x
-
   
 indexTCS :: Int -> FT -> FT
 indexTCS i ft = case ft of
   FTArrow _ fts -> fts !! i
-  _ -> error "gasgasgase"
-  
-
-{-     maybeFexpr' <- typeCheckFExpr (getReturnType funcType, fexpr)
-     mts <- mapM (searchContext fname) (map getTermL vars)
-     
-     cont1 maybeFexpr' $ \fexpr' -> do
-       cont mts $ do
-         let ts = map ((\(_,_,_,ft) -> ft) . just) mts
-             vars' = zipWith putType ts vars
-         ret (fname, loc, F vars' fexpr', ari)
-
-  where 
-
-    typeCheckFExpr :: (FT,FExpr) -> TMM FExpr
-    typeCheckFExpr (returnType, fex) = go
-
-      where 
-        go :: TMM FExpr
-        go = case fex of
-      
-          FApp tyLName params -> do
-        
-            mFuncType <- searchFunctionType (getTermL tyLName)
-        
-            cont1 mFuncType $ \(_,_,_,FT tyVars fte) ->
-              
-              case fte of
-                
-                FTArrow _ fxs -> forM (zip params fxs) $ \(p, fx) -> do
-
-                  p
-                    undefined
-                  
-                  mParams' <- typeCheckApp ft params
-
-                  cont mParams' $ do
-                    let params' = map just mParams'
-                    mIsEq <- match (getReturnType ft) returnType
-                    cont1 mIsEq $ \isEq -> case isEq of
-                      True  -> ret (FApp (putType ft tyLName) params')
-                      False -> debug "bbbbbbbbb" >> noRet
-                      
-                _ -> error "zzzzzzzzzz"
-          
-            -- checar parametros e tipo de retorno tambem
-            
-          FAExpr (FVar tyLName) -> do
-
-            let isInput x = elem (getTerm x) (map getTerm vars)
-            
-            m <- searchContext fname $ case isInput tyLName of
-              True  -> getTermL tyLName
-              False -> fname
-
-            cont1 m $ \(_,_,_,varType) -> do
-              mIsEq <- match returnType varType
-              cont1 mIsEq $ \isEq -> case isEq of
-                True  -> ret $ FAExpr $ FVar $ putType varType tyLName
-                False -> debug ("aaaaaaaaaaa" ++ getTermL tyLName) >> noRet
-            
-          FAExpr (FCons tyLInt) -> ret $ FAExpr $ FCons tyLInt
-
-        match :: FT -> FT -> TMM Bool
-        match (FT ts e) (FT ts' e') = case (e,e') of
-
-          (FTArrow _ _, _) -> error "impossibru"
-          
-          (FTApp cons exps, FTApp cons' exps') -> do
-            let consEqual = cons == cons'
-                toFT t = map (FT t)
-            zipWithM match (toFT ts exps) (toFT ts' exps')
-            ret True
-            
-          FTAExpr (FTVar (L _ v))
-            | elem v tvs -> undefined
-            | otherwise -> error ".........."
-            
-          (a,b) -> ret $ a == b  
-          
-
-        getFTArrowFromFT e = case e of
-          FTArrow loc ftexprs -> ret e
-          _ -> debug "xxxx" >> noRet
-          
-        typeCheckApp (FT tyVars texpr) params = case texpr of
-          FTArrow loc ftexprs -> do
-            let args = zip (map (FT tyVars) ftexprs) params
-            mapM typeCheckFExpr args
-          _ -> debug "xxxx" >> (\x->[x]) <$> noRet
-          
-
-
--}
+  _ -> error "indexTCS" 
 
 getReturnType :: FT -> FT
 getReturnType fexpr = case fexpr of

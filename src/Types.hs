@@ -65,6 +65,9 @@ data ErrType = ErrConstantAsFunction
              | SingletonListInTArrow
              | TypeVariablesNotPermited
              | CantMatchTypes
+             | WrongSliceApplication
+             | SliceBiggerThanVector
+             | ImpossibleSlice
              | SomeError
              deriving (Show,Eq)
 data TErr = TErr ErrType (Maybe WhereMsg) Msg SrcLoc deriving (Show,Eq)
@@ -92,24 +95,62 @@ type TFuncType = (Name, SrcLoc, FT, Arity)
 type TComp = (Name, C)
 type TInst = (CompName, NameId, I, Used)
 
+
+noLoc = L NoLoc
+--flag: should have types
+vecType = FTArrow
+          NoLoc
+          [FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]
+          ,FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]
+          ,FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]]
+
+bitType = FTArrow
+          NoLoc
+          [FTAExpr (FTCons (noLoc "Bit"))
+          ,FTAExpr (FTCons (noLoc "Bit"))
+          ,FTAExpr (FTCons (noLoc "Bit"))]
+
+notType = FTArrow
+          NoLoc
+          [FTAExpr (FTCons (noLoc "Bit"))
+          ,FTAExpr (FTCons (noLoc "Bit"))]
+
+eqType = FTArrow
+         NoLoc
+         [FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]
+         ,FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]
+         ,FTAExpr (FTCons (noLoc "Bit"))]
+
+sliceType = FTArrow
+            NoLoc
+            [FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "o"))]
+            ,FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "f p q o"))]]
+
 specialFuncs
   = [("add",NoLoc,SpecialF,2)
     ,("sub",NoLoc,SpecialF,2)
     ,("mul",NoLoc,SpecialF,2)
+
+    ,("and",NoLoc,SpecialF,2)
+    ,("or" ,NoLoc,SpecialF,2)
+    ,("not",NoLoc,SpecialF,1)
+
+    ,("equal",NoLoc,SpecialF,2)
+    
+    ,("slice",NoLoc,SpecialF,3)
     ]
 
-noLoc = L NoLoc
---flag: should have types
-fType = FTArrow
-        NoLoc
-        [FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]
-        ,FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]
-        ,FTApp (noLoc "Vec") [FTAExpr (FTVar (noLoc "n"))]]
-        
 specialFuncTypes
-  = [("add",NoLoc,fType,2)
-    ,("sub",NoLoc,fType,2)
-    ,("mul",NoLoc,fType,2)
+  = [("add",NoLoc,vecType,2)
+    ,("sub",NoLoc,vecType,2)
+    ,("mul",NoLoc,vecType,2)
+
+    ,("and",NoLoc,bitType,2)
+    ,("or" ,NoLoc,bitType,2)
+    ,("not",NoLoc,notType,1)
+
+    ,("equal",NoLoc,eqType,2)
+    ,("slice",NoLoc,sliceType,3)
     ]
 
 data Stage = InitialStage

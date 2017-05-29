@@ -1,8 +1,14 @@
-main :: Vec 32 -> Vec 32 -> Vec 32
-main x y = x * 5 * (g x) + y
+main :: Vec 32 -> Vec 32 -> Vec 64 -> Bit
+main x y z = not (x == 5 * (g x) + y + k z) && x == y
 
 g :: Vec 32 -> Vec 32
 g y = y + h + 3
 
+ga :: Vec 64 -> Vec 64
+ga y = y + 7
+
 h :: Vec 32
 h = 8
+
+k :: Vec 64 -> Vec 32
+k x = 3 + slice 0 31 (4 + ga x)

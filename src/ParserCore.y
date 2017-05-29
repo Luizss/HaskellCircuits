@@ -29,13 +29,17 @@ import Control.Monad.State (StateT(..), evalStateT)
   '+'    { L _ (Sym "+") }
   '-'    { L _ (Sym "-") }
   '*'    { L _ (Sym "*") }
-  '/'    { L _ (Sym "/") }
+  '=='    { L _ (Sym "==") }
+  '&&'    { L _ (Sym "&&") }
+  '||'    { L _ (Sym "||") }
   SYMID  { L _ (Sym _) }
 
   INT    { L _ (Int _) }
 
   EOF    { L _ EOF }
 
+%left '&&' '||'
+%left '=='
 %left '+' '-'
 %left '*' '/'
 %%
@@ -65,7 +69,9 @@ aexpr : VARID  {AExpr $1}
 binops : expr '+'  expr  { Binop $2 $1 $3 }
        | expr '-'  expr  { Binop $2 $1 $3 }
        | expr '*'  expr  { Binop $2 $1 $3 }
-       | expr '/'  expr  { Binop $2 $1 $3 }
+       | expr '=='  expr  { Binop $2 $1 $3 }
+       | expr '&&'  expr  { Binop $2 $1 $3 }
+       | expr '||'  expr  { Binop $2 $1 $3 }
        | expr SYMID expr { Binop $2 $1 $3 }
 
 function_type_decl : VARID '::' type_expr { FuncType $1 $3 }
