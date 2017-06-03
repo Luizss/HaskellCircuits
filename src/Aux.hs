@@ -1,6 +1,8 @@
 module Aux where
 
 import Types
+import LexerCore
+import ParserCore
 
 just (Just x) = x
 just _ = error "From Justa"
@@ -24,3 +26,21 @@ mok = return (Just ())
 
 count :: Eq a => a -> [a] -> Int
 count x = length . filter (==x)
+
+getType :: Ty a -> TypeExpr
+getType (Ty x y) = x
+
+getTerm :: Ty a -> a
+getTerm (Ty x y) = y
+
+getLocL :: TyL a -> SrcLoc
+getLocL = getLoc . getTerm
+
+getTermL :: TyL a -> a
+getTermL = getVal . getTerm
+
+getLocFromCons :: FCons -> SrcLoc
+getLocFromCons fcons = case fcons of
+  FBin tyl -> getLocL tyl
+  FHex tyl -> getLocL tyl
+  FDec tyl -> getLocL tyl

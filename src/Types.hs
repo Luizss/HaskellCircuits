@@ -10,16 +10,23 @@ type Name = String
 
 --- from Functions.hs
 
+type TyL a = Ty (L a)
+
 type FSymbol = String
-type FVars = [L Name]
+type FVars = [TyL Name]
 
 data F = F FVars FExpr
        | SpecialF
        deriving (Show,Eq)
-data FVarCons = FVar (L Name)
-              | FCons (L Int)
+data FVarCons = FVar (TyL Name)
+              | FCons FCons
               deriving (Show,Eq)
+data FCons = FBin (TyL String)
+           | FHex (TyL String)
+           | FDec (TyL Int)
+           deriving  (Show,Eq)
 data FExpr = FApp (L Name) [FExpr]
+           | FAVar (L Name)
            | FAExpr FVarCons
            deriving (Show,Eq)
 
@@ -40,6 +47,7 @@ data ErrType = ErrConstantAsFunction
              | WrongInstanceNumberInput
              | ConstantsHaveNoInputs
              | ImpossibleConnection
+             | ExpressionConstructionErr
              | SomeError
              deriving (Show,Eq)
 data TErr = TErr ErrType (Maybe WhereMsg) Msg SrcLoc deriving (Show,Eq)
@@ -55,14 +63,9 @@ data NameType = NameType
               deriving (Show,Eq)
 type TName = (NameType, Name)
 
-instance Eq a => Eq (L a) where
-  L _ x == L _ y = x == y
-  
-instance Ord a => Ord (L a) where
-  compare (L _ x) (L _ y) = compare x y
-
 type Arity = Int
 type TFunc = (Name, SrcLoc, F, Arity)
+type TFuncType = (Name, SrcLoc, [TypeExpr])
 type TComp = (Name, C)
 type TInst = (CompName, NameId, I, Used)
 
@@ -95,6 +98,7 @@ data TState =
   , program :: Program
   , tLogs   :: [TLog]
   , tFuncs  :: [TFunc]
+  , tTypes :: [TFuncType]
   , components :: [TComp]
   , instances :: [TInst]
   , connections :: [TConn]
@@ -109,6 +113,7 @@ initialTState = TState {
   , program = Program []
   , tLogs   = []
   , tFuncs  = specialFuncs
+  , tTypes  = []
   , components = []
   , instances = []
   , connections = []

@@ -21,6 +21,8 @@ import Control.Monad.State (StateT(..), evalStateT)
 
   '='    { L _ Equal }
 
+  ':'    { L _ Colon }
+
   VARID  { L _ (Low _) }
   CONID  { L _ (Upp _) }
   '+'    { L _ (Sym "+") }
@@ -29,7 +31,9 @@ import Control.Monad.State (StateT(..), evalStateT)
   '/'    { L _ (Sym "/") }
   SYMID  { L _ (Sym _) }
 
-  INT    { L _ (Int _) }
+  BIN    { L _ (Bin _) }
+  HEX    { L _ (Hex _) }
+  DEC    { L _ (Dec _) }
 
   EOF    { L _ EOF }
 
@@ -46,33 +50,64 @@ decls : decls ';' decl { $3 : $1  }
 
 decl : function_decl { $1 }
 
-function_decl : VARID vars '=' expr { Func $1 (r $2) $4 }
+function_decl : VARID varsAndTypes ':' typeExpr '=' expr { Func $1 (r $2) $6 $4 }
 
-vars : vars VARID    { $2 : $1 }
-     | VARID         { [$1] }
-     | {- empty -}   { [] }
+varAndType : '(' VARID ':' typeExpr ')'   { Ty $4 $2 }
+binAndType : '(' BIN ':' typeExpr ')'     { Ty $4 $2 }
+hexAndType : '(' HEX ':' typeExpr ')'     { Ty $4 $2 }
+decAndType : '(' DEC ':' typeExpr ')'     { Ty $4 $2 }
 
-expr : expr aexpr {App $1 $2}
+varsAndTypes : varsAndTypes varAndType    { $2 : $1 }
+             | varAndType                 { [$1] }
+             | {- empty -}                { [] }
+
+expr : expr aexpr ':' typeExpr {App $1 $2 $4}
      | binops { $1 }
      | aexpr { $1 }
-aexpr : VARID  {AExpr $1}
-      | INT {AExpr $1}
+aexpr : VARID        { AExpr   $1 }
+      | varAndType   { ATyExpr $1 }
+      | binAndType   { ATyExpr $1 }
+      | hexAndType   { ATyExpr $1 }
+      | decAndType   { ATyExpr $1 }
       | '(' expr ')' { $2 }
-binops : expr '+'  expr  { Binop $2 $1 $3 }
+binops : expr '+'  expr  { Binop $2 $1 $3 } -- binops not really necessary
        | expr '-'  expr  { Binop $2 $1 $3 }
        | expr '*'  expr  { Binop $2 $1 $3 }
        | expr '/'  expr  { Binop $2 $1 $3 }
        | expr SYMID expr { Binop $2 $1 $3 }
+
+typeExpr : typeExpr aType { TApp $1 $2 } 
+         | aType          { $1 }
+
+aType : VARID   { TAExpr $1 }
+      | CONID   { TAExpr $1 }
+      | DEC     { TAExpr $1 }
        
 {
+
+instance Eq a => Eq (L a) where
+  L _ x == L _ y = x == y
+  
+instance Ord a => Ord (L a) where
+  compare (L _ x) (L _ y) = compare x y
+
+data TypeExpr = TApp TypeExpr TypeExpr
+              | TAExpr LToken
+              deriving (Show, Eq)
+
+data Ty a = Ty TypeExpr a
+          deriving (Show, Eq, Functor)
+
+type TyLToken = Ty LToken
 
 data PState = NoState deriving Show
 -- 'Either String a' pode ser substituido por 'ParseResult a'
 type P a = StateT PState (Either String) a
 
 data Program = Program [Func] deriving Show
-data Func = Func LToken [LToken] Expr deriving Show
+data Func = Func LToken [TyLToken] Expr TypeExpr deriving Show
 data Expr = App Expr Expr
+          | ATyExpr TyLToken
           | AExpr LToken
           | Binop LToken Expr Expr
           deriving Show

@@ -8,6 +8,7 @@ import Codec.Binary.UTF8.String (encodeChar)
 import Data.Word (Word8)
 import Data.Bits (shiftR, shiftL)
 import Control.Monad.State (StateT(..), evalStateT, get, put)
+import Data.Char (toLower)
 
 }
 
@@ -17,6 +18,10 @@ $alphaUpp = [A-Z]
 $alpha    = [$alphaLow $alphaUpp]
 $eol      = [\n]
 $symbol   = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\:]
+
+$hexDigit = [0-9a-fA-F]
+$binDigit = [0-1]
+$anyCharNumber = [$alpha $digit]
 
 @decimal  = $digit+
 @exponent = [eE] [\-\+]? @decimal
@@ -38,6 +43,7 @@ haskell :-
 
   "--".*                           ;
   "{-"                             { changeState lexComment }
+  ":"                              { consLoc Colon }
 
   \(                               { consLoc LParen }
   \)                               { consLoc RParen }
@@ -46,11 +52,14 @@ haskell :-
 
   \=                               { consLoc Equal }
 
+  0b $anyCharNumber+  { funLoc (\s -> Bin (checkBin s)) }
+  0x $anyCharNumber+  { funLoc (\s -> Hex (checkHex s)) }
+
   $symbol+                              { funLoc (\s -> Sym s) }
   [$alphaLow \_] [$alpha $digit \_ \']* { funLoc (\s -> Low s) }
   $alphaUpp [$alpha $digit \_ \']*      { funLoc (\s -> Upp s) }
   -- [\-]? @fpoint                         { funLoc (\s -> Real (read s)) }
-  [\-]? @decimal                        { funLoc (\s -> Int (read s)) }
+  [\-]? @decimal                        { funLoc (\s -> Dec (read s)) }
 
 }
 
@@ -62,14 +71,18 @@ data Token
   = LParen
   | RParen
   | Equal
-  
+
+  | Colon
+
   | Low String
   | Upp String
   | Sym String
 
   | Semic
 
-  | Int Int
+  | Bin String
+  | Hex String
+  | Dec Int
 
   | EOF
   deriving (Eq,Show)
@@ -98,6 +111,7 @@ data L a = L {
   getLoc :: SrcLoc,
   getVal :: a
 } deriving Show
+
 type LToken = L Token
 
 instance Functor L where
@@ -196,6 +210,24 @@ changeStateAndOutput :: Int -> (String -> Token) -> Action
 changeStateAndOutput newState tf s l _ = AR (Just (tf s)) l newState
 
 --------------- Auxiliar functions
+
+checkHex :: String -> String
+checkHex s = check res num
+  where num = map toLower $ drop 2 s
+        res = and $ map isHex num
+        isHex x = elem x hexDigits
+        hexDigits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f']
+        check False _ = error "Invalid hexadecimal digit."
+        check True  x = x
+
+checkBin :: String -> String
+checkBin s = check res num
+  where num = map toLower $ drop 2 s
+        res = and $ map isBin num
+        isBin x = elem x binDigits
+        binDigits = ['0','1']
+        check False _ = error "Invalid binary digit."
+        check True  x = x
 
 -- Function is more permisive than ideal because it lets
 -- newlines in strings, but it doesnt break the language

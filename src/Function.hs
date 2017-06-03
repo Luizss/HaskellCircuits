@@ -5,6 +5,7 @@ import ParserCore
 import LexerCore
 import Types
 import TransformationMonad
+import Aux
 
 import Control.Monad.Trans (lift)
 
@@ -17,15 +18,16 @@ interpret = do
   mapM_ interpretEach fs
 
 interpretEach :: Func -> TMM ()
-interpretEach (Func name vars body) = do
+interpretEach (Func name vars body typeExpr) = do
   
   let fname = fmap fromLow name
       srcLoc = getLoc name
-      args  = map (fmap fromLow) vars
+      args  = map (fmap (fmap fromLow)) vars
       
   mFExpr <- getFExpr body
   
   cont1 mFExpr $ \fExpr -> do
+    addFuncType (funcName, srcLoc, map getType vars ++ [typeExpr])
     addFunc (funcName, srcLoc, F args fExpr, length args)
     ret ()
     
@@ -46,13 +48,23 @@ interpretEach (Func name vars body) = do
       Binop ltok e1 e2 -> do
         me1'  <- getFExpr e1
         me2'  <- getFExpr e2
-        let binop = FAExpr (FVar (fmap (\(Sym s) -> toName s) ltok))
+        let binop = FAVar (fmap (\(Sym s) -> toName s) ltok)
         cont2 me1' me2' $ \e1' e2' -> do
           me1'' <- joinApps binop e1'
           cont1 me1'' $ \e1'' -> joinApps e1'' e2'
           
-      AExpr (L s (Low v)) -> ret $ FAExpr (FVar (L s v))
-      AExpr (L s (Int i)) -> ret $ FAExpr (FCons (L s i))
+      ATyExpr (Ty t (L s (Low v))) -> ret $ FAExpr (FVar (Ty t (L s v)))
+      ATyExpr (Ty t (L s (Bin i))) -> ret $ FAExpr (FCons (FBin (Ty t (L s i))))
+      ATyExpr (Ty t (L s (Hex i))) -> ret $ FAExpr (FCons (FHex (Ty t (L s i))))
+      ATyExpr (Ty t (L s (Dec i))) -> ret $ FAExpr (FCons (FDec (Ty t (L s i))))
+
+      AExpr ae -> ret $ FAVar $ fmap (\(Low s) -> s) ae
+
+      _ -> throw (TErr
+                  ExpressionConstructionErr
+                  (Just ("In function " ++ funcName))
+                  "Expression construction error"
+                  NoLoc) >> noRet
 
     joinApps :: FExpr -> FExpr -> TMM FExpr
     joinApps (FApp f args) expr
@@ -62,9 +74,15 @@ interpretEach (Func name vars body) = do
                ErrConstantAsFunction
                (Just ("In function " ++ funcName))
                "Constants are not functions"
-               (getLoc c)) >> noRet
-    joinApps (FAExpr (FVar v)) expr
+               (getLocFromCons c)) >> noRet
+    joinApps (FAVar v) expr
       = ret $ FApp v [expr]
+    joinApps _ _
+      = throw (TErr
+               ExpressionConstructionErr
+               (Just ("In function " ++ funcName))
+               "Expression construction error"
+               NoLoc) >> noRet
 
 toName :: String -> String
 toName sym = case sym of

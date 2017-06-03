@@ -331,7 +331,12 @@ incrementForkedIndex :: CompName -> Input -> TM ()
 incrementForkedIndex comp v = do
   i <- getForkedIndex comp v
   putForkedIndex comp v (i + 1)
-  
+
+addFuncType :: TFuncType -> TM ()
+addFuncType x = do
+  state <- get
+  put (state { tTypes =  x : tTypes state })
+
 --- Example of the use of TM
 
 testF1 :: TM (Maybe Int)
