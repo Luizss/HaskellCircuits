@@ -11,16 +11,27 @@ type Name = String
 --- from Functions.hs
 
 type FSymbol = String
-type FVars = [L Name]
 
-data F = F FVars FExpr
+type FVar = L Name
+
+data FType = BitVec SrcLoc Int
+           | Bit SrcLoc
+           | Nat SrcLoc Int
+           deriving (Show,Eq)
+           
+data F = F [(FVar, FType)] FExpr FType
        | SpecialF
        deriving (Show,Eq)
+
 data FVarCons = FVar (L Name)
-              | FCons (L Int)
+              | FCons FCons
               deriving (Show,Eq)
-data FExpr = FApp (L Name) [FExpr]
-           | FAExpr FVarCons
+data FCons = FBin (L String)
+           | FHex (L String)
+           | FDec (L Int)
+           deriving  (Show,Eq)
+data FExpr = FApp (L Name) [FExpr] FType
+           | FAExpr (FVarCons, FType)
            deriving (Show,Eq)
 
 --------
@@ -40,6 +51,8 @@ data ErrType = ErrConstantAsFunction
              | WrongInstanceNumberInput
              | ConstantsHaveNoInputs
              | ImpossibleConnection
+             | ExpressionConstructionErr
+             | TypeNotPermitted
              | SomeError
              deriving (Show,Eq)
 data TErr = TErr ErrType (Maybe WhereMsg) Msg SrcLoc deriving (Show,Eq)
@@ -55,14 +68,9 @@ data NameType = NameType
               deriving (Show,Eq)
 type TName = (NameType, Name)
 
-instance Eq a => Eq (L a) where
-  L _ x == L _ y = x == y
-  
-instance Ord a => Ord (L a) where
-  compare (L _ x) (L _ y) = compare x y
-
 type Arity = Int
 type TFunc = (Name, SrcLoc, F, Arity)
+type TFuncType = (Name, SrcLoc, [TypeExpr])
 type TComp = (Name, C)
 type TInst = (CompName, NameId, I, Used)
 
@@ -70,6 +78,16 @@ specialFuncs
   = [("add",NoLoc,SpecialF,2)
     ,("sub",NoLoc,SpecialF,2)
     ,("mul",NoLoc,SpecialF,2)
+    
+    ,("and",NoLoc,SpecialF,2)
+    ,("or",NoLoc,SpecialF,2)
+    
+    ,("not",NoLoc,SpecialF,1)
+
+    ,("equ",NoLoc,SpecialF,2)
+    
+    ,("sli",NoLoc,SpecialF,3)
+    ,("cat",NoLoc,SpecialF,2)
     ]
 
 data Stage = InitialStage
@@ -95,11 +113,12 @@ data TState =
   , program :: Program
   , tLogs   :: [TLog]
   , tFuncs  :: [TFunc]
+  , tTypes :: [TFuncType]
   , components :: [TComp]
   , instances :: [TInst]
   , connections :: [TConn]
   , systemC :: SystemC
-  , timesForked :: [(CompName, Input, Int)]
+  , timesForked :: [(CompName, String, Int)]
   } deriving Show
 
 initialTState :: TState
@@ -109,6 +128,7 @@ initialTState = TState {
   , program = Program []
   , tLogs   = []
   , tFuncs  = specialFuncs
+  , tTypes  = []
   , components = []
   , instances = []
   , connections = []
@@ -122,9 +142,9 @@ type TMM a = TM (Maybe a)
 
 ------ Components
 
-type Input  = String
-type Output = String
-type Signal = String -- input or output
+type Input  = (String, FType)
+type Output = (String, FType)
+type Signal = (String, FType) -- input or output
 
 type TConn = (CompName,(NameId,Signal),(NameId,Signal))
 data Proc = Get String Proc
@@ -133,8 +153,10 @@ data Proc = Get String Proc
           deriving Show
 
 data I = I [Input] Output
-       | ConstI Int Output
-       | SpecialI [Input] Output
+       | ConstBinI String Output
+       | ConstHexI String Output
+       | ConstDecI Int Output
+       | SpecialI [Input] Output [Int]                                     
        | FifoI Input Output
        | ForkI Int Input [Output]
        deriving Show

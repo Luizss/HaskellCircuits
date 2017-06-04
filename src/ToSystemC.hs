@@ -2,7 +2,7 @@ module ToSystemC where
 
 import Data.Map (fromList,toList)
 import Control.Monad
-import Data.List (nub,intercalate)
+import Data.List (nub,intercalate,isPrefixOf)
 import Data.String (lines,unlines)
 import Data.Char (toUpper)
 
@@ -44,12 +44,12 @@ topLevel lst (_, C _ _ inps out _ _) = do
           
         topConnections
           = unlines
-          . map (\p -> "m." ++ p ++ "(" ++ p ++ "); "
-                       ++ "tb." ++ p ++ "(" ++ p ++ ");")
+          . map (\(p,_) -> "m." ++ p ++ "(" ++ p ++ "); "
+                           ++ "tb." ++ p ++ "(" ++ p ++ ");")
         
         signals is os
           = unlines
-          $ map (\x -> "sc_fifo<int> " ++ x ++ ";") (is ++ os)
+          $ map (\(x,t) -> makeTypeSignal t ++ " " ++ x ++ ";") (is ++ os)
           
         testbenchContent
           = "#include \"systemc.h\"\n\n"
@@ -73,13 +73,13 @@ topLevel lst (_, C _ _ inps out _ _) = do
              = error "Testbenches have different number of inputs"
           | otherwise = unlines (go 0)
           where go n
-                  | n == length inps = []
+                  | n == length (last tbs) = []
                   | otherwise =
                       let vals = map (!!n) tbs
                           xs = zip inps vals
                       in map fill xs ++ [seeOut] ++ go (n+1)
                 seeOut = "cout << out.read() << endl;"
-                fill (i,v) = i ++ ".write(" ++ show v ++ ");"
+                fill ((i,_),v) = i ++ ".write(" ++ show v ++ ");"
                 
 -- faz o test bench e o top level
 -- com base nos inputs e outputs da main
@@ -139,9 +139,11 @@ endif = "#endif"
 
 instanceFromFile :: TInst -> TM ()
 instanceFromFile (comp,nid,inst,_) = case inst of
-  ConstI      c out -> addSystemCFile $ makeConstFile nid c out
-  SpecialI inps out -> addSystemCFile $ makeSpecialFile nid inps out
-  ForkI n inp outs -> addSystemCFile $ makeForkFile nid n inp outs
+  ConstBinI bin out      -> addSystemCFile $ makeConstBinFile nid bin out
+  ConstHexI hex out      -> addSystemCFile $ makeConstHexFile nid hex out
+  ConstDecI dec out      -> addSystemCFile $ makeConstDecFile nid dec out
+  SpecialI inps out args -> addSystemCFile $ makeSpecialFile nid inps out args
+  ForkI n inp outs       -> addSystemCFile $ makeForkFile nid n inp outs
   FifoI _ _ -> ok
   I     _ _ -> ok
   
@@ -164,28 +166,54 @@ includeInstances =
     makeInclude :: Name -> String
     makeInclude name = "#include \"" ++ name ++ ".h\""
 
+                       
 scModule :: Name -> String
 scModule name = "SC_MODULE(" ++ changeIfMain name ++ ") {"
 
 inputs :: [Input] -> String
 inputs = unlines . map makeInput
   where 
-    makeInput inputName = "sc_fifo_in<int> " ++ inputName ++ ";"
+    makeInput (inputName, t) = makeTypeInput t ++ " " ++ inputName ++ ";"
+
+makeTypePure :: FType -> String
+makeTypePure ty = case ty of
+  BitVec l n -> "sc_lv<" ++ show n ++ ">"
+  Bit    l   -> "sc_lv<1>"
+  Nat    l n -> error $ "nat?1 " ++ show l ++ " : " ++ show n
+
+makeTypeSignal :: FType -> String
+makeTypeSignal ty = case ty of
+  BitVec l n -> "sc_fifo<sc_lv<" ++ show n ++ "> >"
+  Bit    l   -> "sc_fifo<sc_lv<1> >"
+  Nat    l n -> error $ "nat?2 " ++ show l ++ " : " ++ show n
+
+makeTypeInput :: FType -> String
+makeTypeInput ty = case ty of
+  BitVec l n -> "sc_fifo_in<sc_lv<" ++ show n ++ "> >"
+  Bit    l   -> "sc_fifo_in<sc_lv<1> >"
+  Nat    l n -> error $ "nat?3 " ++ show l ++ " : " ++ show n
+
+makeTypeOutput :: FType -> String
+makeTypeOutput ty = case ty of
+  BitVec l n -> "sc_fifo_out<sc_lv<" ++ show n ++ "> >"
+  Bit    l   -> "sc_fifo_out<sc_lv<1> >"
+  Nat    l n -> error $ "nat?4 " ++ show l ++ " : " ++ show n
 
 outputs :: [Output] -> String
 outputs = unlines . map makeOutput
   where
-    makeOutput outputName = "sc_fifo_out<int> " ++ outputName ++ ";"
+    makeOutput (outputName, t)
+      = makeTypeOutput t ++ " " ++ outputName ++ ";"
 
 intermediarySignals :: [TConn] -> String
 intermediarySignals = unlines . filter (/="") . nub . map intSig
   where intSig :: TConn -> String
-        intSig (comp, (NameId m1 id1, p1), (NameId m2 id2, p2))
+        intSig (comp, (NameId m1 id1, (p1,t)), (NameId m2 id2, (p2,_)))
           | isInOrOut m1 ||
             isFifo m1    ||
             isInOrOut m2 ||
             isFifo m2 = ""
-          | otherwise = "sc_fifo<int> "
+          | otherwise = makeTypeSignal t ++ " "
                          ++ interSignal m1 id1 p1 m2 id2 p2
                          ++ ";"
           where isInOrOut x = x == comp'
@@ -201,8 +229,8 @@ instanceDeclaration
   where
     declInst :: TInst -> String
     declInst (_,NameId name id,inst,_) = case inst of
-      FifoI _ _ -> "sc_fifo<int> __fifo__" ++ (show id) ++ ";"
-      _         -> name ++ " " ++ name ++ (show id) ++ ";"
+      FifoI _ (_,t)   -> makeTypeSignal t ++ " __fifo__" ++ (show id) ++ ";"
+      _               -> name ++ " " ++ name ++ (show id) ++ ";"
 
 processDeclaration EndProc = ""
 processDeclaration _ = "void proc();"
@@ -227,7 +255,7 @@ sconnections conns = do
     ret (unlines txts)
   where
     connToString :: TConn -> TMM String
-    connToString (comp,(NameId m1 id1,p1),(NameId m2 id2,p2))
+    connToString (comp,(NameId m1 id1,(p1,_)),(NameId m2 id2,(p2,_)))
       | (isInOrOut m1 || isFifo m1)
         && (isInOrOut m2 || isFifo m2) =
           throw (TErr
@@ -267,17 +295,17 @@ closingBraces = "}\n};"
 voidProc name process = ""
 
 makeForkFile :: NameId -> Int -> Input -> [Output] -> File
-makeForkFile (NameId name id) n inp outs =
+makeForkFile (NameId name id) n (_,t) outs =
   (name ++ ".h", content)
   where c = name
         content
           = ifndef name
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
-          ++ "int in_aux;\n"
-          ++ "sc_fifo_in<int> in;\n"
+          ++ makeTypePure t ++ " in_aux;\n"
+          ++ makeTypeInput t ++ " in;\n"
           ++ (unlines
-              (map (\o -> "sc_fifo_out<int> "++ o ++";") outs))
+              (map (\(o,t) -> makeTypeOutput t ++ " " ++ o ++";") outs))
           ++ "void proc();\n"
           ++ "SC_CTOR("++c++") {\n"
           ++ "SC_THREAD(proc);\n"
@@ -287,19 +315,59 @@ makeForkFile (NameId name id) n inp outs =
           ++ "while(true) {\n"
           ++ "in_aux = in.read();\n"
           ++ (unlines
-              (map (\o -> o ++".write(in_aux);") outs))
+              (map (\(o,_) -> o ++".write(in_aux);") outs))
           ++ "}\n"
           ++ "}\n"
           ++ endif
 
-makeConstFile (NameId name id) cons out =
+makeConstBinFile (NameId name id) cons (out,t) =
   (name ++ ".h", content)
   where c = name
         content
           = ifndef name
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
-          ++ "sc_fifo_out<int> " ++ out ++ ";\n"
+          ++ makeTypeOutput t ++ " " ++ out ++ ";\n"
+          ++ "void proc();\n"
+          ++ "SC_CTOR("++c++") {\n"
+          ++ "SC_THREAD(proc);\n"
+          ++ "}\n"
+          ++ "};\n\n"
+          ++ "void " ++ c ++ "::proc() {\n"
+          ++ "while(true) {\n"
+          ++ out ++ ".write(\"" ++ cons ++ "\");\n"
+          ++ "}\n"
+          ++ "}\n"
+          ++ endif
+
+makeConstHexFile (NameId name id) cons (out,t) =
+  (name ++ ".h", content)
+  where c = name
+        content
+          = ifndef name
+          ++ "#include \"systemc.h\"\n"
+          ++ "SC_MODULE("++c++") {\n"
+          ++ makeTypeOutput t ++ " " ++ out ++ ";\n"
+          ++ "void proc();\n"
+          ++ "SC_CTOR("++c++") {\n"
+          ++ "SC_THREAD(proc);\n"
+          ++ "}\n"
+          ++ "};\n\n"
+          ++ "void " ++ c ++ "::proc() {\n"
+          ++ "while(true) {\n"
+          ++ out ++ ".write(\"0x" ++ cons ++ "\");\n"
+          ++ "}\n"
+          ++ "}\n"
+          ++ endif
+
+makeConstDecFile (NameId name id) cons (out, t) =
+  (name ++ ".h", content)
+  where c = name
+        content
+          = ifndef name
+          ++ "#include \"systemc.h\"\n"
+          ++ "SC_MODULE("++c++") {\n"
+          ++ makeTypeOutput t ++ " " ++ out ++ ";\n"
           ++ "void proc();\n"
           ++ "SC_CTOR("++c++") {\n"
           ++ "SC_THREAD(proc);\n"
@@ -312,15 +380,101 @@ makeConstFile (NameId name id) cons out =
           ++ "}\n"
           ++ endif
 
-makeSpecialFile (NameId name id) [in1,in2] out
+makeSpecialFile nid@(NameId name id) ins out args = case name of
+  "cat"  -> makeSpecialFileCat nid ins out
+
+  "equ"  -> makeSpecialFileLogic nid ins out
+
+  "and_" -> makeSpecialFileLogic nid ins out
+  "or_"  -> makeSpecialFileLogic nid ins out
+  
+  "not_" -> makeSpecialFileNot nid ins out
+  
+  "mul"  -> makeSpecialFileArith nid ins out
+  "add"  -> makeSpecialFileArith nid ins out
+  "sub"  -> makeSpecialFileArith nid ins out
+  
+  x | isPrefixOf "sli" x -> makeSpecialFileSli nid ins out args
+
+makeSpecialFileSli (NameId name id) [(in1,t1)] (out,t) [a1,a2]
+  = (c ++ ".h", content)
+  where c = name
+        content = unlines
+          [ifndef c
+          ,"#include \"systemc.h\""
+          ,"SC_MODULE(" ++ c ++ ") {"
+          , inputs [(in1,t1)]
+          , outputs [(out,t)]
+          ,"void proc();"
+          ,"SC_CTOR(" ++ c ++ ") {"
+          ,"SC_THREAD(proc);"
+          ,"}"
+          ,"};"
+          ,"void " ++ c ++ "::proc() {"
+          ,"while(true) {"
+          , out ++ ".write(" ++ in1 ++ ".read().range(" ++ show a2 ++ ", " ++ show a1 ++ "));"
+          ,"}"
+          ,"}"
+          ,"#endif"]
+
+makeSpecialFileCat (NameId name id) [(in1,t1),(in2,t2)] (out,t)
+  = (c ++ ".h", content)
+  where c = name
+        content = unlines
+          [ifndef c
+          ,"#include \"systemc.h\""
+          ,"SC_MODULE(" ++ c ++ ") {"
+          , inputs [(in1,t1),(in2,t2)]
+          , outputs [(out,t)]
+          ,"void proc();"
+          ,"SC_CTOR(" ++ c ++ ") {"
+          ,"SC_THREAD(proc);"
+          ,"}"
+          ,"};"
+          ,"void " ++ c ++ "::proc() {"
+          ,"while(true) {"
+          ,out ++ ".write(("++in1++".read(),"++in2++".read()));"
+          ,"}"
+          ,"}"
+          ,"#endif"]
+
+makeSpecialFileArith (NameId name id) [(in1,t1),(in2,t2)] (out, t)
   = (c ++ ".h", content)
   where c = name
         content
           = ifndef name
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
-          ++ inputs [in1,in2]
-          ++ outputs [out] ++ "\n\n"
+          ++ inputs [(in1, t1),(in2, t2)]
+          ++ outputs [(out, t)] ++ "\n\n"
+          ++ "void proc();\n"
+          ++ "SC_CTOR("++c++") {\n"
+          ++ "SC_THREAD(proc);\n"
+          ++ "}\n"
+          ++ "};\n\n"
+          ++ "void " ++ c ++ "::proc() {\n"
+          ++ "while(true) {\n"
+          ++  out ++ ".write((sc_uint<" ++ len t1 ++ ">)" ++ in1 ++ ".read()" ++ symbol ++ "(sc_uint<" ++ len t2 ++ ">)" ++ in2 ++ ".read()" ++ ");\n"
+          ++ "}\n"
+          ++ "}\n"
+          ++ endif
+        symbol = case name of
+          "mul" -> "*"
+          "add" -> "+"
+          "sub" -> "-"
+        len (BitVec _ n) = show n
+        len (Bit _) = show 1
+        len _ = error "aaaa"
+
+makeSpecialFileLogic (NameId name id) [(in1,t1),(in2,t2)] (out, t)
+  = (c ++ ".h", content)
+  where c = name
+        content
+          = ifndef name
+          ++ "#include \"systemc.h\"\n"
+          ++ "SC_MODULE("++c++") {\n"
+          ++ inputs [(in1, t1),(in2, t2)]
+          ++ outputs [(out, t)] ++ "\n\n"
           ++ "void proc();\n"
           ++ "SC_CTOR("++c++") {\n"
           ++ "SC_THREAD(proc);\n"
@@ -333,7 +487,27 @@ makeSpecialFile (NameId name id) [in1,in2] out
           ++ "}\n"
           ++ endif
         symbol = case name of
-          "mul" -> "*"
-          "add" -> "+"
-          "sub" -> "-"
-          _ -> "&&"
+          "and_" -> "&"
+          "or_"  -> "|"
+          "equ" -> "=="
+
+makeSpecialFileNot (NameId name id) [(in1,t1)] (out, t)
+  = (c ++ ".h", content)
+  where c = name
+        content
+          = ifndef name
+          ++ "#include \"systemc.h\"\n"
+          ++ "SC_MODULE("++c++") {\n"
+          ++ inputs [(in1, t1)]
+          ++ outputs [(out, t)] ++ "\n\n"
+          ++ "void proc();\n"
+          ++ "SC_CTOR("++c++") {\n"
+          ++ "SC_THREAD(proc);\n"
+          ++ "}\n"
+          ++ "};\n\n"
+          ++ "void " ++ c ++ "::proc() {\n"
+          ++ "while(true) {\n"
+          ++  out ++ ".write(~" ++ in1 ++ ".read());\n"
+          ++ "}\n"
+          ++ "}\n"
+          ++ endif

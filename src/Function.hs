@@ -5,6 +5,7 @@ import ParserCore
 import LexerCore
 import Types
 import TransformationMonad
+import Aux
 
 import Control.Monad.Trans (lift)
 
@@ -17,17 +18,31 @@ interpret = do
   mapM_ interpretEach fs
 
 interpretEach :: Func -> TMM ()
-interpretEach (Func name vars body) = do
+interpretEach (Func name varsNtypes body typeExpr) = do
   
   let fname = fmap fromLow name
       srcLoc = getLoc name
-      args  = map (fmap fromLow) vars
-      
-  mFExpr <- getFExpr body
+      vars  = map fst varsNtypes
+      types = map snd varsNtypes
+
+  mfts <- mapM toFType types
+
+  cont mfts $ do
+
+    let fts = map just mfts
+        vars' = map toFVar vars
+        args = zip vars' fts
+
+    mFExpr <- getFExpr body
   
-  cont1 mFExpr $ \fExpr -> do
-    addFunc (funcName, srcLoc, F args fExpr, length args)
-    ret ()
+    cont1 mFExpr $ \fExpr -> do
+      
+      mft <- toFType typeExpr
+      
+      cont1 mft $ \ft -> do
+        
+        addFunc (funcName, srcLoc, F args fExpr ft, length args)
+        ret ()
     
   where
 
@@ -38,23 +53,38 @@ interpretEach (Func name vars body) = do
     getFExpr :: Expr -> TMM FExpr
     getFExpr expr = case expr of
       
-      App e1 e2 -> do
-        me1'  <- getFExpr e1
-        me2'  <- getFExpr e2
-        cont2 me1' me2' joinApps
+      App (L src (Low s)) es ty -> do
+        mes' <- mapM getFExpr es
+        cont mes' $ do
+          let es' = map just mes'
+          mft <- toFType ty
+          cont1 mft $ \ft ->
+            ret $ FApp (L src s) es' ft
         
-      Binop ltok e1 e2 -> do
-        me1'  <- getFExpr e1
-        me2'  <- getFExpr e2
-        let binop = FAExpr (FVar (fmap (\(Sym s) -> toName s) ltok))
-        cont2 me1' me2' $ \e1' e2' -> do
-          me1'' <- joinApps binop e1'
-          cont1 me1'' $ \e1'' -> joinApps e1'' e2'
-          
-      AExpr (L s (Low v)) -> ret $ FAExpr (FVar (L s v))
-      AExpr (L s (Int i)) -> ret $ FAExpr (FCons (L s i))
+      AExpr (L s (Low v), t) -> do
+        mft <- toFType t
+        cont1 mft $ \ft ->
+          ret $ FAExpr (FVar (L s v), ft)
+      AExpr (L s (Bin i), t) -> do
+        mft <- toFType t
+        cont1 mft $ \ft ->
+          ret $ FAExpr (FCons(FBin (L s i)), ft)
+      AExpr (L s (Hex i), t) -> do
+        mft <- toFType t
+        cont1 mft $ \ft ->
+          ret $ FAExpr (FCons(FHex (L s i)), ft)
+      AExpr (L s (Dec i), t) -> do
+        mft <- toFType t
+        cont1 mft $ \ft ->
+          ret $ FAExpr (FCons(FDec (L s i)), ft)
 
-    joinApps :: FExpr -> FExpr -> TMM FExpr
+      _ -> throw (TErr
+                  ExpressionConstructionErr
+                  (Just ("In function " ++ funcName))
+                  "Expression construction error"
+                  NoLoc) >> noRet
+
+    {-joinApps :: FExpr -> FExpr -> TMM FExpr
     joinApps (FApp f args) expr
       = ret $ FApp f (args ++ [expr])
     joinApps (FAExpr (FCons c)) _
@@ -62,15 +92,21 @@ interpretEach (Func name vars body) = do
                ErrConstantAsFunction
                (Just ("In function " ++ funcName))
                "Constants are not functions"
-               (getLoc c)) >> noRet
-    joinApps (FAExpr (FVar v)) expr
+               (getLocFromCons c)) >> noRet
+    joinApps (FAVar v) expr
       = ret $ FApp v [expr]
+    joinApps _ _
+      = throw (TErr
+               ExpressionConstructionErr
+               (Just ("In function " ++ funcName))
+               "Expression construction error"
+               NoLoc) >> noRet
 
 toName :: String -> String
 toName sym = case sym of
   "+" -> "add"
   "-" -> "sub"
-  "*" -> "mul"
+  "*" -> "mul"-}
 
 checkForArityErrs :: TM ()
 checkForArityErrs = do
@@ -82,11 +118,11 @@ checkForArityErrs = do
     
     checkFunc :: TFunc -> TM ()
     checkFunc (_, _, SpecialF, _) = ok
-    checkFunc (name, _loc, F vars body, _) = check body
+    checkFunc (name, _loc, F vars body _, _) = check body
       where
         check :: FExpr -> TM ()
         check (FAExpr _) = ok
-        check (FApp lname fexprs) = do
+        check (FApp lname fexprs _) = do
           let arity = length fexprs
           mf <- searchFunction (getVal lname)
           case mf of
@@ -109,3 +145,19 @@ checkForArityErrs = do
                                      ++ " given)")
                                     (getLoc lname))
           mapM_ check fexprs
+
+toFType :: TypeExpr -> TMM FType
+toFType texpr = case texpr of
+  TApp (TAExpr (L s (Upp "Vec"))) (TAExpr (L _ (Dec n)))
+    -> ret $ BitVec s n
+  TAExpr (L s (Upp "Bit")) -> ret $ Bit s
+  TApp (TAExpr (L s (Upp "Nat"))) (TAExpr (L _ (Dec n)))
+    -> ret $ Nat s n
+  x -> throw (TErr
+              TypeNotPermitted
+              Nothing
+              ("Type '" ++ show x ++ "' not permitted.")
+              NoLoc) >> noRet
+
+toFVar :: LToken -> FVar
+toFVar (L src (Low s)) = L src s

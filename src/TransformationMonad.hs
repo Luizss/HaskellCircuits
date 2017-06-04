@@ -292,22 +292,22 @@ addSystemCFile file = do
   st <- get
   put (st { systemC =  file : systemC st })
 
-getTimesForked :: TM [(CompName, Input, Int)]
+getTimesForked :: TM [(CompName, String, Int)]
 getTimesForked = do
   st <- get
   return (timesForked st)
 
-putTimesForked :: [(CompName, Input, Int)] -> TM ()
+putTimesForked :: [(CompName, String, Int)] -> TM ()
 putTimesForked tf = do
   st <- get
   put (st {timesForked = tf })
 
-addForkedIndex :: (CompName, Input, Int) -> TM ()
+addForkedIndex :: (CompName, String, Int) -> TM ()
 addForkedIndex x = do
   st <- get
   put (st { timesForked = x : timesForked st })
 
-getForkedIndex :: CompName -> Input -> TM Int
+getForkedIndex :: CompName -> String -> TM Int
 getForkedIndex comp inp = do
   tf <- getTimesForked
   case find (\(c,i,_) -> c == comp && i == inp) tf of
@@ -316,7 +316,7 @@ getForkedIndex comp inp = do
       return 1
     Just (_,_,c) -> return c
 
-putForkedIndex :: CompName -> Input -> Int -> TM ()
+putForkedIndex :: CompName -> String -> Int -> TM ()
 putForkedIndex comp inp index = do
   tf <- getTimesForked
   case find (\(c,i,_) -> c == comp && i == inp) tf of
@@ -327,11 +327,16 @@ putForkedIndex comp inp index = do
             && i == inp = (c,i,index)
           | otherwise = (c,i,ind)
   
-incrementForkedIndex :: CompName -> Input -> TM ()
+incrementForkedIndex :: CompName -> String -> TM ()
 incrementForkedIndex comp v = do
   i <- getForkedIndex comp v
   putForkedIndex comp v (i + 1)
-  
+
+addFuncType :: TFuncType -> TM ()
+addFuncType x = do
+  state <- get
+  put (state { tTypes =  x : tTypes state })
+
 --- Example of the use of TM
 
 testF1 :: TM (Maybe Int)

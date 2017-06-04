@@ -1,6 +1,8 @@
 module Aux where
 
 import Types
+import LexerCore
+import ParserCore
 
 just (Just x) = x
 just _ = error "From Justa"
@@ -24,3 +26,10 @@ mok = return (Just ())
 
 count :: Eq a => a -> [a] -> Int
 count x = length . filter (==x)
+
+mapFst :: (a -> b) -> (a,c) -> (b,c)
+mapFst f (a,c) = (f a,c)
+
+mapSec :: (a -> b) -> (c,a) -> (c,b)
+mapSec f (c,a) = (c, f a)
+

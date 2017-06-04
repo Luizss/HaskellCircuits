@@ -1,3 +1,1 @@
-main x y = x * 5 * (g x) + y
-g y = y + 3 + h
-h = 8
+main (x : Vec 32) : Vec 8 = not (x : Vec 32) : Vec 8
