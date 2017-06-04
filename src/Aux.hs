@@ -27,20 +27,9 @@ mok = return (Just ())
 count :: Eq a => a -> [a] -> Int
 count x = length . filter (==x)
 
-getType :: Ty a -> TypeExpr
-getType (Ty x y) = x
+mapFst :: (a -> b) -> (a,c) -> (b,c)
+mapFst f (a,c) = (f a,c)
 
-getTerm :: Ty a -> a
-getTerm (Ty x y) = y
+mapSec :: (a -> b) -> (c,a) -> (c,b)
+mapSec f (c,a) = (c, f a)
 
-getLocL :: TyL a -> SrcLoc
-getLocL = getLoc . getTerm
-
-getTermL :: TyL a -> a
-getTermL = getVal . getTerm
-
-getLocFromCons :: FCons -> SrcLoc
-getLocFromCons fcons = case fcons of
-  FBin tyl -> getLocL tyl
-  FHex tyl -> getLocL tyl
-  FDec tyl -> getLocL tyl

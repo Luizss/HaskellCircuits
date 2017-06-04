@@ -12,9 +12,7 @@ import ParserCore
 import TransformationMonad
 import Function
 import Types
-{-
 import Components
-
 import ToSystemC
 
 getTestInputs :: IO [String]
@@ -68,17 +66,6 @@ getTestInputs = do
 --   --  putStrLn "========================="
 --   return ()
 
-getErrs = filter isErr . tLogs
-  where isErr x = case x of
-          TLogErr _ _ -> True
-          _ -> False
-
-showE :: TState -> IO ()
-showE state = do
-  forM_ (reverse (tLogs state)) $ \log -> case log of
-    TLogErr terr _ -> putStrLn $ show terr
-    TLogDebug msg _ -> putStrLn msg
-    _ -> return ()
 
 userInterface :: IO ()
 userInterface = do
@@ -120,6 +107,7 @@ test' fileName text tbs = do
     forM_ (systemC st) $ \(x,y) -> do
       putStrLn x
       putStrLn y
+    makeSystemC fileName (systemC st)
     putStrLn "Ok!"
   when (getErrs st /= []) $ do
     print tks
@@ -162,8 +150,6 @@ makeSystemC dirName files = do
       forM_ files $ \(filename, content) ->
         writeFile (dir ++ filename) content
 
--}
-
 a :: IO ()
 a = do
   tx <- readFile "test/test"
@@ -177,6 +163,7 @@ a = do
             putProgram e
           Left  _ -> return ()
         interpret
+        toComponents
       st = runTM transformation
   putStrLn "TOKENS"
   print tks
@@ -186,4 +173,22 @@ a = do
   print expr
   putStrLn "FUNCTION"
   print (tFuncs st)
+  putStrLn "COMPONENT"
+  print (components st)
+  when (getErrs st == []) $
+    putStrLn "NICE!"
+  when (getErrs st /= []) $ do
+    showE st
   
+  
+getErrs = filter isErr . tLogs
+  where isErr x = case x of
+          TLogErr _ _ -> True
+          _ -> False
+
+showE :: TState -> IO ()
+showE state = do
+  forM_ (reverse (tLogs state)) $ \log -> case log of
+    TLogErr terr _ -> putStrLn $ show terr
+    TLogDebug msg _ -> putStrLn msg
+    _ -> return ()

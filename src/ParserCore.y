@@ -25,11 +25,6 @@ import Control.Monad.State (StateT(..), evalStateT)
 
   VARID  { L _ (Low _) }
   CONID  { L _ (Upp _) }
-  '+'    { L _ (Sym "+") }
-  '-'    { L _ (Sym "-") }
-  '*'    { L _ (Sym "*") }
-  '/'    { L _ (Sym "/") }
-  SYMID  { L _ (Sym _) }
 
   BIN    { L _ (Bin _) }
   HEX    { L _ (Hex _) }
@@ -52,33 +47,29 @@ decl : function_decl { $1 }
 
 function_decl : VARID varsAndTypes ':' typeExpr '=' expr { Func $1 (r $2) $6 $4 }
 
-varAndType : '(' VARID ':' typeExpr ')'   { Ty $4 $2 }
-binAndType : '(' BIN ':' typeExpr ')'     { Ty $4 $2 }
-hexAndType : '(' HEX ':' typeExpr ')'     { Ty $4 $2 }
-decAndType : '(' DEC ':' typeExpr ')'     { Ty $4 $2 }
+varAndType : '(' VARID ':' typeExpr ')'   { ($2, $4) }
+binAndType : '(' BIN ':' typeExpr ')'     { ($2, $4) }
+hexAndType : '(' HEX ':' typeExpr ')'     { ($2, $4) }
+decAndType : '(' DEC ':' typeExpr ')'     { ($2, $4) }
 
 varsAndTypes : varsAndTypes varAndType    { $2 : $1 }
              | varAndType                 { [$1] }
              | {- empty -}                { [] }
 
-expr : expr aexpr ':' typeExpr {App $1 $2 $4}
-     | binops { $1 }
+exprs : exprs expr    { $2 : $1 }
+      | expr          { [$1] }
+      | {- empty -}   { [] }
+
+expr : VARID exprs ':' typeExpr { App $1 (r $2) $4 }
      | aexpr { $1 }
-aexpr : VARID        { AExpr   $1 }
-      | varAndType   { ATyExpr $1 }
-      | binAndType   { ATyExpr $1 }
-      | hexAndType   { ATyExpr $1 }
-      | decAndType   { ATyExpr $1 }
+aexpr : varAndType   { AExpr $1 }
+      | binAndType   { AExpr $1 }
+      | hexAndType   { AExpr $1 }
+      | decAndType   { AExpr $1 }
       | '(' expr ')' { $2 }
-binops : expr '+'  expr  { Binop $2 $1 $3 } -- binops not really necessary
-       | expr '-'  expr  { Binop $2 $1 $3 }
-       | expr '*'  expr  { Binop $2 $1 $3 }
-       | expr '/'  expr  { Binop $2 $1 $3 }
-       | expr SYMID expr { Binop $2 $1 $3 }
 
 typeExpr : typeExpr aType { TApp $1 $2 } 
          | aType          { $1 }
-
 aType : VARID   { TAExpr $1 }
       | CONID   { TAExpr $1 }
       | DEC     { TAExpr $1 }
@@ -95,21 +86,14 @@ data TypeExpr = TApp TypeExpr TypeExpr
               | TAExpr LToken
               deriving (Show, Eq)
 
-data Ty a = Ty TypeExpr a
-          deriving (Show, Eq, Functor)
-
-type TyLToken = Ty LToken
-
 data PState = NoState deriving Show
 -- 'Either String a' pode ser substituido por 'ParseResult a'
 type P a = StateT PState (Either String) a
 
 data Program = Program [Func] deriving Show
-data Func = Func LToken [TyLToken] Expr TypeExpr deriving Show
-data Expr = App Expr Expr
-          | ATyExpr TyLToken
-          | AExpr LToken
-          | Binop LToken Expr Expr
+data Func = Func LToken [(LToken, TypeExpr)] Expr TypeExpr deriving Show
+data Expr = App LToken [Expr] TypeExpr
+          | AExpr (LToken, TypeExpr)
           deriving Show
 
 ------------- Top level 'parse' function

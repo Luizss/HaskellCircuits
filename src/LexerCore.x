@@ -58,7 +58,7 @@ haskell :-
   $symbol+                              { funLoc (\s -> Sym s) }
   [$alphaLow \_] [$alpha $digit \_ \']* { funLoc (\s -> Low s) }
   $alphaUpp [$alpha $digit \_ \']*      { funLoc (\s -> Upp s) }
-  -- [\-]? @fpoint                         { funLoc (\s -> Real (read s)) }
+  -- [\-]? @fpoint                      { funLoc (\s -> Real (read s)) }
   [\-]? @decimal                        { funLoc (\s -> Dec (read s)) }
 
 }
