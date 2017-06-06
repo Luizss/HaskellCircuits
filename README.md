@@ -7,7 +7,7 @@ Transforming haskell to hardware
 
 ### Explicação
 
-A etapa 1 é composta por simplicação das funçes, retirada de escopos locais, type checking e retirada de polimorfismo. Após esta etapa chega-se na linguagem CORE (B), que é mais fácil de ser analisada e manipulada. A partir do CORE, todos as transformações posteriores so chamadas de síntese. A primeira síntese (2) tem a função de transformar tipos ADT's de alto nível em tipos padrões de baixo nível mais relacionados as entradas e saídas de hardwares. O resultado, a linguagem CORE C ainda é  chamada de CORE por ter o mesmo formato da linguagem CORE B. A partir daí a linguagem CORE (C) é analisada e manipulada (3) para gerar um tipo de dado que representa o hardware, formado por componentes. Por fim, a etapa 4 transforma esses componentes em código SystemC.
+A etapa 1 é composta por simplicação das funções, retirada de escopos locais, type checking e retirada de polimorfismo. Após esta etapa chega-se na linguagem CORE (B), que é mais fácil de ser analisada e manipulada. A partir do CORE, todos as transformações posteriores são chamadas de síntese. A primeira síntese (2) tem a função de transformar tipos ADT's de alto nível em tipos padrões de baixo nível mais relacionados as entradas e saídas de hardwares. O resultado, a linguagem CORE C ainda é  chamada de CORE por ter o mesmo formato da linguagem CORE B. A partir daí a linguagem CORE (C) é analisada e manipulada (3) para gerar um tipo de dado que representa o hardware, formado por componentes. Por fim, a etapa 4 transforma esses componentes em código SystemC.
 
 ## Versões do CORE
 
