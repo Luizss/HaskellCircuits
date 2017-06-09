@@ -51,6 +51,7 @@ haskell :-
   \;                               { consLoc Semic }
 
   \=                               { consLoc Equal }
+  \|                               { consLoc Pipe  }
 
   0b $anyCharNumber+  { funLoc (\s -> Bin (checkBin s)) }
   0x $anyCharNumber+  { funLoc (\s -> Hex (checkHex s)) }
@@ -79,6 +80,7 @@ data Token
   | Sym String
 
   | Semic
+  | Pipe
 
   | Bin String
   | Hex String

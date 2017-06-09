@@ -196,6 +196,11 @@ addInstance inst = do
   st <- get
   put (st { instances = inst : instances st })
 
+isInstanceAdded :: TInst -> TM Bool
+isInstanceAdded inst = do
+  insts <- getInstances
+  return $ elem inst insts 
+
 searchInstances :: CompName -> Name -> TM [TInst]
 searchInstances comp name = do
   insts <- getInstances
@@ -286,6 +291,16 @@ addConnection :: TConn -> TM ()
 addConnection conn = do
   st <- get
   put (st { connections =  conn : connections st })
+
+addLogicalConnection :: Name -> TM ()
+addLogicalConnection conn = do
+  st <- get
+  put (st { logicalConnections =  conn : logicalConnections st })
+
+doesLogicalConnectionExist :: Name -> TM Bool
+doesLogicalConnectionExist conn = do
+  st <- get
+  return (elem conn (logicalConnections st))
 
 addSystemCFile :: File -> TM ()
 addSystemCFile file = do

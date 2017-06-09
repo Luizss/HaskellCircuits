@@ -1,1 +1,5 @@
-main (x : Vec 32) : Vec 8 = not (x : Vec 32) : Vec 8
+main (x : Vec 32) (y : Vec 32) : Vec 32
+  | equ (x : Vec 32) (y: Vec 32) : Bit = add (x : Vec 32) (y : Vec 32) : Vec 32
+  | (1 : Bit) = and (x : Vec 32) (g (y : Vec 32) : Vec 32) : Vec 32
+
+g (x : Vec 32) : Vec 32 = not (x : Vec 32) : Vec 32

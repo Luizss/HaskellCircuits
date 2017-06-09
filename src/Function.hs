@@ -7,6 +7,7 @@ import Types
 import TransformationMonad
 import Aux
 
+import Control.Monad (forM, forM_)
 import Control.Monad.Trans (lift)
 
 -- interpret must be more complex for functions
@@ -18,7 +19,7 @@ interpret = do
   mapM_ interpretEach fs
 
 interpretEach :: Func -> TMM ()
-interpretEach (Func name varsNtypes body typeExpr) = do
+interpretEach (Func name varsNtypes guards typeExpr) = do
   
   let fname = fmap fromLow name
       srcLoc = getLoc name
@@ -33,16 +34,40 @@ interpretEach (Func name varsNtypes body typeExpr) = do
         vars' = map toFVar vars
         args = zip vars' fts
 
-    mFExpr <- getFExpr body
-  
-    cont1 mFExpr $ \fExpr -> do
-      
-      mft <- toFType typeExpr
-      
-      cont1 mft $ \ft -> do
+    case guards of
+
+      NoGuards body -> do
         
-        addFunc (funcName, srcLoc, F args fExpr ft, length args)
-        ret ()
+        mFExpr <- getFExpr body
+  
+        cont1 mFExpr $ \fExpr -> do
+      
+          mft <- toFType typeExpr
+      
+          cont1 mft $ \ft -> do
+        
+            addFunc (funcName, srcLoc, F args (NoFGuards fExpr) ft, length args)
+            ret ()
+
+      Guards guards -> do
+
+        mfguards <- forM guards $ \(condExpr,expr) -> do
+
+          mc <- getFExpr condExpr
+          me <- getFExpr expr
+
+          cont2 mc me $ \c e -> ret (c,e)
+
+        cont mfguards $ do
+
+          let fguards = map just mfguards
+
+          mft <- toFType typeExpr
+      
+          cont1 mft $ \ft -> do
+        
+            addFunc (funcName, srcLoc, F args (FGuards fguards) ft, length args)
+            ret ()
     
   where
 
@@ -118,7 +143,12 @@ checkForArityErrs = do
     
     checkFunc :: TFunc -> TM ()
     checkFunc (_, _, SpecialF, _) = ok
-    checkFunc (name, _loc, F vars body _, _) = check body
+    checkFunc (name, _loc, F vars fg _, _) = case fg of
+
+      NoFGuards body -> check body
+      FGuards guards ->
+        forM_ guards $ \(c,e) -> (check c >> check e)
+        
       where
         check :: FExpr -> TM ()
         check (FAExpr _) = ok
