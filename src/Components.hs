@@ -55,14 +55,76 @@ synth tfunc@(name,_,f@(F _ _ returnType),_) = do
       connect tfunc
       insts <- getInstancesFromComponent name
       conns <- getConnections name
+      proced <- procedure tfunc
       let c = C
               f
               insts
               (getInputsFromF f)
               ("out", returnType)
               conns
-              EndProc
+              proced
       ret c
+
+for l f = map f l
+
+procedure :: TFunc -> TM Proc
+procedure tfunc@(name,_,f@(F inps fguards rType),_) = case fguards of
+
+  NoFGuards expr -> return []
+
+  FGuards fgs -> do
+    
+    let n = length fgs
+        getInputs = map (\(inp,t) -> GETINPUT (getVal inp, t)) inps
+        fifoName i inp = "__fifo__"
+                         ++ name
+                         ++ "__cond__"
+                         ++ show i
+                         ++ "__in__"
+                         ++ inp
+        fifoOutName i = "__fifo__"
+                        ++ name
+                        ++ "__cond__"
+                        ++ show i
+                        ++ "__out"
+    putConds' <- forM [1..n] $ \i -> do
+      forM inps $ \(inp',t) -> do
+        let inp = getVal inp'
+        yn <- doesLogicalConnectionExist (fifoName i inp)
+        case yn of
+          False -> return Nothing
+          True  -> return $ Just $ PUT (fifoName i inp, t) inp
+    let putConds = concat $ map (map just . filter isJust) putConds'
+        getConds = for [1..n] $ \i -> GET (fifoOutName i, Bit NoLoc)
+        cond = COND n name
+        ifElseIfElse n i
+          | i == 1    = IF     i <$> insideCond i
+          | n == i    = ELSE     <$> insideCond i
+          | otherwise = ELSEIF i <$> insideCond i
+        insideCond i = do
+          let fifoOut inp = "__fifo__"
+                            ++ name
+                            ++ "__expr__"
+                            ++ show i
+                            ++ "__in__"
+                            ++ inp
+              fifoOutExpr = "__fifo__"
+                            ++ name
+                            ++ "__expr__"
+                            ++ show i
+                            ++ "__out"
+          putInputs' <- forM inps $ \(inp',t) -> do
+            let inp = getVal inp'
+            yn <- doesLogicalConnectionExist (fifoOut inp)
+            case yn of
+              False -> return Nothing
+              True  -> return $ Just $ PUT (fifoOut inp,t) inp
+          let putInputs = map just $ filter isJust putInputs'
+              getOutput = GET (fifoOutExpr, rType)
+              putOutput = PUTOUTPUT "out" fifoOutExpr
+          return $ putInputs ++ [getOutput,putOutput]
+    ifelses <- forM [1..n] (ifElseIfElse n)
+    return $ getInputs ++ putConds ++ getConds ++ [cond] ++ ifelses
 
 makeInstancesFromConst :: CompName -> (FCons, FType) -> TM ()
 makeInstancesFromConst compName (const, Nat _ _) = return ()
@@ -126,7 +188,7 @@ takeNats fexs = map toNat (takeWhile isNat fexs)
              
 makeSpecialInstance :: CompName -> (Name, [FType]) -> TMM ()
 makeSpecialInstance compName (s,ts) = do
-  id <- getIdForInstance compName s
+  id <- getIdForInstance compName (put_ s)
   let len = length $ takeWhile isNat ts
       isNat (Nat _ _) = True
       isNat _ = False
@@ -138,7 +200,6 @@ makeSpecialInstance compName (s,ts) = do
              , False)
   addInstance inst
   ret ()
-
 
 put_ "and" = "and_"
 put_ "or"  = "or_"
@@ -152,9 +213,17 @@ appendNats xs = (++"_") $ concat $ map (("_"++) . show. toInt) xs
 toInt (Nat _ i) = i
 
 connect :: TFunc -> TMM ()
-connect (comp, _, F inps fexpr ftype, arity) =
-  connectOutter fexpr
-  --go f [] insts
+connect (comp, _, F inps fguards ftype, arity) = case fguards of
+  
+  FGuards fguards -> do
+    m <- forM (zip [1..] fguards) $ \(i, (fcond, fexpr)) -> do
+      ma <- connectOutterCond "cond" i fcond
+      mb <- connectOutterCond "expr" i fexpr
+      cont [ma, mb] $ ret ()
+    cont m $ ret ()
+    
+  NoFGuards fexpr -> connectOutter fexpr
+  
   where
 
     getOut :: I -> Output
@@ -200,11 +269,11 @@ connect (comp, _, F inps fexpr ftype, arity) =
         FApp (L _ instName) args ftype -> do
           let nats = takeNats args
               pos = appendNats nats
-          minst <- getNextInstance comp (put_ (instName) ++ pos)
+          minst <- getNextInstance comp (put_ instName ++ pos)
           mayThrow minst (TErr
                           CouldntGetNextInstance
                           Nothing
-                          ("Couldn't get next instance for "
+                          ("16Couldn't get next instance for "
                            ++ instName)
                           NoLoc)
           cont1 minst $ \inst@(_,nid,ins,_) -> do
@@ -212,7 +281,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
                           ,(nid, getOut ins)
                           ,(NameId comp 1, ("out", ftype)))
             setInstanceUsed comp nid
-            mapM_ (connectInner inst) (zip (filter (not . isFExprNat) args) [0..])
+            mapM_ (connectInner fexp inst) (zip (filter (not . isFExprNat) args) [0..])
             ret ()
         FAExpr (FVar v@(L _ vs), t)
           | elem v (map fst inps) -> 
@@ -224,7 +293,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
               mayThrow minst (TErr
                               CouldntGetNextInstance
                               Nothing
-                              ("Couldn't get next instance for "
+                              ("17Couldn't get next instance for "
                                ++ vs)
                               NoLoc)
               cont1 minst $ \inst@(_,nid',ins',_) -> do
@@ -241,7 +310,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
           mayThrow minst (TErr
                           CouldntGetNextInstance
                           Nothing
-                          ("Couldn't get next instance for "
+                          ("18Couldn't get next instance for "
                            ++ instName)
                           NoLoc)
           cont1 minst $ \inst@(_,nid,ins,_) -> do
@@ -257,7 +326,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
           mayThrow minst (TErr
                           CouldntGetNextInstance
                           Nothing
-                          ("Couldn't get next instance for "
+                          ("19Couldn't get next instance for "
                            ++ instName)
                           NoLoc)
           cont1 minst $ \inst@(_,nid,ins,_) -> do
@@ -273,7 +342,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
           mayThrow minst (TErr
                           CouldntGetNextInstance
                           Nothing
-                          ("Couldn't get next instance for "
+                          ("20Couldn't get next instance for "
                            ++ instName)
                           NoLoc)
           cont1 minst $ \inst@(_,nid,ins,_) -> do
@@ -282,34 +351,36 @@ connect (comp, _, F inps fexpr ftype, arity) =
                           ,(NameId comp 1, ("out", t)))
             setInstanceUsed comp nid
 
-    connectInner :: TInst -> (FExpr,Int) -> TMM ()
-    connectInner inst@(_,nid,ins,_) (expr,n) = case expr of
+    connectInner :: FExpr -> TInst -> (FExpr,Int) -> TMM ()
+    connectInner fexpr inst@(_,nid,ins,_) (expr,n) = case expr of
       FApp (L _ instName) args' ftype -> do
-          minst <- getNextInstance comp instName
-          mayThrow minst (TErr
-                          CouldntGetNextInstance
-                          Nothing
-                          ("Couldn't get next instance for "
-                           ++ instName)
-                          NoLoc)
-          cont1 minst $ \inst'@(_,nid',ins',_) -> do
-            mayInp <- getInput n ins
-            cont1 mayInp $ \inp -> do
-              let fifoName = "__fifo__"
-                  t = snd inp
-              fifoId <- getIdForInstance comp fifoName
-              let fifo = FifoI ("in", t) ("out", t)
-                  fifoNId = NameId fifoName fifoId
-              addInstance (comp, fifoNId, fifo, True)
-              addConnection (comp
-                            ,(nid', getOut ins')
-                            ,(fifoNId, ("in", t)))
-              addConnection (comp
-                            ,(fifoNId, ("out", t))
-                            ,(nid, inp))
-              setInstanceUsed comp nid'
-              mapM_ (connectInner inst') (zip (filter (not . isFExprNat) args') [0..])
-              ret ()
+        let nats = takeNats args'
+            pos = appendNats nats
+        minst <- getNextInstance comp (put_ instName ++ pos)
+        mayThrow minst (TErr
+                        CouldntGetNextInstance
+                        Nothing
+                        ("1Couldn't get next instance for "
+                         ++ instName)
+                        NoLoc)
+        cont1 minst $ \inst'@(_,nid',ins',_) -> do
+          mayInp <- getInput n ins
+          cont1 mayInp $ \inp -> do
+            let fifoName = "__fifo__"
+                t = snd inp
+            fifoId <- getIdForInstance comp fifoName
+            let fifo = FifoI ("in", t) ("out", t)
+                fifoNId = NameId fifoName fifoId
+            addInstance (comp, fifoNId, fifo, True)
+            addConnection (comp
+                          ,(nid', getOut ins')
+                          ,(fifoNId, ("in", t)))
+            addConnection (comp
+                          ,(fifoNId, ("out", t))
+                          ,(nid, inp))
+            setInstanceUsed comp nid'
+            mapM_ (connectInner fexpr inst') (zip (filter (not . isFExprNat) args') [0..])
+            ret ()
               
       FAExpr (FVar v@(L _ vs), t)
         | elem v (map fst inps) -> do
@@ -320,7 +391,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
 
               True -> do
 
-                i <- getForkedIndex comp vs
+                i' <- getForkedIndex comp vs
 
                 let forkName = "__fork" ++ show c ++ "__"
                 forkId <- getIdForInstance comp forkName
@@ -328,20 +399,20 @@ connect (comp, _, F inps fexpr ftype, arity) =
                     fork     = ForkI c ("in", t) forkOuts
                     forkNId  = NameId forkName forkId
                     
-                when (i == 1) $ do
+                when (i' == 1) $ do
                   addConnection (comp
                                 ,(NameId comp 1, (vs,t))
                                 ,(forkNId, ("in",t)))
                   addInstance (comp, forkNId, fork, False)
 
-                when (i == c) $ do
+                when (i' == c) $ do
                   setInstanceUsed comp forkNId
                   return ()
                   
                 mayInp <- getInput n ins
                 cont1 mayInp $ \inp -> do
                   addConnection (comp
-                                ,(forkNId, forkOuts !! (i-1))
+                                ,(forkNId, forkOuts !! (i'-1))
                                 ,(nid, inp))
                   incrementForkedIndex comp vs
                   ret ()
@@ -360,7 +431,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
             mayThrow minst (TErr
                             CouldntGetNextInstance
                             Nothing
-                            ("Couldn't get next instance for "
+                            ("2Couldn't get next instance for "
                              ++ vs)
                             NoLoc)
             cont1 minst $ \inst@(_,nid',ins',_) -> do
@@ -379,7 +450,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
         mayThrow minst (TErr
                         CouldntGetNextInstance
                         Nothing
-                        ("Couldn't get next instance for "
+                        ("3Couldn't get next instance for "
                          ++ instName)
                         NoLoc)
         cont1 minst $ \inst@(_,nid',ins',_) -> do
@@ -397,7 +468,7 @@ connect (comp, _, F inps fexpr ftype, arity) =
         mayThrow minst (TErr
                         CouldntGetNextInstance
                         Nothing
-                        ("Couldn't get next instance for "
+                        ("4Couldn't get next instance for "
                          ++ instName)
                         NoLoc)
         cont1 minst $ \inst@(_,nid',ins',_) -> do
@@ -416,7 +487,307 @@ connect (comp, _, F inps fexpr ftype, arity) =
         mayThrow minst (TErr
                         CouldntGetNextInstance
                         Nothing
-                        ("Couldn't get next instance for "
+                        ("5Couldn't get next instance for "
+                         ++ instName)
+                        NoLoc)
+        cont1 minst $ \inst@(_,nid',ins',_) -> do
+          mayInp <- getInput n ins
+          cont1 mayInp $ \inp -> do
+            addConnection (comp
+                          ,(nid', getOut ins')
+                          ,(nid, inp))
+            setInstanceUsed comp nid'
+            ret ()
+
+    connectOutterCond :: String -> Int -> FExpr -> TMM ()
+    connectOutterCond txt i fexpr = do
+      let fifoName = "__fifo__"
+                     ++ comp
+                     ++ "__" ++ txt ++"__"
+                     ++ show i
+                     ++ "__out"
+          t = getTypeFromFExpr fexpr --Bit NoLoc
+          fifo = FifoI ("in", t) ("out", t)
+          fifoNId = NameId fifoName 1
+      addInstance (comp, fifoNId, fifo, True)
+      case fexpr of
+        FApp (L _ instName) args ftype -> do
+          let nats = takeNats args
+              pos = appendNats nats
+          minst <- getNextInstance comp (put_ instName ++ pos)
+          mayThrow minst (TErr
+                          CouldntGetNextInstance
+                          Nothing
+                          ("6Couldn't get next instance for "
+                           ++ instName)
+                          NoLoc)
+          cont1 minst $ \inst@(_,nid,ins,_) -> do
+            addConnection (comp
+                          ,(nid, getOut ins)
+                          ,(fifoNId, ("in", t)))
+            setInstanceUsed comp nid
+            mapM_ (connectInnerCond txt i fexpr inst) (zip (filter (not . isFExprNat) args) [0..])
+            ret ()
+        FAExpr (FVar v@(L _ vs), t')
+          | elem v (map fst inps) -> do
+              let fifoName' = "__fifo__"
+                             ++ comp
+                             ++ "__" ++ txt ++ "__"
+                             ++ show i
+                             ++ "__in__"
+                             ++ vs
+                  fifo' = FifoI ("in", t') ("out", t')
+                  fifoNId' = NameId fifoName' 1
+              ----------
+              let newInst = (comp, fifoNId', fifo', True)
+              isIt <- isInstanceAdded newInst
+              case isIt of
+                True -> ok
+                False -> do
+                  addInstance (comp, fifoNId', fifo', True)
+              addLogicalConnection fifoName'
+              ----------                                   
+              addConnection (comp
+                            ,(fifoNId', ("out",t'))
+                            ,(fifoNId, ("in",t)))
+              ret ()
+          | otherwise -> do
+              minst <- getNextInstance comp vs
+              mayThrow minst (TErr
+                              CouldntGetNextInstance
+                              Nothing
+                              ("7Couldn't get next instance for "
+                               ++ vs)
+                              NoLoc)
+              cont1 minst $ \inst@(_,nid',ins',_) -> do
+                addConnection (comp
+                              ,(nid', getOut ins')
+                              ,(fifoNId, ("in", t)))
+                setInstanceUsed comp nid'
+                ret ()
+            
+        FAExpr (FCons (FBin (L _ c)), Nat _ _) -> mok
+        FAExpr (FCons (FBin (L _ c)), t) -> do
+          let instName = "const_bin_" ++ c
+          minst <- getNextInstance comp instName
+          mayThrow minst (TErr
+                          CouldntGetNextInstance
+                          Nothing
+                          ("8Couldn't get next instance for "
+                           ++ instName)
+                          NoLoc)
+          cont1 minst $ \inst@(_,nid,ins,_) -> do
+            addConnection (comp
+                          ,(nid, getOut ins)
+                          ,(fifoNId, ("in", t)))
+            setInstanceUsed comp nid
+
+        FAExpr (FCons (FHex (L _ c)), Nat _ _) -> mok
+        FAExpr (FCons (FHex (L _ c)), t) -> do
+          let instName = "const_hex_" ++ c
+          minst <- getNextInstance comp instName
+          mayThrow minst (TErr
+                          CouldntGetNextInstance
+                          Nothing
+                          ("9Couldn't get next instance for "
+                           ++ instName)
+                          NoLoc)
+          cont1 minst $ \inst@(_,nid,ins,_) -> do
+            addConnection (comp
+                          ,(nid, getOut ins)
+                          ,(fifoNId, ("in", t)))
+            setInstanceUsed comp nid
+
+        FAExpr (FCons (FDec (L _ c)), Nat _ _) -> mok
+        FAExpr (FCons (FDec (L _ c)), t) -> do
+          let instName = "const_dec_" ++ show c
+          minst <- getNextInstance comp instName
+          mayThrow minst (TErr
+                          CouldntGetNextInstance
+                          Nothing
+                          ("10Couldn't get next instance for "
+                           ++ instName)
+                          NoLoc)
+          cont1 minst $ \inst@(_,nid,ins,_) -> do
+            addConnection (comp
+                          ,(nid, getOut ins)
+                          ,(fifoNId, ("in", t)))
+            setInstanceUsed comp nid
+            
+    connectInnerCond
+      :: String -> Int -> FExpr -> TInst -> (FExpr,Int) -> TMM ()
+    connectInnerCond
+      txt i fexpr inst@(_,nid,ins,_) (expr,n) = case expr of
+      FApp (L _ instName) args' ftype -> do
+        let nats = takeNats args'
+            pos = appendNats nats
+        minst <- getNextInstance comp (put_ instName ++ pos)
+        mayThrow minst (TErr
+                        CouldntGetNextInstance
+                        Nothing
+                        ("11Couldn't get next instance for "
+                         ++ instName)
+                        NoLoc)
+        cont1 minst $ \inst'@(_,nid',ins',_) -> do
+          mayInp <- getInput n ins
+          cont1 mayInp $ \inp -> do
+            let fifoName = "__fifo__"
+                t = snd inp
+            fifoId <- getIdForInstance comp fifoName
+            let fifo = FifoI ("in", t) ("out", t)
+                fifoNId = NameId fifoName fifoId
+            addInstance (comp, fifoNId, fifo, True)
+            addConnection (comp
+                          ,(nid', getOut ins')
+                          ,(fifoNId, ("in", t)))
+            addConnection (comp
+                          ,(fifoNId, ("out", t))
+                          ,(nid, inp))
+            setInstanceUsed comp nid'
+            mapM_ (connectInnerCond txt i fexpr inst') (zip (filter (not . isFExprNat) args') [0..])
+            ret ()
+              
+      FAExpr (FVar v@(L _ vs), t)
+        | elem v (map fst inps) -> do
+
+            let c = count v (getInputsInBody inps fexpr)
+
+            case c > 1 of
+
+              True -> do
+
+                i' <- getForkedIndex comp vs
+
+                let forkName = "__fork" ++ show c ++ "__"
+                forkId <- getIdForInstance comp forkName
+                let forkOuts = map ((\x -> (x,t)) . ("out"++) . show) [1..c]
+                    fork     = ForkI c ("in", t) forkOuts
+                    forkNId  = NameId forkName forkId
+                    
+                when (i' == 1) $ do
+
+                  let fifoName' = "__fifo__"
+                                ++ comp
+                                ++ "__" ++ txt ++ "__"
+                                ++ show i
+                                ++ "__in__"
+                                ++ vs
+                      fifo' = FifoI ("in", t) ("out", t)
+                      fifoNId' = NameId fifoName' 1
+                  -----------
+                  let newInst = (comp, fifoNId', fifo', True)
+                  isIt <- isInstanceAdded newInst
+                  case isIt of
+                    True -> ok
+                    False -> do
+                      addInstance (comp, fifoNId', fifo', True)
+                  addLogicalConnection fifoName'
+                  -----------
+                  addConnection (comp
+                                ,(fifoNId', ("out",t))
+                                ,(forkNId, ("in",t)))
+                  addInstance (comp, forkNId, fork, False)
+
+                when (i' == c) $ do
+                  setInstanceUsed comp forkNId
+                  return ()
+                  
+                mayInp <- getInput n ins
+                cont1 mayInp $ \inp -> do
+                  addConnection (comp
+                                ,(forkNId, forkOuts !! (i'-1))
+                                ,(nid, inp))
+                  incrementForkedIndex comp vs
+                  ret ()
+                
+              False -> do
+
+                let fifoName' = "__fifo__"
+                                ++ comp
+                                ++ "__" ++ txt ++ "__"
+                                ++ show i
+                                ++ "__in__"
+                                ++ vs
+                    fifo' = FifoI ("in", t) ("out", t)
+                    fifoNId' = NameId fifoName' 1
+                mayInp <- getInput n ins
+                cont1 mayInp $ \inp -> do
+                  -----------
+                  let newInst = (comp, fifoNId', fifo', True)
+                  isIt <- isInstanceAdded newInst
+                  case isIt of
+                    True -> ok
+                    False -> do
+                      addInstance (comp, fifoNId', fifo', True)
+                  addLogicalConnection fifoName'
+                  -----------
+                  addConnection (comp
+                                ,(fifoNId', ("out",t))
+                                ,(nid, inp))
+                  ret ()
+                
+        | otherwise -> do
+            minst <- getNextInstance comp vs
+            mayThrow minst (TErr
+                            CouldntGetNextInstance
+                            Nothing
+                            ("12Couldn't get next instance for "
+                             ++ vs)
+                            NoLoc)
+            cont1 minst $ \inst@(_,nid',ins',_) -> do
+              mayInp <- getInput n ins
+              cont1 mayInp $ \inp -> do
+                addConnection (comp
+                              ,(nid', getOut ins')
+                              ,(nid, inp))
+                setInstanceUsed comp nid'
+              ret ()
+            
+      FAExpr (FCons (FBin (L _ c)), Nat _ _) -> mok
+      FAExpr (FCons (FBin (L _ c)), t) -> do
+        let instName = "const_bin_" ++ c
+        minst <- getNextInstance comp instName
+        mayThrow minst (TErr
+                        CouldntGetNextInstance
+                        Nothing
+                        ("13Couldn't get next instance for "
+                         ++ instName)
+                        NoLoc)
+        cont1 minst $ \inst@(_,nid',ins',_) -> do
+          mayInp <- getInput n ins
+          cont1 mayInp $ \inp -> do
+            addConnection (comp
+                          ,(nid', getOut ins')
+                          ,(nid, inp))
+            setInstanceUsed comp nid'
+            ret ()
+      FAExpr (FCons (FHex (L _ c)), Nat _ _) -> mok
+      FAExpr (FCons (FHex (L _ c)), t) -> do
+        let instName = "const_hex_" ++ c
+        minst <- getNextInstance comp instName
+        mayThrow minst (TErr
+                        CouldntGetNextInstance
+                        Nothing
+                        ("14Couldn't get next instance for "
+                         ++ instName)
+                        NoLoc)
+        cont1 minst $ \inst@(_,nid',ins',_) -> do
+          mayInp <- getInput n ins
+          cont1 mayInp $ \inp -> do
+            addConnection (comp
+                          ,(nid', getOut ins')
+                          ,(nid, inp))
+            setInstanceUsed comp nid'
+            ret ()
+
+      FAExpr (FCons (FDec (L _ c)), Nat _ _) -> mok
+      FAExpr (FCons (FDec (L _ c)), t) -> do
+        let instName = "const_dec_" ++ show c
+        minst <- getNextInstance comp instName
+        mayThrow minst (TErr
+                        CouldntGetNextInstance
+                        Nothing
+                        ("15Couldn't get next instance for "
                          ++ instName)
                         NoLoc)
         cont1 minst $ \inst@(_,nid',ins',_) -> do
@@ -441,13 +812,20 @@ getTypeFromFExpr (FApp _ _ t) = t
 getTypeFromFExpr (FAExpr (_, t)) = t
 
 getVariablesFromF :: F -> [(Name, [FType])]
-getVariablesFromF (F fvars expr ftype) = go expr
-  where go (FApp (L _ n) es t) = [(n, map getTypeFromFExpr es ++ [t])] ++ concat (map go es)
+getVariablesFromF (F fvars fguards ftype) = case fguards of
+  NoFGuards expr -> go expr
+  FGuards condsExprs
+    -> concat $ map (\(a,b) -> go a ++ go b) condsExprs
+  where go (FApp (L _ n) es t) =
+          [(n, map getTypeFromFExpr es ++ [t])] ++ concat (map go es)
         go (FAExpr (FVar x, t)) = [(getVal x, [t])]
         go (FAExpr _) = []
 
 getConstantsFromF :: F -> [(FCons, FType)]
-getConstantsFromF (F fvars expr ftype) = go expr
+getConstantsFromF (F fvars fguards ftype) = case fguards of
+  NoFGuards expr -> go expr
+  FGuards condsExprs
+    -> concat $ map (\(a,b) -> go a ++ go b) condsExprs
   where go (FApp _ es t) = concat (map go es)
         go (FAExpr (FCons c, t)) = [(c, t)]
         go (FAExpr _) = []

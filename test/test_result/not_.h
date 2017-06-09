@@ -3,7 +3,7 @@
 #include "systemc.h"
 SC_MODULE(not_) {
 sc_fifo_in<sc_lv<32> > in1;
-sc_fifo_out<sc_lv<8> > out;
+sc_fifo_out<sc_lv<32> > out;
 
 
 void proc();

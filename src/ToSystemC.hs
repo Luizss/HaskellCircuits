@@ -96,7 +96,7 @@ toSystemC tbs = do
     ret ()
 
 componentToSystemC :: TComp -> TMM ()
-componentToSystemC (name, C f insts inps out conns _proc) = do
+componentToSystemC (name, C f insts inps out conns proced) = do
   msc <- sconnections conns
   cont1 msc $ \sc -> do
     addSystemCFile (changeIfMain name ++ ".h", content sc)
@@ -113,13 +113,14 @@ componentToSystemC (name, C f insts inps out conns _proc) = do
       , outputs [out]
       , intermediarySignals conns
       , instanceDeclaration insts
-      , processDeclaration _proc
+      , procedureSignals proced
+      , processDeclaration proced
       , scCtor name insts
       , ""
       , cs
-      , scThread _proc
+      , scThread proced
       , closingBraces
-      , voidProc name _proc
+      , procedureToSystemC name proced
       , endif
       ]
 
@@ -217,7 +218,7 @@ intermediarySignals = unlines . filter (/="") . nub . map intSig
                          ++ interSignal m1 id1 p1 m2 id2 p2
                          ++ ";"
           where isInOrOut x = x == comp'
-                isFifo    x = x == "__fifo__"
+                isFifo    x = isPrefixOf "__fifo__" x
                 comp' = changeIfMain comp
 
 interSignal m1 id1 p1 m2 id2 p2 =
@@ -225,15 +226,17 @@ interSignal m1 id1 p1 m2 id2 p2 =
   
 instanceDeclaration :: [TInst] -> String
 instanceDeclaration
-  = unlines . map declInst
+  = unlines . filter (/="") . map declInst
   where
     declInst :: TInst -> String
     declInst (_,NameId name id,inst,_) = case inst of
-      FifoI _ (_,t)   -> makeTypeSignal t ++ " __fifo__" ++ (show id) ++ ";"
+      FifoI _ (_,t)
+        | name == "__fifo__" -> makeTypeSignal t ++ " " ++ name ++ show id ++ ";"
+        | otherwise   -> ""
       _               -> name ++ " " ++ name ++ (show id) ++ ";"
 
-processDeclaration EndProc = ""
-processDeclaration _ = "void proc();"
+processDeclaration [] = ""
+processDeclaration _  = "void proc();"
 
 scCtor :: Name -> [TInst] -> String
 scCtor name insts
@@ -255,7 +258,7 @@ sconnections conns = do
     ret (unlines txts)
   where
     connToString :: TConn -> TMM String
-    connToString (comp,(NameId m1 id1,(p1,_)),(NameId m2 id2,(p2,_)))
+    connToString a@(comp,(NameId m1 id1,(p1,_)),(NameId m2 id2,(p2,_)))
       | (isInOrOut m1 || isFifo m1)
         && (isInOrOut m2 || isFifo m2) =
           throw (TErr
@@ -264,7 +267,7 @@ sconnections conns = do
                  ("Impossible connection between "
                   ++ m1 ++ (show id1)
                   ++ " and "
-                  ++ m2 ++ (show id2))
+                  ++ m2 ++ (show id2) ++ "::::: " ++ show a)
                  NoLoc) >> noRet
       | isInOrOut m1 =
           ret $ m2++(show id2) ++ "." ++ p2 ++ "(" ++ p1 ++ ");"
@@ -274,6 +277,10 @@ sconnections conns = do
           ret $ m2++(show id2) ++ "." ++ p2 ++ "(" ++ m1++(show id1) ++ ");"
       | isFifo m2 =
           ret $ m1++(show id1) ++ "." ++ p1 ++ "(" ++ m2++(show id2) ++ ");"
+      | isFifoC m1 =
+          ret $ m2++(show id2) ++ "." ++ p2 ++ "(" ++ m1 ++ ");"
+      | isFifoC m2 =
+          ret $ m1++(show id1) ++ "." ++ p1 ++ "(" ++ m2 ++ ");"
       | otherwise =
           let sig = interSignal m1 id1 p1 m2 id2 p2 
           in ret $ unlines [
@@ -281,18 +288,67 @@ sconnections conns = do
             ,m2++(show id2) ++ "." ++ p2 ++ "(" ++ sig ++ ");"
             ]
       where isInOrOut x = x == comp
+            isFifoC   x = isPrefixOf "__fifo__" x
             isFifo    x = x == "__fifo__"
             comp' = changeIfMain comp
 
 changeIfMain :: Name -> Name            
 changeIfMain name = if name == "main" then "mainFunc" else name
     
-scThread EndProc = ""
-scThread _ = ""
+scThread [] = ""
+scThread _ = "SC_THREAD(proc);"
 
 closingBraces = "}\n};"
+ 
+procedureToSystemC name [] = ""
+procedureToSystemC name p
+  = unlines ["void " ++ changeIfMain name ++ "::proc() {"
+            ,"while(true) {"
+            , unlines (map procedureUnitToSystemC p)
+            ,"}"
+            ,"}"]
 
-voidProc name process = ""
+  where 
+
+    procedureUnitToSystemC :: ProcUnit -> String
+    procedureUnitToSystemC p = case p of
+      GETINPUT (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
+      PUTOUTPUT y x -> y ++ ".write(" ++ x ++ "__aux);"
+      GET (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
+      PUT (y,_) x -> y ++ ".write(" ++ x ++ "__aux);"
+      COND m n
+        -> "cond = (" ++ (intercalate ", " (map
+                                     (\i -> "__fifo__"
+                                       ++ name
+                                       ++ "__cond__"
+                                       ++ show i
+                                       ++ "__out__aux")
+                                     [1..m])
+                  ) ++ ");"
+      IF n qs -> "if (cond[" ++ show n ++ "]==1) {\n"
+                 ++ unlines (map procedureUnitToSystemC qs) ++ "\n"
+      ELSEIF n qs -> "} else if (cond[" ++ show n ++ "]==1) {\n"
+                     ++ unlines (map procedureUnitToSystemC qs) ++ "\n"
+      ELSE qs -> "} else {\n"
+                 ++ unlines (map procedureUnitToSystemC qs) ++ "\n"
+                 ++ "}"
+
+procedureSignals :: Proc -> String
+procedureSignals p = unlines $ filter (/="") $ concat $ map procedureSignal p
+  where 
+    procedureSignal :: ProcUnit -> [String]
+    procedureSignal p = case p of
+      GETINPUT (x,t) -> [makeTypePure t ++ " " ++ x ++ "__aux;"]
+      PUTOUTPUT _ _ -> []
+      GET (x,t)   -> [makeTypePure t ++ " " ++ x ++ "__aux;"
+                     ,makeTypeSignal t ++ " " ++ x ++ ";"]
+      PUT (y,t) x
+        | y == "out" -> []
+        | otherwise  -> [makeTypeSignal t ++ " " ++ y ++ ";"]
+      COND m _    -> ["sc_lv<" ++ show m ++ "> cond;"]
+      IF _ qs     -> concat (map procedureSignal qs)
+      ELSEIF _ qs -> concat (map procedureSignal qs)
+      ELSE qs     -> concat (map procedureSignal qs)
 
 makeForkFile :: NameId -> Int -> Input -> [Output] -> File
 makeForkFile (NameId name id) n (_,t) outs =
@@ -302,7 +358,7 @@ makeForkFile (NameId name id) n (_,t) outs =
           = ifndef name
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
-          ++ makeTypePure t ++ " in_aux;\n"
+          ++ makeTypePure t ++ " in__aux;\n"
           ++ makeTypeInput t ++ " in;\n"
           ++ (unlines
               (map (\(o,t) -> makeTypeOutput t ++ " " ++ o ++";") outs))
@@ -313,9 +369,9 @@ makeForkFile (NameId name id) n (_,t) outs =
           ++ "};\n\n"
           ++ "void " ++ c ++ "::proc() {\n"
           ++ "while(true) {\n"
-          ++ "in_aux = in.read();\n"
+          ++ "in__aux = in.read();\n"
           ++ (unlines
-              (map (\(o,_) -> o ++".write(in_aux);") outs))
+              (map (\(o,_) -> o ++".write(in__aux);") outs))
           ++ "}\n"
           ++ "}\n"
           ++ endif

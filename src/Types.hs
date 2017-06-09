@@ -18,8 +18,11 @@ data FType = BitVec SrcLoc Int
            | Bit SrcLoc
            | Nat SrcLoc Int
            deriving (Show,Eq)
-           
-data F = F [(FVar, FType)] FExpr FType
+
+data FGuards = FGuards [(FExpr,FExpr)]
+             | NoFGuards FExpr
+             deriving (Show,Eq)
+data F = F [(FVar, FType)] FGuards FType
        | SpecialF
        deriving (Show,Eq)
 
@@ -117,6 +120,7 @@ data TState =
   , components :: [TComp]
   , instances :: [TInst]
   , connections :: [TConn]
+  , logicalConnections :: [Name]
   , systemC :: SystemC
   , timesForked :: [(CompName, String, Int)]
   } deriving Show
@@ -132,6 +136,7 @@ initialTState = TState {
   , components = []
   , instances = []
   , connections = []
+  , logicalConnections = []
   , systemC = []
   , timesForked = []
   }
@@ -147,19 +152,26 @@ type Output = (String, FType)
 type Signal = (String, FType) -- input or output
 
 type TConn = (CompName,(NameId,Signal),(NameId,Signal))
-data Proc = Get String Proc
-          | Put String String Proc
-          | EndProc
-          deriving Show
+type Proc = [ProcUnit]
+
+data ProcUnit = GETINPUT (String, FType)
+              | PUTOUTPUT String String
+              | GET (String, FType)
+              | PUT (String, FType) String
+              | COND Int String
+              | IF Int Proc
+              | ELSEIF Int Proc
+              | ELSE Proc
+              deriving (Show, Eq)
 
 data I = I [Input] Output
        | ConstBinI String Output
        | ConstHexI String Output
        | ConstDecI Int Output
-       | SpecialI [Input] Output [Int]                                     
+       | SpecialI [Input] Output [Int]
        | FifoI Input Output
        | ForkI Int Input [Output]
-       deriving Show
+       deriving (Show, Eq)
 
 data C = C F [TInst] [Input] Output [TConn] Proc
        deriving Show

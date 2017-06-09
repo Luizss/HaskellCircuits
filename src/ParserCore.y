@@ -22,7 +22,8 @@ import Control.Monad.State (StateT(..), evalStateT)
   '='    { L _ Equal }
 
   ':'    { L _ Colon }
-
+  '|'    { L _ Pipe  }
+  
   VARID  { L _ (Low _) }
   CONID  { L _ (Upp _) }
 
@@ -45,7 +46,14 @@ decls : decls ';' decl { $3 : $1  }
 
 decl : function_decl { $1 }
 
-function_decl : VARID varsAndTypes ':' typeExpr '=' expr { Func $1 (r $2) $6 $4 }
+function_decl : VARID varsAndTypes ':' typeExpr function_expr { Func $1 (r $2) $5 $4 }
+
+function_expr : '=' expr   { NoGuards $2 }
+              | '|' guards { Guards (r $2) }
+guards : guards '|' guard { $3 : $1  }
+       | guards '|'       { $1 }
+       | guard            { [$1] }
+guard : expr '=' expr { ($1, $3) }
 
 varAndType : '(' VARID ':' typeExpr ')'   { ($2, $4) }
 binAndType : '(' BIN ':' typeExpr ')'     { ($2, $4) }
@@ -90,8 +98,11 @@ data PState = NoState deriving Show
 -- 'Either String a' pode ser substituido por 'ParseResult a'
 type P a = StateT PState (Either String) a
 
+data Guards = NoGuards Expr
+            | Guards [(Expr,Expr)]
+            deriving Show
 data Program = Program [Func] deriving Show
-data Func = Func LToken [(LToken, TypeExpr)] Expr TypeExpr deriving Show
+data Func = Func LToken [(LToken, TypeExpr)] Guards TypeExpr deriving Show
 data Expr = App LToken [Expr] TypeExpr
           | AExpr (LToken, TypeExpr)
           deriving Show
