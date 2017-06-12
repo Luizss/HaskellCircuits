@@ -37,7 +37,7 @@ import Control.Monad.State (StateT(..), evalStateT)
 %left '*' '/'
 %%
 
-program : decls { Program (r $1) }
+program : decls { PResult (r $1) }
 
 decls : decls ';' decl { $3 : $1  }
       | decls ';'      { $1 }
@@ -46,10 +46,10 @@ decls : decls ';' decl { $3 : $1  }
 
 decl : function_decl { $1 }
 
-function_decl : VARID varsAndTypes ':' typeExpr function_expr { Func $1 (r $2) $5 $4 }
+function_decl : VARID varsAndTypes ':' typeExpr function_expr { PFunc $1 (r $2) $5 $4 }
 
-function_expr : '=' expr   { NoGuards $2 }
-              | '|' guards { Guards (r $2) }
+function_expr : '=' expr   { PNoGuards $2 }
+              | '|' guards { PGuards (r $2) }
 guards : guards '|' guard { $3 : $1  }
        | guards '|'       { $1 }
        | guard            { [$1] }
@@ -68,19 +68,19 @@ exprs : exprs expr    { $2 : $1 }
       | expr          { [$1] }
       | {- empty -}   { [] }
 
-expr : VARID exprs ':' typeExpr { App $1 (r $2) $4 }
+expr : VARID exprs ':' typeExpr { PApp $1 (r $2) $4 }
      | aexpr { $1 }
-aexpr : varAndType   { AExpr $1 }
-      | binAndType   { AExpr $1 }
-      | hexAndType   { AExpr $1 }
-      | decAndType   { AExpr $1 }
+aexpr : varAndType   { PAExpr $1 }
+      | binAndType   { PAExpr $1 }
+      | hexAndType   { PAExpr $1 }
+      | decAndType   { PAExpr $1 }
       | '(' expr ')' { $2 }
 
-typeExpr : typeExpr aType { TApp $1 $2 } 
+typeExpr : typeExpr aType { PTApp $1 $2 } 
          | aType          { $1 }
-aType : VARID   { TAExpr $1 }
-      | CONID   { TAExpr $1 }
-      | DEC     { TAExpr $1 }
+aType : VARID   { PTAExpr $1 }
+      | CONID   { PTAExpr $1 }
+      | DEC     { PTAExpr $1 }
        
 {
 
@@ -90,39 +90,40 @@ instance Eq a => Eq (L a) where
 instance Ord a => Ord (L a) where
   compare (L _ x) (L _ y) = compare x y
 
-data TypeExpr = TApp TypeExpr TypeExpr
-              | TAExpr LToken
-              deriving (Show, Eq)
+data PTypeExpr = PTApp PTypeExpr PTypeExpr
+               | PTAExpr LToken
+               deriving (Show, Eq)
 
 data PState = NoState deriving Show
 -- 'Either String a' pode ser substituido por 'ParseResult a'
 type P a = StateT PState (Either String) a
 
-data Guards = NoGuards Expr
-            | Guards [(Expr,Expr)]
-            deriving Show
-data Program = Program [Func] deriving Show
-data Func = Func LToken [(LToken, TypeExpr)] Guards TypeExpr deriving Show
-data Expr = App LToken [Expr] TypeExpr
-          | AExpr (LToken, TypeExpr)
-          deriving Show
+data PGuards = PNoGuards PExpr
+             | PGuards [(PExpr,PExpr)]
+             deriving Show
+data PResult = PResult [PFunc] deriving Show
+data PFunc = PFunc LToken [(LToken, PTypeExpr)] PGuards PTypeExpr
+           deriving Show
+data PExpr = PApp LToken [PExpr] PTypeExpr
+           | PAExpr (LToken, PTypeExpr)
+           deriving Show
 
 ------------- Top level 'parse' function
 
 r :: [a] -> [a]
 r = reverse
 
-runPWithoutError :: ([LToken] -> P Program) -> [LToken] -> Either String Program
+runPWithoutError :: ([LToken] -> P PResult) -> [LToken] -> Either String PResult
 runPWithoutError p inp = evalStateT (p inp) initialState
   where initialState = NoState
 
-runP :: ([LToken] -> P Program) -> [LToken] -> Program
+runP :: ([LToken] -> P PResult) -> [LToken] -> PResult
 runP p = catchEither . runPWithoutError p
 
-parse :: [LToken] -> Program
+parse :: [LToken] -> PResult
 parse = runP programParser
 
-parse' :: [LToken] -> Either String Program
+parse' :: [LToken] -> Either String PResult
 parse' = runPWithoutError programParser
 
 parseError :: [LToken] -> P a

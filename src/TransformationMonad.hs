@@ -25,13 +25,13 @@ outTM tm = evalState tm initialTState
 --- Useful functions
 
 -- getting stage
-getStage :: TM Stage
+getStage :: TM TStage
 getStage = do
   state <- get
   return (actualStage state)
 
 -- setting stage
-newStage :: Stage -> TM ()
+newStage :: TStage -> TM ()
 newStage stg = do
   state <- get
   put (state { actualStage = stg })
@@ -128,16 +128,16 @@ putSourceCode s = do
   put (state { sourceCode = s })
 
 -- start function: put program that comes from parser
-putProgram :: Program -> TM ()
-putProgram p = do
+putParsedResult :: PResult -> TM ()
+putParsedResult p = do
   state <- get
-  put (state { program = p })
+  put (state { parsedResult = p })
 
--- getting the program
-getProgram :: TM Program
-getProgram = do
+-- getting the parsedResult
+getParsedResult :: TM PResult
+getParsedResult = do
   st <- get
-  return (program st)
+  return (parsedResult st)
 
 addFunc :: TFunc -> TM ()
 addFunc x = do
@@ -167,7 +167,7 @@ putComponents comps = do
 searchFunction :: Name -> TMM TFunc
 searchFunction name = do
   fs <- getFunctions
-  return (find (\(n,_,_,_) -> n == name) fs)
+  return (find (\(n,_,_,_,_) -> n == name) fs)
 
 searchComponent :: Name -> TMM TComp
 searchComponent name = do
@@ -281,13 +281,13 @@ getNextInstance comp name = do
           (if id1 < id2 then id1 else id2, False)
     getUniqueInstance comp (NameId name id)
 
-getConnections :: CompName -> TM [TConn]
+getConnections :: CompName -> TM [CConn]
 getConnections compname = do
   cs <- connections <$> get
   let isCompName (cname,_,_) = cname == compname 
   return (filter isCompName cs)
 
-addConnection :: TConn -> TM ()
+addConnection :: CConn -> TM ()
 addConnection conn = do
   st <- get
   put (st { connections =  conn : connections st })

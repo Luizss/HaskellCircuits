@@ -1,5 +1,9 @@
-main (x : Vec 32) (y : Vec 32) : Vec 32
-  | equ (x : Vec 32) (y: Vec 32) : Bit = add (x : Vec 32) (y : Vec 32) : Vec 32
-  | (1 : Bit) = and (x : Vec 32) (g (y : Vec 32) : Vec 32) : Vec 32
+main (n : Vec 32) : Vec 32 = fac (n : Vec 32) (0x1 : Vec 32) : Vec 32
 
-g (x : Vec 32) : Vec 32 = not (x : Vec 32) : Vec 32
+fac (n : Vec 32) (a : Vec 32) : Vec 32
+  | equ (n : Vec 32) (0 : Vec 32) : Bit
+      = add (a : Vec 32) (0 : Vec 32) : Vec 32
+  | equ (n : Vec 32) (3 : Vec 32) : Bit
+      = mul (6 : Vec 32) (a : Vec 32) : Vec 32
+  | (1 : Bit)
+      = fac (sub (n : Vec 32) (0b1 : Vec 32) : Vec 32) (mul (n : Vec 32) (a : Vec 32) : Vec 32) : Vec 32

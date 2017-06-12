@@ -65,7 +65,7 @@ topLevel lst (_, C _ _ inps out _ _) = do
           ++ fillFifos inps lst ++ "\n\n"
           ++ "}"
 
-        fillFifos :: [Input] -> [[Int]] -> String
+        fillFifos :: [CInput] -> [[Int]] -> String
         fillFifos inps tbs
           | length inps /= length tbs
              = error "Testbench does not match number of inputs of main function (" ++ show (length inps) ++ ")"
@@ -101,6 +101,9 @@ componentToSystemC (name, C f insts inps out conns proced) = do
   cont1 msc $ \sc -> do
     addSystemCFile (changeIfMain name ++ ".h", content sc)
     mapM_ instanceFromFile insts
+    debug "sigs"
+    debugs proced
+    debug (procedureSignals proced)
     ret ()
   where
     content cs = unlines
@@ -171,7 +174,7 @@ includeInstances =
 scModule :: Name -> String
 scModule name = "SC_MODULE(" ++ changeIfMain name ++ ") {"
 
-inputs :: [Input] -> String
+inputs :: [CInput] -> String
 inputs = unlines . map makeInput
   where 
     makeInput (inputName, t) = makeTypeInput t ++ " " ++ inputName ++ ";"
@@ -200,15 +203,15 @@ makeTypeOutput ty = case ty of
   Bit    l   -> "sc_fifo_out<sc_lv<1> >"
   Nat    l n -> error $ "nat?4 " ++ show l ++ " : " ++ show n
 
-outputs :: [Output] -> String
+outputs :: [COutput] -> String
 outputs = unlines . map makeOutput
   where
     makeOutput (outputName, t)
       = makeTypeOutput t ++ " " ++ outputName ++ ";"
 
-intermediarySignals :: [TConn] -> String
+intermediarySignals :: [CConn] -> String
 intermediarySignals = unlines . filter (/="") . nub . map intSig
-  where intSig :: TConn -> String
+  where intSig :: CConn -> String
         intSig (comp, (NameId m1 id1, (p1,t)), (NameId m2 id2, (p2,_)))
           | isInOrOut m1 ||
             isFifo m1    ||
@@ -250,14 +253,14 @@ scCtor name insts
           FifoI _ _ -> ""
           _         -> n ++ (show id) ++ "(\"" ++ n ++ (show id) ++ "\")"
 
-sconnections :: [TConn] -> TMM String
+sconnections :: [CConn] -> TMM String
 sconnections conns = do
   maybeTxts <- mapM connToString conns
   cont maybeTxts $ do
     let txts = map just maybeTxts
     ret (unlines txts)
   where
-    connToString :: TConn -> TMM String
+    connToString :: CConn -> TMM String
     connToString a@(comp,(NameId m1 id1,(p1,_)),(NameId m2 id2,(p2,_)))
       | (isInOrOut m1 || isFifo m1)
         && (isInOrOut m2 || isFifo m2) =
@@ -310,20 +313,23 @@ procedureToSystemC name p
 
   where 
 
-    procedureUnitToSystemC :: ProcUnit -> String
+    procedureUnitToSystemC :: CProcUnit -> String
     procedureUnitToSystemC p = case p of
+      PUTSTATE x f -> x ++ "__aux = " ++ f ++ "__aux;"
       GETINPUT (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
       PUTOUTPUT y x -> y ++ ".write(" ++ x ++ "__aux);"
+      LOOP qs -> "while (true) {\n" ++ unlines (map procedureUnitToSystemC qs) ++ "\n}"
+      BREAK -> "break;"
       GET (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
       PUT (y,_) x -> y ++ ".write(" ++ x ++ "__aux);"
       COND m n
-        -> "cond = (" ++ (intercalate ", " (map
+        -> "cond = (" ++ (intercalate ", " (reverse (map
                                      (\i -> "__fifo__"
                                        ++ name
                                        ++ "__cond__"
                                        ++ show i
                                        ++ "__out__aux")
-                                     [1..m])
+                                     [1..m]))
                   ) ++ ");"
       IF n qs -> "if (cond[" ++ show n ++ "]==1) {\n"
                  ++ unlines (map procedureUnitToSystemC qs) ++ "\n"
@@ -333,11 +339,14 @@ procedureToSystemC name p
                  ++ unlines (map procedureUnitToSystemC qs) ++ "\n"
                  ++ "}"
 
-procedureSignals :: Proc -> String
-procedureSignals p = unlines $ filter (/="") $ concat $ map procedureSignal p
+procedureSignals :: CProc -> String
+procedureSignals = unlines . filter (/="") . concat . map procedureSignal
   where 
-    procedureSignal :: ProcUnit -> [String]
+    procedureSignal :: CProcUnit -> [String]
     procedureSignal p = case p of
+      PUTSTATE x f -> []
+      LOOP qs -> concat (map procedureSignal qs)
+      BREAK -> []
       GETINPUT (x,t) -> [makeTypePure t ++ " " ++ x ++ "__aux;"]
       PUTOUTPUT _ _ -> []
       GET (x,t)   -> [makeTypePure t ++ " " ++ x ++ "__aux;"
@@ -350,7 +359,7 @@ procedureSignals p = unlines $ filter (/="") $ concat $ map procedureSignal p
       ELSEIF _ qs -> concat (map procedureSignal qs)
       ELSE qs     -> concat (map procedureSignal qs)
 
-makeForkFile :: NameId -> Int -> Input -> [Output] -> File
+makeForkFile :: NameId -> Int -> CInput -> [COutput] -> File
 makeForkFile (NameId name id) n (_,t) outs =
   (name ++ ".h", content)
   where c = name

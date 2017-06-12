@@ -1,10 +1,14 @@
 module Lib where
 
+---------------- External Imports
+
 import Control.Monad.Except
 import Data.List.Split
 import Control.Monad.State
 import System.Environment
 import System.Directory
+
+---------------- Internal Imports
 
 import LexerCore
 import LayoutCore (layout)
@@ -20,52 +24,6 @@ getTestInputs = do
   contents <- readFile "test/test"
   let (first:spliteds) = "====" `splitOn` contents
   return (first : map tail spliteds)
-
--- test :: IO ()
--- test = do
---   inps <- getTestInputs
---   putStrLn "========================="
---   forM inps $ \inp -> do
---     let tks  = tokenize inp
---         tks' = layout tks
---         expr = parse' tks'
---         f = do
---           case expr of
---             Right e -> do putSourceCode inp; putProgram e
---             Left  _ -> return ()
---           interpret
---           checkForArityErrs
---           toComponents
---           toSystemC
---        {- g = case c of
---           Right e -> 
---           Left _ -> []-}
---     putStr inp              -- input
---     print (map getVal tks)  -- tokenize
---     print (map getVal tks') -- tokenize + layout
---     print expr              -- tokenize + layout + parse
---     putStrLn "LeN======"
---     print (length (filter (\(_,_,c,_)->c/=SpecialF) (tFuncs (runTM f))))
---     let st = runTM f
---     putStrLn "EXEC======"
---     print st
---     putStrLn "Err======"
---     showE st
---     forM_ (systemC st) $ \(x,y) -> do
---         putStrLn x
---         putStrLn y
---     if getErrs st == []
---       then makeSystemC (systemC st)
---       else return ()
---     {-putStrLn ""
---     print c
---     if g /= []
---       then 
---       else putStr "aa"
---     makeSystemC g-}
---   --  putStrLn "========================="
---   return ()
-
 
 userInterface :: IO ()
 userInterface = do
@@ -95,9 +53,9 @@ test' fileName text tbs = do
         case expr of
           Right e -> do
             putSourceCode text
-            putProgram e
+            putParsedResult e
           Left  _ -> return ()
-        interpret
+        getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
         toComponents
         toSystemC tbs
@@ -108,6 +66,7 @@ test' fileName text tbs = do
       putStrLn x
       putStrLn y
     makeSystemC fileName (systemC st)
+    showE st
     putStrLn "Ok!"
   when (getErrs st /= []) $ do
     print tks
@@ -122,9 +81,9 @@ withText fileName text tbs = do
         case expr of
           Right e -> do
             putSourceCode text
-            putProgram e
+            putParsedResult e
           Left  _ -> return ()
-        interpret
+        getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
         toComponents
         toSystemC tbs
@@ -160,9 +119,10 @@ a = do
         case expr of
           Right e -> do
             putSourceCode tx
-            putProgram e
+            putParsedResult e
           Left  _ -> return ()
-        interpret
+        getParsedFunctions_TransformToF_AddToState
+        checkForArityErrs
         toComponents
       st = runTM transformation
   putStrLn "TOKENS"
@@ -175,11 +135,11 @@ a = do
   print (tFuncs st)
   putStrLn "COMPONENT"
   print (components st)
-  when (getErrs st == []) $
+  when (getErrs st == []) $ do
+    showE st
     putStrLn "NICE!"
   when (getErrs st /= []) $ do
     showE st
-  
   
 getErrs = filter isErr . tLogs
   where isErr x = case x of

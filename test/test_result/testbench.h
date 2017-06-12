@@ -2,8 +2,7 @@
 
 SC_MODULE(testbench) {
 sc_fifo_in<sc_lv<32> > out;
-sc_fifo_out<sc_lv<32> > x;
-sc_fifo_out<sc_lv<32> > y;
+sc_fifo_out<sc_lv<32> > n;
 
 
 void proc();
@@ -13,17 +12,25 @@ SC_THREAD(proc);
 }
 };
 
-void testbench::proc() {x.write(1);
-y.write(1);
+void testbench::proc() {n.write(1);
 cout << out.read() << endl;
-x.write(2);
-y.write(2);
+n.write(2);
 cout << out.read() << endl;
-x.write(3);
-y.write(4);
+n.write(3);
 cout << out.read() << endl;
-x.write(4);
-y.write(5);
+n.write(4);
+cout << out.read() << endl;
+n.write(5);
+cout << out.read() << endl;
+n.write(6);
+cout << out.read() << endl;
+n.write(7);
+cout << out.read() << endl;
+n.write(8);
+cout << out.read() << endl;
+n.write(9);
+cout << out.read() << endl;
+n.write(10);
 cout << out.read() << endl;
 
 

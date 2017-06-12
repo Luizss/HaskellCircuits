@@ -1,32 +1,36 @@
 module Function where
 
+--------------------- External Imports
+
 import Prelude hiding (log)
+import Control.Monad (forM, forM_)
+import Control.Monad.Trans (lift)
+
+--------------------- Internal Imports
+
 import ParserCore
 import LexerCore
 import Types
 import TransformationMonad
 import Aux
 
-import Control.Monad (forM, forM_)
-import Control.Monad.Trans (lift)
+--------------------- Transforming PResult to TFuncs and adding them to state
 
--- interpret must be more complex for functions
--- with type signatures and pattern matching definitions
-interpret :: TM ()
-interpret = do
-  newStage InterpretationStage
-  Program fs <- getProgram
-  mapM_ interpretEach fs
+getParsedFunctions_TransformToF_AddToState :: TM ()
+getParsedFunctions_TransformToF_AddToState = do
+  newStage TInterpretationStage
+  PResult fs <- getParsedResult
+  mapM_ fromParsedFunctionToF_AddToState fs
 
-interpretEach :: Func -> TMM ()
-interpretEach (Func name varsNtypes guards typeExpr) = do
+fromParsedFunctionToF_AddToState :: PFunc -> TMM ()
+fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
   
-  let fname = fmap fromLow name
+  let fname  = fmap fromLow name
       srcLoc = getLoc name
-      vars  = map fst varsNtypes
-      types = map snd varsNtypes
+      vars   = map fst varsNtypes
+      types  = map snd varsNtypes
 
-  mfts <- mapM toFType types
+  mfts <- mapM fromParsedTypeExprToFunctionType types
 
   cont mfts $ do
 
@@ -36,20 +40,20 @@ interpretEach (Func name varsNtypes guards typeExpr) = do
 
     case guards of
 
-      NoGuards body -> do
+      PNoGuards body -> do
         
         mFExpr <- getFExpr body
   
         cont1 mFExpr $ \fExpr -> do
       
-          mft <- toFType typeExpr
+          mft <- fromParsedTypeExprToFunctionType typeExpr
       
           cont1 mft $ \ft -> do
         
-            addFunc (funcName, srcLoc, F args (NoFGuards fExpr) ft, length args)
+            addFunc (funcName, srcLoc, F args (NoFGuards fExpr) ft, length args, classifyFunction funcName (NoFGuards fExpr))
             ret ()
 
-      Guards guards -> do
+      PGuards guards -> do
 
         mfguards <- forM guards $ \(condExpr,expr) -> do
 
@@ -62,11 +66,11 @@ interpretEach (Func name varsNtypes guards typeExpr) = do
 
           let fguards = map just mfguards
 
-          mft <- toFType typeExpr
+          mft <- fromParsedTypeExprToFunctionType typeExpr
       
           cont1 mft $ \ft -> do
         
-            addFunc (funcName, srcLoc, F args (FGuards fguards) ft, length args)
+            addFunc (funcName, srcLoc, F args (FGuards fguards) ft, length args, classifyFunction funcName (FGuards fguards))
             ret ()
     
   where
@@ -75,31 +79,33 @@ interpretEach (Func name varsNtypes guards typeExpr) = do
     
     fromLow (Low n) = n
 
-    getFExpr :: Expr -> TMM FExpr
+    -- odot transforms pexpr to fexpr
+    -- naming: fromParsedExpressionToFunctionExpression
+    getFExpr :: PExpr -> TMM FExpr
     getFExpr expr = case expr of
       
-      App (L src (Low s)) es ty -> do
+      PApp (L src (Low s)) es ty -> do
         mes' <- mapM getFExpr es
         cont mes' $ do
           let es' = map just mes'
-          mft <- toFType ty
+          mft <- fromParsedTypeExprToFunctionType ty
           cont1 mft $ \ft ->
             ret $ FApp (L src s) es' ft
         
-      AExpr (L s (Low v), t) -> do
-        mft <- toFType t
+      PAExpr (L s (Low v), t) -> do
+        mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft ->
           ret $ FAExpr (FVar (L s v), ft)
-      AExpr (L s (Bin i), t) -> do
-        mft <- toFType t
+      PAExpr (L s (Bin i), t) -> do
+        mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft ->
           ret $ FAExpr (FCons(FBin (L s i)), ft)
-      AExpr (L s (Hex i), t) -> do
-        mft <- toFType t
+      PAExpr (L s (Hex i), t) -> do
+        mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft ->
           ret $ FAExpr (FCons(FHex (L s i)), ft)
-      AExpr (L s (Dec i), t) -> do
-        mft <- toFType t
+      PAExpr (L s (Dec i), t) -> do
+        mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft ->
           ret $ FAExpr (FCons(FDec (L s i)), ft)
 
@@ -109,29 +115,20 @@ interpretEach (Func name varsNtypes guards typeExpr) = do
                   "Expression construction error"
                   NoLoc) >> noRet
 
-    {-joinApps :: FExpr -> FExpr -> TMM FExpr
-    joinApps (FApp f args) expr
-      = ret $ FApp f (args ++ [expr])
-    joinApps (FAExpr (FCons c)) _
-      = throw (TErr
-               ErrConstantAsFunction
-               (Just ("In function " ++ funcName))
-               "Constants are not functions"
-               (getLocFromCons c)) >> noRet
-    joinApps (FAVar v) expr
-      = ret $ FApp v [expr]
-    joinApps _ _
-      = throw (TErr
-               ExpressionConstructionErr
-               (Just ("In function " ++ funcName))
-               "Expression construction error"
-               NoLoc) >> noRet
+fromParsedTypeExprToFunctionType :: PTypeExpr -> TMM FType
+fromParsedTypeExprToFunctionType texpr = case texpr of
+  PTApp (PTAExpr (L s (Upp "Vec"))) (PTAExpr (L _ (Dec n)))
+    -> ret $ BitVec s n
+  PTAExpr (L s (Upp "Bit")) -> ret $ Bit s
+  PTApp (PTAExpr (L s (Upp "Nat"))) (PTAExpr (L _ (Dec n)))
+    -> ret $ Nat s n
+  x -> throw (TErr
+              TypeNotPermitted
+              Nothing
+              ("Type '" ++ show x ++ "' not permitted.")
+              NoLoc) >> noRet
 
-toName :: String -> String
-toName sym = case sym of
-  "+" -> "add"
-  "-" -> "sub"
-  "*" -> "mul"-}
+--------------------- Checking for errors
 
 checkForArityErrs :: TM ()
 checkForArityErrs = do
@@ -142,8 +139,8 @@ checkForArityErrs = do
     ok = return ()
     
     checkFunc :: TFunc -> TM ()
-    checkFunc (_, _, SpecialF, _) = ok
-    checkFunc (name, _loc, F vars fg _, _) = case fg of
+    checkFunc (_, _, SpecialF, _,_) = ok
+    checkFunc (name, _loc, F vars fg _, _,_) = case fg of
 
       NoFGuards body -> check body
       FGuards guards ->
@@ -161,7 +158,7 @@ checkForArityErrs = do
                               (Just ("In function " ++ name))
                               ("Function " ++ (getVal lname) ++ " is not declared.")
                               (getLoc lname))
-            Just (_,_,_,arity')
+            Just (_,_,_,arity',_)
               | arity == arity' -> ok
               | otherwise -> throw (TErr
                                     ArityMismatch
@@ -176,18 +173,70 @@ checkForArityErrs = do
                                     (getLoc lname))
           mapM_ check fexprs
 
-toFType :: TypeExpr -> TMM FType
-toFType texpr = case texpr of
-  TApp (TAExpr (L s (Upp "Vec"))) (TAExpr (L _ (Dec n)))
-    -> ret $ BitVec s n
-  TAExpr (L s (Upp "Bit")) -> ret $ Bit s
-  TApp (TAExpr (L s (Upp "Nat"))) (TAExpr (L _ (Dec n)))
-    -> ret $ Nat s n
-  x -> throw (TErr
-              TypeNotPermitted
-              Nothing
-              ("Type '" ++ show x ++ "' not permitted.")
-              NoLoc) >> noRet
 
+--------------------- Classifying Function
+
+                
+classifyFunction :: Name -> FGuards -> FunctionClassification
+classifyFunction name guards = case guards of
+  FGuards condNexprs -> decideAcrossGuards $ map (\(_,f) -> classifyFExpr name f) condNexprs
+  NoFGuards fexpr    -> classifyFExpr name fexpr
+
+classifyFExpr :: Name -> FExpr -> FunctionClassification
+classifyFExpr name fexpr = case fexpr of
+  FApp (L _ x) fexprs _
+    | x == name -> decide $ LeftRecursive : map (classifyFExpr' name) fexprs
+    | otherwise -> decide $ NonRecursive  : map (classifyFExpr' name) fexprs
+  FAExpr (FVar (L _ x), _)
+    | x == name -> NonTerminatingRecursion
+    | otherwise -> NonRecursive
+  _ -> NonRecursive
+
+classifyFExpr' :: Name -> FExpr -> FunctionClassification
+classifyFExpr' name fexpr = case fexpr of
+  FApp (L _ x) fexprs _
+    | x == name -> decide $ RightRecursive : map (classifyFExpr' name) fexprs
+    | otherwise -> decide $ NonRecursive  : map (classifyFExpr' name) fexprs
+  FAExpr (FVar (L _ x), _)
+    | x == name -> NonTerminatingRecursion
+    | otherwise -> NonRecursive
+  _ -> NonRecursive
+
+decide :: [FunctionClassification] -> FunctionClassification
+decide = foldl decide' NonRecursive
+  where decide' LeftRecursive  NonRecursive   = LeftRecursive
+        decide' LeftRecursive  RightRecursive = MultipleRecursive
+        decide' LeftRecursive  LeftRecursive  = MultipleRecursive
+        decide' LeftRecursive  x              = x
+        decide' RightRecursive NonRecursive   = RightRecursive
+        decide' RightRecursive LeftRecursive  = MultipleRecursive
+        decide' RightRecursive RightRecursive = MultipleRecursive
+        decide' RightRecursive x              = x
+        decide' MultipleRecursive x           = MultipleRecursive
+        decide' x MultipleRecursive           = MultipleRecursive
+        decide' NonTerminatingRecursion x     = NonTerminatingRecursion
+        decide' x NonTerminatingRecursion     = NonTerminatingRecursion
+        decide' NonRecursive x                = x
+
+decideAcrossGuards :: [FunctionClassification] -> FunctionClassification
+decideAcrossGuards = foldl decide' NonRecursive
+  where decide' LeftRecursive  NonRecursive   = LeftRecursive
+        decide' LeftRecursive  RightRecursive = MultipleRecursive
+        decide' LeftRecursive  LeftRecursive  = LeftRecursive
+        decide' LeftRecursive  x              = x
+        decide' RightRecursive NonRecursive   = RightRecursive
+        decide' RightRecursive LeftRecursive  = MultipleRecursive
+        decide' RightRecursive RightRecursive = MultipleRecursive
+        decide' RightRecursive x              = x
+        decide' MultipleRecursive x           = MultipleRecursive
+        decide' x MultipleRecursive           = MultipleRecursive
+        decide' NonTerminatingRecursion x     = NonTerminatingRecursion
+        decide' x NonTerminatingRecursion     = NonTerminatingRecursion
+        decide' NonRecursive x                = x
+
+
+--------------------- Aux
+
+-- odot : fromLocatedTokenToFunctionVariable
 toFVar :: LToken -> FVar
 toFVar (L src (Low s)) = L src s

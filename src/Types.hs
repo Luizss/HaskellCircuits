@@ -1,16 +1,27 @@
 module Types where
 
+------------------ External Imports
+
 import Control.Monad.State (State(..))
 import Data.Map hiding ((\\), map, findIndex)
+
+------------------ Internal Imports
 
 import LexerCore
 import ParserCore
 
-type Name = String
+------------------ Aliases
 
---- from Functions.hs
+type Name       = String
+type Msg        = String
+type WhereMsg   = Msg
+type Arity      = Int
+type CompName   = Name
+type Used       = Bool
+type SourceCode = String
+type Id         = Int
 
-type FSymbol = String
+------------------ Function
 
 type FVar = L Name
 
@@ -22,6 +33,7 @@ data FType = BitVec SrcLoc Int
 data FGuards = FGuards [(FExpr,FExpr)]
              | NoFGuards FExpr
              deriving (Show,Eq)
+
 data F = F [(FVar, FType)] FGuards FType
        | SpecialF
        deriving (Show,Eq)
@@ -29,17 +41,37 @@ data F = F [(FVar, FType)] FGuards FType
 data FVarCons = FVar (L Name)
               | FCons FCons
               deriving (Show,Eq)
+
 data FCons = FBin (L String)
            | FHex (L String)
            | FDec (L Int)
            deriving  (Show,Eq)
+
 data FExpr = FApp (L Name) [FExpr] FType
            | FAExpr (FVarCons, FType)
            deriving (Show,Eq)
 
---------
+------------------ Transformation Monad
 
---- Types
+type TM a = State TState a
+
+type TMM a = TM (Maybe a)
+
+data TState =
+  TState {
+  sourceCode           :: SourceCode
+  , actualStage        :: TStage
+  , parsedResult       :: PResult
+  , tLogs              :: [TLog]
+  , tFuncs             :: [TFunc]
+  , tTypes             :: [TFuncType]
+  , components         :: [TComp]
+  , instances          :: [TInst]
+  , connections        :: [CConn]
+  , logicalConnections :: [Name]
+  , systemC            :: SystemC
+  , timesForked        :: [(CompName, String, Int)]
+  } deriving Show
 
 data ErrType = ErrConstantAsFunction
              | ArityMismatch
@@ -56,80 +88,45 @@ data ErrType = ErrConstantAsFunction
              | ImpossibleConnection
              | ExpressionConstructionErr
              | TypeNotPermitted
-             | SomeError
+             | CannotSynth
+             | RecursionWithoutCondition
              deriving (Show,Eq)
-data TErr = TErr ErrType (Maybe WhereMsg) Msg SrcLoc deriving (Show,Eq)
 
-type Msg = String
-type WhereMsg = Msg
-data TLog = TLog Msg Stage
-          | TLogErr TErr Stage
-          | TLogDebug Msg Stage
+data TErr = TErr ErrType (Maybe WhereMsg) Msg SrcLoc
           deriving (Show,Eq)
 
-data NameType = NameType
-              deriving (Show,Eq)
-type TName = (NameType, Name)
+data TLog = TLog Msg TStage
+          | TLogErr TErr TStage
+          | TLogDebug Msg TStage
+          deriving (Show,Eq)
 
-type Arity = Int
-type TFunc = (Name, SrcLoc, F, Arity)
-type TFuncType = (Name, SrcLoc, [TypeExpr])
+data FunctionClassification = LeftRecursive
+                            | RightRecursive
+                            | MultipleRecursive
+                            | NonTerminatingRecursion
+                            | NonRecursive
+                            deriving (Show, Eq)
+  
+type TFunc = (Name, SrcLoc, F, Arity, FunctionClassification)
+
+type TFuncType = (Name, SrcLoc, [PTypeExpr])
+
 type TComp = (Name, C)
+
 type TInst = (CompName, NameId, I, Used)
 
-specialFuncs
-  = [("add",NoLoc,SpecialF,2)
-    ,("sub",NoLoc,SpecialF,2)
-    ,("mul",NoLoc,SpecialF,2)
-    
-    ,("and",NoLoc,SpecialF,2)
-    ,("or",NoLoc,SpecialF,2)
-    
-    ,("not",NoLoc,SpecialF,1)
+data TStage = TInitialStage
+            | TInterpretationStage
+            deriving (Show,Eq)
 
-    ,("equ",NoLoc,SpecialF,2)
-    
-    ,("sli",NoLoc,SpecialF,3)
-    ,("cat",NoLoc,SpecialF,2)
-    ]
-
-data Stage = InitialStage
-           | InterpretationStage
-           deriving (Show,Eq)
-
-type SourceCode = String
-
-type Id = Int
 data NameId = NameId Name Id
             deriving (Show, Eq)
-
-type CompName = Name
-type Used = Bool
-
-type File = (Name, String)
-type SystemC = [File]
-
-data TState =
-  TState {
-  sourceCode :: SourceCode
-  , actualStage :: Stage
-  , program :: Program
-  , tLogs   :: [TLog]
-  , tFuncs  :: [TFunc]
-  , tTypes :: [TFuncType]
-  , components :: [TComp]
-  , instances :: [TInst]
-  , connections :: [TConn]
-  , logicalConnections :: [Name]
-  , systemC :: SystemC
-  , timesForked :: [(CompName, String, Int)]
-  } deriving Show
 
 initialTState :: TState
 initialTState = TState {
   sourceCode = ""
-  , actualStage = InitialStage
-  , program = Program []
+  , actualStage = TInitialStage
+  , parsedResult = PResult []
   , tLogs   = []
   , tFuncs  = specialFuncs
   , tTypes  = []
@@ -141,41 +138,59 @@ initialTState = TState {
   , timesForked = []
   }
 
-type TM a = State TState a
+specialFuncs :: [TFunc]
+specialFuncs
+  = [("add",NoLoc,SpecialF,2,NonRecursive)
+    ,("sub",NoLoc,SpecialF,2,NonRecursive)
+    ,("mul",NoLoc,SpecialF,2,NonRecursive)
+    ,("and",NoLoc,SpecialF,2,NonRecursive)
+    ,("or" ,NoLoc,SpecialF,2,NonRecursive)
+    ,("not",NoLoc,SpecialF,1,NonRecursive)
+    ,("equ",NoLoc,SpecialF,2,NonRecursive)
+    ,("sli",NoLoc,SpecialF,3,NonRecursive)
+    ,("cat",NoLoc,SpecialF,2,NonRecursive)
+    ]
 
-type TMM a = TM (Maybe a)
+------------------ Components
 
------- Components
+type FTyped a = (a, FType)
 
-type Input  = (String, FType)
-type Output = (String, FType)
-type Signal = (String, FType) -- input or output
+type CInput  = FTyped String
+type COutput = FTyped String
+type CSignal = FTyped String -- input or output
 
-type TConn = (CompName,(NameId,Signal),(NameId,Signal))
-type Proc = [ProcUnit]
+type CConn = (CompName,(NameId,CSignal),(NameId,CSignal))
 
-data ProcUnit = GETINPUT (String, FType)
-              | PUTOUTPUT String String
-              | GET (String, FType)
-              | PUT (String, FType) String
-              | COND Int String
-              | IF Int Proc
-              | ELSEIF Int Proc
-              | ELSE Proc
-              deriving (Show, Eq)
+type CProc = [CProcUnit]
 
-data I = I [Input] Output
-       | ConstBinI String Output
-       | ConstHexI String Output
-       | ConstDecI Int Output
-       | SpecialI [Input] Output [Int]
-       | FifoI Input Output
-       | ForkI Int Input [Output]
+data CProcUnit = GETINPUT (FTyped String)
+               | PUTOUTPUT String String
+               | GET (FTyped String)
+               | PUT (FTyped String) String
+               | COND Int String
+               | IF Int CProc
+               | ELSEIF Int CProc
+               | ELSE CProc
+               | LOOP CProc
+               | BREAK
+               | PUTSTATE String String
+               deriving (Show, Eq)
+
+data I = I [CInput] COutput
+       | ConstBinI String COutput
+       | ConstHexI String COutput
+       | ConstDecI Int COutput
+       | SpecialI [CInput] COutput [Int]
+       | FifoI CInput COutput
+       | ForkI Int CInput [COutput]
        deriving (Show, Eq)
 
-data C = C F [TInst] [Input] Output [TConn] Proc
+data C = C F [TInst] [CInput] COutput [CConn] CProc
        deriving Show
 
-type Errors = [String]
+------------------ System C
 
-type A a = State (Map (L Name) F, Map Name C, Errors) a
+type File = (Name, String)
+
+type SystemC = [File]
+
