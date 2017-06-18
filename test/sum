@@ -1,0 +1,7 @@
+main (s : Stream (Vec 32)) : Vec 32 = sum (s : Stream (Vec 32)) (0 : Vec 32) : Vec 32
+
+sum (s : Stream (Vec 32)) (a : Vec 32) : Vec 32
+  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (s : Stream (Vec 32)) : Vec 32) : Bit) (1 : Vec 32) : Bit = (a : Vec 32)
+  | (1 : Bit) = sum (rest (s : Stream (Vec 32)) : Stream (Vec 32)) (add (now (s : Stream (Vec 32)) : Vec 32) (a : Vec 32) : Vec 32) : Vec 32
+  
+ones : Stream (Vec 32) = cons (1 : Vec 32) (ones : Stream (Vec 32)) : Stream (Vec 32)

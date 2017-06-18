@@ -204,7 +204,7 @@ isInstanceAdded inst = do
 searchInstances :: CompName -> Name -> TM [TInst]
 searchInstances comp name = do
   insts <- getInstances
-  let f (c,NameId n _,_,_) = n == name && c == comp
+  let f (c,_,NameId n _,_,_) = n == name && c == comp
   return (filter f insts)
 
 getIdForInstance :: CompName -> Name -> TM Int
@@ -216,20 +216,20 @@ getIdForInstance comp name = do
   where
     -- forkid changes id only when its used X times
     -- X being the number of forks
-    getId (_, _, ForkI _ _  o, False) = 1
-    getId (_, NameId _ id, ForkI _ _  o, True) = id + 1
-    getId (_,NameId _ id, _ , _) = id + 1
+    getId (_, _, _, ForkI _ _  o, False) = 1
+    getId (_, _, NameId _ id, ForkI _ _  o, True) = id + 1
+    getId (_, _, NameId _ id, _ , _) = id + 1
 
 getInstancesFromComponent :: CompName -> TM [TInst]
 getInstancesFromComponent comp = do
   insts <- getInstances
-  let f (c,_,_,_) = c == comp
+  let f (c,_,_,_,_) = c == comp
   return (filter f insts)
 
 getUniqueInstance :: CompName -> NameId -> TMM TInst
 getUniqueInstance comp nameId = do
   insts <- getInstances
-  case find (\(comp',nameId',_,_) -> nameId' == nameId
+  case find (\(comp',_,nameId',_,_) -> nameId' == nameId
                                      && comp' == comp) insts of
     Nothing
       -> throw (TErr
@@ -250,7 +250,7 @@ modifyUniqueInstance comp nid f = do
                      NoLoc)
   cont1 maybeIns $ \_ -> do
     insts <- getInstances
-    let replace i@(_,nid',_,_)
+    let replace i@(_,_,nid',_,_)
           | nid == nid' = f i
           | otherwise   = i
     putInstances (map replace insts)
@@ -258,12 +258,12 @@ modifyUniqueInstance comp nid f = do
 
 setInstanceUsed :: CompName -> NameId -> TMM ()
 setInstanceUsed comp nid = do
-  modifyUniqueInstance comp nid (\(cn,nid',i,_) -> (cn,nid',i,True))
+  modifyUniqueInstance comp nid (\(cn,id,nid',i,_) -> (cn,id,nid',i,True))
 
 getNextInstance :: CompName -> Name -> TMM TInst
 getNextInstance comp name = do
   insts <- searchInstances comp name
-  let allUsed = and (map (\(_,_,_,u) -> u) insts)
+  let allUsed = and (map (\(_,_,_,_,u) -> u) insts)
   throwIf allUsed
     (TErr
      AllInstancesUsed
@@ -271,7 +271,7 @@ getNextInstance comp name = do
      ("All instances of " ++ name ++ " in " ++ comp)
       NoLoc)
   contIf (not allUsed) $ do
-    let whatMatters (_,NameId _ id,_,used) = (id,used)
+    let whatMatters (_,_,NameId _ id,_,used) = (id,used)
         ius = map whatMatters insts
         id = fst (foldl1 chooseId ius)
         chooseId (id1, True) (id2, True) = (id1,True)
@@ -291,6 +291,11 @@ addConnection :: CConn -> TM ()
 addConnection conn = do
   st <- get
   put (st { connections =  conn : connections st })
+
+getLogicalConnections :: TM [Name]
+getLogicalConnections = do
+  st <- get
+  return $ logicalConnections st
 
 addLogicalConnection :: Name -> TM ()
 addLogicalConnection conn = do
@@ -351,6 +356,29 @@ addFuncType :: TFuncType -> TM ()
 addFuncType x = do
   state <- get
   put (state { tTypes =  x : tTypes state })
+
+getFunctionId :: Name -> [FType] -> TM Id
+getFunctionId name ftypes = do
+  fun <- searchFunctionByName name
+  case fun of
+    [] -> return 1
+    xs -> case find (\(_,_,ft) -> and (zipWith equalFType ft ftypes)) xs of
+      Nothing      -> return $ (+1) $ maximum $ map takeId xs
+      Just (_,i,_) -> return i
+  where takeId (_,id,_) = id
+
+searchFunctionByName :: Name -> TM [(Name,Id,[FType])]
+searchFunctionByName name = do
+  cs <- getFunctionIds
+  return (filter (\(n,_,_) -> n == name) cs)
+
+getFunctionIds :: TM [(Name, Id, [FType])]
+getFunctionIds = functionIds <$> get
+
+addFunctionId :: (Name, Id, [FType]) -> TM ()
+addFunctionId x = do
+  st <- get
+  put (st { functionIds =  x : functionIds st })
 
 --- Example of the use of TM
 

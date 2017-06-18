@@ -81,6 +81,7 @@ typeExpr : typeExpr aType { PTApp $1 $2 }
 aType : VARID   { PTAExpr $1 }
       | CONID   { PTAExpr $1 }
       | DEC     { PTAExpr $1 }
+      | '(' typeExpr ')' { $2 }
        
 {
 

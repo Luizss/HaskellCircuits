@@ -142,11 +142,13 @@ endif :: String
 endif = "#endif"
 
 instanceFromFile :: TInst -> TM ()
-instanceFromFile (comp,nid,inst,_) = case inst of
-  ConstBinI bin out      -> addSystemCFile $ makeConstBinFile nid bin out
-  ConstHexI hex out      -> addSystemCFile $ makeConstHexFile nid hex out
-  ConstDecI dec out      -> addSystemCFile $ makeConstDecFile nid dec out
-  SpecialI inps out args -> addSystemCFile $ makeSpecialFile nid inps out args
+instanceFromFile (comp,fid,nid@(NameId n _),inst,_) = case inst of
+  ConstBinI bin out      -> addSystemCFile $ makeConstBinFile fid  nid bin out
+  ConstHexI hex out      -> addSystemCFile $ makeConstHexFile fid nid hex out
+  ConstDecI dec out      -> addSystemCFile $ makeConstDecFile fid nid dec out
+  SpecialI inps out args
+    | isPrefixOf "now" n || isPrefixOf "rest" n -> ok
+    | otherwise -> addSystemCFile $ makeSpecialFile fid nid inps out args
   ForkI n inp outs       -> addSystemCFile $ makeForkFile nid n inp outs
   FifoI _ _ -> ok
   I     _ _ -> ok
@@ -163,8 +165,12 @@ includeInstances =
   . map getNameFromInstance
   where
     getNameFromInstance :: TInst -> Name
-    getNameFromInstance (_,NameId name _,ins,_) = case ins of
+    getNameFromInstance (_,fid,NameId name _,ins,_) = case ins of
       FifoI _ _ -> ""
+      SpecialI _ _ _ -> name ++ (show fid) ++ "_"
+      ConstBinI _ _  -> name ++ (show fid) ++ "_"
+      ConstHexI _ _  -> name ++ (show fid) ++ "_"
+      ConstDecI _ _  -> name ++ (show fid) ++ "_"
       _ -> name
 
     makeInclude :: Name -> String
@@ -184,24 +190,28 @@ makeTypePure ty = case ty of
   BitVec l n -> "sc_lv<" ++ show n ++ ">"
   Bit    l   -> "sc_lv<1>"
   Nat    l n -> error $ "nat?1 " ++ show l ++ " : " ++ show n
+  Stream t   -> makeTypePure t
 
 makeTypeSignal :: FType -> String
 makeTypeSignal ty = case ty of
   BitVec l n -> "sc_fifo<sc_lv<" ++ show n ++ "> >"
   Bit    l   -> "sc_fifo<sc_lv<1> >"
   Nat    l n -> error $ "nat?2 " ++ show l ++ " : " ++ show n
+  Stream t   -> makeTypeSignal t
 
 makeTypeInput :: FType -> String
 makeTypeInput ty = case ty of
   BitVec l n -> "sc_fifo_in<sc_lv<" ++ show n ++ "> >"
   Bit    l   -> "sc_fifo_in<sc_lv<1> >"
   Nat    l n -> error $ "nat?3 " ++ show l ++ " : " ++ show n
+  Stream t   -> makeTypeInput t
 
 makeTypeOutput :: FType -> String
 makeTypeOutput ty = case ty of
   BitVec l n -> "sc_fifo_out<sc_lv<" ++ show n ++ "> >"
   Bit    l   -> "sc_fifo_out<sc_lv<1> >"
   Nat    l n -> error $ "nat?4 " ++ show l ++ " : " ++ show n
+  Stream t   -> makeTypeOutput t
 
 outputs :: [COutput] -> String
 outputs = unlines . map makeOutput
@@ -232,10 +242,14 @@ instanceDeclaration
   = unlines . filter (/="") . map declInst
   where
     declInst :: TInst -> String
-    declInst (_,NameId name id,inst,_) = case inst of
+    declInst (_,fid,NameId name id,inst,_) = case inst of
       FifoI _ (_,t)
         | name == "__fifo__" -> makeTypeSignal t ++ " " ++ name ++ show id ++ ";"
         | otherwise   -> ""
+      SpecialI _ _ _  -> name ++ (show fid) ++ "_ " ++ name ++ show id ++ ";"
+      ConstBinI _ _      -> name ++ (show fid) ++ "_ " ++ name ++ show id ++ ";"
+      ConstHexI _ _      -> name ++ (show fid) ++ "_ " ++ name ++ show id ++ ";"
+      ConstDecI _ _      -> name ++ (show fid) ++ "_ " ++ name ++ show id ++ ";"
       _               -> name ++ " " ++ name ++ (show id) ++ ";"
 
 processDeclaration [] = ""
@@ -249,9 +263,9 @@ scCtor name insts
                       [x] -> " : " ++ x
                       xs  -> " : " ++ intercalate ", " xs
         --- parei aqui
-        initInst (_,NameId n id,inst,_) = case inst of
+        initInst (_,fid,NameId n id,inst,_) = case inst of
           FifoI _ _ -> ""
-          _         -> n ++ (show id) ++ "(\"" ++ n ++ (show id) ++ "\")"
+          _         -> n ++ show id ++ "(\"" ++ n ++ show id ++ "\")"
 
 sconnections :: [CConn] -> TMM String
 sconnections conns = do
@@ -317,9 +331,12 @@ procedureToSystemC name p
     procedureUnitToSystemC p = case p of
       PUTSTATE x f -> x ++ "__aux = " ++ f ++ "__aux;"
       GETINPUT (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
+      GETSTREAM d (x,_) -> x ++ "__now__" ++ show d ++ " = " ++ x ++ ".read();"
+      PUTSTREAM d (y,_) x -> y ++ ".write(" ++ x ++ "__now__" ++ show d ++ ");"
       PUTOUTPUT y x -> y ++ ".write(" ++ x ++ "__aux);"
       LOOP qs -> "while (true) {\n" ++ unlines (map procedureUnitToSystemC qs) ++ "\n}"
       BREAK -> "break;"
+      SWITCH (s,_) a b -> s ++ "__now__" ++ show a ++ " = " ++ s ++ "__now__" ++ show b ++ ";"
       GET (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
       PUT (y,_) x -> y ++ ".write(" ++ x ++ "__aux);"
       COND m n
@@ -338,26 +355,32 @@ procedureToSystemC name p
       ELSE qs -> "} else {\n"
                  ++ unlines (map procedureUnitToSystemC qs) ++ "\n"
                  ++ "}"
+      DESTROY ss -> unlines (map (\(s,_) -> "while(" ++ s ++ ".nb_read(" ++ s ++ "__destroy)) {}") ss)
 
 procedureSignals :: CProc -> String
-procedureSignals = unlines . filter (/="") . concat . map procedureSignal
+procedureSignals = unlines . nub . filter (/="") . concat . map procedureSignal
   where 
     procedureSignal :: CProcUnit -> [String]
     procedureSignal p = case p of
       PUTSTATE x f -> []
       LOOP qs -> concat (map procedureSignal qs)
       BREAK -> []
+      SWITCH (s,t) a _-> [makeTypePure t ++ " " ++ s ++ "__now__" ++ show a ++ ";"]
+      GETSTREAM d (x,t) -> [makeTypePure t ++ " " ++ x ++ "__now__" ++ show d ++ ";"]
+      PUTSTREAM _ (y,t) _ -> [makeTypeSignal t ++ " " ++ y ++ ";"]
       GETINPUT (x,t) -> [makeTypePure t ++ " " ++ x ++ "__aux;"]
       PUTOUTPUT _ _ -> []
       GET (x,t)   -> [makeTypePure t ++ " " ++ x ++ "__aux;"
                      ,makeTypeSignal t ++ " " ++ x ++ ";"]
-      PUT (y,t) x
+      PUT (y,t) _
         | y == "out" -> []
         | otherwise  -> [makeTypeSignal t ++ " " ++ y ++ ";"]
       COND m _    -> ["sc_lv<" ++ show m ++ "> cond;"]
       IF _ qs     -> concat (map procedureSignal qs)
       ELSEIF _ qs -> concat (map procedureSignal qs)
       ELSE qs     -> concat (map procedureSignal qs)
+      DESTROY ss -> map (\(s,t) -> makeTypePure t ++ " " ++ (s ++ "__destroy;")) ss
+      
 
 makeForkFile :: NameId -> Int -> CInput -> [COutput] -> File
 makeForkFile (NameId name id) n (_,t) outs =
@@ -385,11 +408,11 @@ makeForkFile (NameId name id) n (_,t) outs =
           ++ "}\n"
           ++ endif
 
-makeConstBinFile (NameId name id) cons (out,t) =
-  (name ++ ".h", content)
-  where c = name
+makeConstBinFile fid (NameId name id) cons (out,t) =
+  (c ++ ".h", content)
+  where c = name ++ show fid ++ "_"
         content
-          = ifndef name
+          = ifndef c
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ makeTypeOutput t ++ " " ++ out ++ ";\n"
@@ -405,11 +428,11 @@ makeConstBinFile (NameId name id) cons (out,t) =
           ++ "}\n"
           ++ endif
 
-makeConstHexFile (NameId name id) cons (out,t) =
-  (name ++ ".h", content)
-  where c = name
+makeConstHexFile fid (NameId name id) cons (out,t) =
+  (c ++ ".h", content)
+  where c = name ++ show fid ++ "_"
         content
-          = ifndef name
+          = ifndef c
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ makeTypeOutput t ++ " " ++ out ++ ";\n"
@@ -425,11 +448,11 @@ makeConstHexFile (NameId name id) cons (out,t) =
           ++ "}\n"
           ++ endif
 
-makeConstDecFile (NameId name id) cons (out, t) =
-  (name ++ ".h", content)
-  where c = name
+makeConstDecFile fid (NameId name id) cons (out, t) =
+  (c ++ ".h", content)
+  where c = name ++ show fid ++ "_"
         content
-          = ifndef name
+          = ifndef c
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ makeTypeOutput t ++ " " ++ out ++ ";\n"
@@ -445,25 +468,25 @@ makeConstDecFile (NameId name id) cons (out, t) =
           ++ "}\n"
           ++ endif
 
-makeSpecialFile nid@(NameId name id) ins out args = case name of
-  "cat"  -> makeSpecialFileCat nid ins out
+makeSpecialFile fid nid@(NameId name id) ins out args = case name of
+  "cat"  -> makeSpecialFileCat fid nid ins out
 
-  "equ"  -> makeSpecialFileLogic nid ins out
+  "equ"  -> makeSpecialFileLogic fid nid ins out
 
-  "and_" -> makeSpecialFileLogic nid ins out
-  "or_"  -> makeSpecialFileLogic nid ins out
+  "and_" -> makeSpecialFileLogic fid nid ins out
+  "or_"  -> makeSpecialFileLogic fid nid ins out
   
-  "not_" -> makeSpecialFileNot nid ins out
+  "not_" -> makeSpecialFileNot fid nid ins out
   
-  "mul"  -> makeSpecialFileArith nid ins out
-  "add"  -> makeSpecialFileArith nid ins out
-  "sub"  -> makeSpecialFileArith nid ins out
-  
-  x | isPrefixOf "sli" x -> makeSpecialFileSli nid ins out args
+  "mul"  -> makeSpecialFileArith fid nid ins out
+  "add"  -> makeSpecialFileArith fid nid ins out
+  "sub"  -> makeSpecialFileArith fid nid ins out
 
-makeSpecialFileSli (NameId name id) [(in1,t1)] (out,t) [a1,a2]
+  x | isPrefixOf "sli" x -> makeSpecialFileSli fid nid ins out args
+
+makeSpecialFileSli fid (NameId name id) [(in1,t1)] (out,t) [a1,a2]
   = (c ++ ".h", content)
-  where c = name
+  where c = name ++ show fid ++ "_"
         content = unlines
           [ifndef c
           ,"#include \"systemc.h\""
@@ -482,9 +505,9 @@ makeSpecialFileSli (NameId name id) [(in1,t1)] (out,t) [a1,a2]
           ,"}"
           ,"#endif"]
 
-makeSpecialFileCat (NameId name id) [(in1,t1),(in2,t2)] (out,t)
+makeSpecialFileCat fid (NameId name id) [(in1,t1),(in2,t2)] (out,t)
   = (c ++ ".h", content)
-  where c = name
+  where c = name ++ show fid ++ "_"
         content = unlines
           [ifndef c
           ,"#include \"systemc.h\""
@@ -503,11 +526,11 @@ makeSpecialFileCat (NameId name id) [(in1,t1),(in2,t2)] (out,t)
           ,"}"
           ,"#endif"]
 
-makeSpecialFileArith (NameId name id) [(in1,t1),(in2,t2)] (out, t)
+makeSpecialFileArith fid (NameId name id) [(in1,t1),(in2,t2)] (out, t)
   = (c ++ ".h", content)
-  where c = name
+  where c = name ++ show fid ++ "_"
         content
-          = ifndef name
+          = ifndef c
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ inputs [(in1, t1),(in2, t2)]
@@ -531,11 +554,11 @@ makeSpecialFileArith (NameId name id) [(in1,t1),(in2,t2)] (out, t)
         len (Bit _) = show 1
         len _ = error "aaaa"
 
-makeSpecialFileLogic (NameId name id) [(in1,t1),(in2,t2)] (out, t)
+makeSpecialFileLogic fid (NameId name id) [(in1,t1),(in2,t2)] (out, t)
   = (c ++ ".h", content)
-  where c = name
+  where c = name ++ show fid ++ "_"
         content
-          = ifndef name
+          = ifndef c
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ inputs [(in1, t1),(in2, t2)]
@@ -556,11 +579,11 @@ makeSpecialFileLogic (NameId name id) [(in1,t1),(in2,t2)] (out, t)
           "or_"  -> "|"
           "equ" -> "=="
 
-makeSpecialFileNot (NameId name id) [(in1,t1)] (out, t)
+makeSpecialFileNot fid (NameId name id) [(in1,t1)] (out, t)
   = (c ++ ".h", content)
-  where c = name
+  where c = name ++ show fid ++ "_"
         content
-          = ifndef name
+          = ifndef c
           ++ "#include \"systemc.h\"\n"
           ++ "SC_MODULE("++c++") {\n"
           ++ inputs [(in1, t1)]

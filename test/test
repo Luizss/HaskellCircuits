@@ -1,9 +1,8 @@
-main (n : Vec 32) : Vec 32 = fac (n : Vec 32) (0x1 : Vec 32) : Vec 32
+main (s : Stream (Vec 32)) : Vec 31 = sum (s : Stream (Vec 32)) (0 : Vec 31) : Vec 31
 
-fac (n : Vec 32) (a : Vec 32) : Vec 32
-  | equ (n : Vec 32) (0 : Vec 32) : Bit
-      = add (a : Vec 32) (0 : Vec 32) : Vec 32
-  | equ (n : Vec 32) (3 : Vec 32) : Bit
-      = mul (6 : Vec 32) (a : Vec 32) : Vec 32
-  | (1 : Bit)
-      = fac (sub (n : Vec 32) (0b1 : Vec 32) : Vec 32) (mul (n : Vec 32) (a : Vec 32) : Vec 32) : Vec 32
+sum (s : Stream (Vec 32)) (a : Vec 31) : Vec 31
+  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit) : Bit = add (a : Vec 31) (0 : Vec 31) : Vec 31
+  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (2 : Nat 2) (s : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit) : Bit = add (a : Vec 31) (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Vec 31) : Vec 31
+  | (1 : Bit) = sum (rest (2 : Nat 2) (s : Stream (Vec 32)) : Stream (Vec 32)) (add (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Vec 31) (sli (1 : Nat 1) (31 : Nat 31) (now (2 : Nat 2) (s : Stream (Vec 32)) : Vec 32) : Vec 31)  : Vec 31) : Vec 31
+  
+ones : Stream (Vec 32) = cons (1 : Vec 32) (ones : Stream (Vec 32)) : Stream (Vec 32)

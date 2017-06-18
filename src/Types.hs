@@ -28,6 +28,7 @@ type FVar = L Name
 data FType = BitVec SrcLoc Int
            | Bit SrcLoc
            | Nat SrcLoc Int
+           | Stream FType
            deriving (Show,Eq)
 
 data FGuards = FGuards [(FExpr,FExpr)]
@@ -38,17 +39,18 @@ data F = F [(FVar, FType)] FGuards FType
        | SpecialF
        deriving (Show,Eq)
 
-data FVarCons = FVar (L Name)
+data FVarCons = FVar FVar
               | FCons FCons
               deriving (Show,Eq)
 
 data FCons = FBin (L String)
            | FHex (L String)
            | FDec (L Int)
+           | FForeverWait
            deriving  (Show,Eq)
 
-data FExpr = FApp (L Name) [FExpr] FType
-           | FAExpr (FVarCons, FType)
+data FExpr = FApp (L Name, Id) [FExpr] FType
+           | FAExpr (FVarCons, Id, FType)
            deriving (Show,Eq)
 
 ------------------ Transformation Monad
@@ -65,6 +67,7 @@ data TState =
   , tLogs              :: [TLog]
   , tFuncs             :: [TFunc]
   , tTypes             :: [TFuncType]
+  , functionIds        :: [(Name, Id, [FType])]
   , components         :: [TComp]
   , instances          :: [TInst]
   , connections        :: [CConn]
@@ -100,12 +103,21 @@ data TLog = TLog Msg TStage
           | TLogDebug Msg TStage
           deriving (Show,Eq)
 
-data FunctionClassification = LeftRecursive
-                            | RightRecursive
-                            | MultipleRecursive
-                            | NonTerminatingRecursion
-                            | NonRecursive
-                            deriving (Show, Eq)
+type IsConsExpr = Bool
+data RecursionClassification = LeftRecursive
+                             | RightRecursive
+                             | MultipleRecursive
+                             | NonTerminatingRecursion
+                             | NonRecursive
+                             deriving (Show, Eq)
+data TypeClassification = OutputRecursive
+                        | InputRecursive
+                        | OutputInputRecursive
+                        | NoRecursiveTypes
+                        deriving (Show, Eq)
+type FunctionClassification
+  = (RecursionClassification, TypeClassification, IsConsExpr)
+
   
 type TFunc = (Name, SrcLoc, F, Arity, FunctionClassification)
 
@@ -113,7 +125,7 @@ type TFuncType = (Name, SrcLoc, [PTypeExpr])
 
 type TComp = (Name, C)
 
-type TInst = (CompName, NameId, I, Used)
+type TInst = (CompName, Id, NameId, I, Used)
 
 data TStage = TInitialStage
             | TInterpretationStage
@@ -130,6 +142,7 @@ initialTState = TState {
   , tLogs   = []
   , tFuncs  = specialFuncs
   , tTypes  = []
+  , functionIds = []
   , components = []
   , instances = []
   , connections = []
@@ -140,15 +153,21 @@ initialTState = TState {
 
 specialFuncs :: [TFunc]
 specialFuncs
-  = [("add",NoLoc,SpecialF,2,NonRecursive)
-    ,("sub",NoLoc,SpecialF,2,NonRecursive)
-    ,("mul",NoLoc,SpecialF,2,NonRecursive)
-    ,("and",NoLoc,SpecialF,2,NonRecursive)
-    ,("or" ,NoLoc,SpecialF,2,NonRecursive)
-    ,("not",NoLoc,SpecialF,1,NonRecursive)
-    ,("equ",NoLoc,SpecialF,2,NonRecursive)
-    ,("sli",NoLoc,SpecialF,3,NonRecursive)
-    ,("cat",NoLoc,SpecialF,2,NonRecursive)
+  = [("add",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
+    ,("sub",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
+    ,("mul",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
+    ,("and",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
+    ,("or" ,NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
+    ,("not",NoLoc,SpecialF,1,(NonRecursive, NoRecursiveTypes, False))
+    ,("equ",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
+    ,("sli",NoLoc,SpecialF,3,(NonRecursive, NoRecursiveTypes, False))
+    ,("cat",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
+    ,("cons",NoLoc,SpecialF,2,
+       (NonRecursive,OutputInputRecursive, False))
+    ,("now",NoLoc,SpecialF,2,
+       (NonRecursive, InputRecursive, False))
+    ,("rest",NoLoc,SpecialF,2,
+       (NonRecursive,OutputInputRecursive, False))
     ]
 
 ------------------ Components
@@ -164,6 +183,9 @@ type CConn = (CompName,(NameId,CSignal),(NameId,CSignal))
 type CProc = [CProcUnit]
 
 data CProcUnit = GETINPUT (FTyped String)
+               | GETSTREAM Int (FTyped String)
+               | PUTSTREAM Int (FTyped String) String
+               | SWITCH (FTyped String) Int Int 
                | PUTOUTPUT String String
                | GET (FTyped String)
                | PUT (FTyped String) String
@@ -173,6 +195,7 @@ data CProcUnit = GETINPUT (FTyped String)
                | ELSE CProc
                | LOOP CProc
                | BREAK
+               | DESTROY [(String, FType)]
                | PUTSTATE String String
                deriving (Show, Eq)
 
