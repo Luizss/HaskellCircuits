@@ -147,7 +147,7 @@ instanceFromFile (comp,fid,nid@(NameId n _),inst,_) = case inst of
   ConstHexI hex out      -> addSystemCFile $ makeConstHexFile fid nid hex out
   ConstDecI dec out      -> addSystemCFile $ makeConstDecFile fid nid dec out
   SpecialI inps out args
-    | isPrefixOf "now" n || isPrefixOf "rest" n -> ok
+    | isPrefixOf "now" n || isPrefixOf "rest" n || isPrefixOf "consR" n -> ok
     | otherwise -> addSystemCFile $ makeSpecialFile fid nid inps out args
   ForkI n inp outs       -> addSystemCFile $ makeForkFile nid n inp outs
   FifoI _ _ -> ok
@@ -191,6 +191,13 @@ makeTypePure ty = case ty of
   Bit    l   -> "sc_lv<1>"
   Nat    l n -> error $ "nat?1 " ++ show l ++ " : " ++ show n
   Stream t   -> makeTypePure t
+
+makeTypeVector :: FType -> String
+makeTypeVector ty = case ty of
+  BitVec l n -> "std::vector<sc_lv<" ++ show n ++ "> >"
+  Bit    l   -> "std::vector<sc_lv<1> >"
+  Nat    l n -> error $ "nat?1 " ++ show l ++ " : " ++ show n
+  Stream t   -> makeTypeVector t
 
 makeTypeSignal :: FType -> String
 makeTypeSignal ty = case ty of
@@ -329,16 +336,42 @@ procedureToSystemC name p
 
     procedureUnitToSystemC :: CProcUnit -> String
     procedureUnitToSystemC p = case p of
+      BLOB -> "//blob"
+      COPY _ x y -> unlines [x ++ ".write(" ++ y ++ ".read());"
+                            ,"while (" ++ y ++ ".nb_read(" ++ y ++ "__copy__val)) {"
+                            , x ++ ".write(" ++ y ++ "__copy__val);"
+                            ,"}"]
+      PCOPY k _ x y -> unlines $
+                       map (\i -> x ++ ".write(" ++ y ++ "__now__" ++ show i ++ ");") [1..k]
+                       ++ ["while (" ++ y ++ ".nb_read(" ++ y ++ "__copy__val)) {"
+                          , x ++ ".write(" ++ y ++ "__copy__val);"
+                          ,"}"]
+      COPYV t x y -> unlines ["for(std::vector<" ++ makeTypePure t ++ " >::iterator " ++ y ++ "__it_ = " ++ y ++ ".begin(); " ++ y ++ "__it_ != " ++ y ++ ".end(); ++" ++ y ++ "__it_) {"
+                            , x ++ ".write(*" ++ y ++ "__it_);"
+                            ,"}"]
+      SAVE (x,_) -> unlines ["wait(SC_ZERO_TIME);"
+                            ,"while (" ++ x ++ ".nb_read(" ++ x ++ "__save__val)) {"
+                            , x ++ "__save.write(" ++ x ++ "__save__val);"
+                            ,"}"]
+      SAVEV (x,_) -> unlines ["wait(SC_ZERO_TIME);"
+                             ,"while (" ++ x ++ ".nb_read(" ++ x ++ "__savev__val)) {"
+                             , x ++ "__savev.push_back(" ++ x ++ "__savev__val);"
+                             ,"}"]
       PUTSTATE x f -> x ++ "__aux = " ++ f ++ "__aux;"
       GETINPUT (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
       GETSTREAM d (x,_) -> x ++ "__now__" ++ show d ++ " = " ++ x ++ ".read();"
       PUTSTREAM d (y,_) x -> y ++ ".write(" ++ x ++ "__now__" ++ show d ++ ");"
+      PUTOUTPUTSTREAM d y x -> y ++ ".write(" ++ x ++ "__now__" ++ show d ++ ");"
+      PUTOUTPUTSTREAMV _ d y x -> unlines [y ++ "__it = " ++ y ++ ".begin();"
+                                          ,y ++ ".insert(" ++ y ++ "__it," ++ x ++ "__now__" ++ show d ++ ");"]
       PUTOUTPUT y x -> y ++ ".write(" ++ x ++ "__aux);"
       LOOP qs -> "while (true) {\n" ++ unlines (map procedureUnitToSystemC qs) ++ "\n}"
       BREAK -> "break;"
       SWITCH (s,_) a b -> s ++ "__now__" ++ show a ++ " = " ++ s ++ "__now__" ++ show b ++ ";"
       GET (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
       PUT (y,_) x -> y ++ ".write(" ++ x ++ "__aux);"
+      PUTV (y,_) x -> unlines [y ++ "__it = " ++ y ++ ".begin();"
+                              ,y ++ ".insert(" ++ y ++ "__it," ++ x ++ "__aux);"]
       COND m n
         -> "cond = (" ++ (intercalate ", " (reverse (map
                                      (\i -> "__fifo__"
@@ -362,12 +395,33 @@ procedureSignals = unlines . nub . filter (/="") . concat . map procedureSignal
   where 
     procedureSignal :: CProcUnit -> [String]
     procedureSignal p = case p of
+      BLOB -> []
+      COPY t x y
+        | x == "out" && y == "out" -> [makeTypePure t ++ " " ++ y ++ "__copy__val;"]
+        | x == "out" -> [makeTypeSignal t ++ " " ++ y ++ ";"
+                        ,makeTypePure t ++ " " ++ y ++ "__copy__val;"]
+        | y == "out" -> [makeTypeSignal t ++ " " ++ x ++ ";"
+                        ,makeTypePure t ++ " " ++ y ++ "__copy__val;"]
+        | otherwise  -> [makeTypeSignal t ++ " " ++ x ++ ";"
+                        ,makeTypeSignal t ++ " " ++ y ++ ";"
+                        ,makeTypePure t ++ " " ++ y ++ "__copy__val;"]
+      PCOPY _ t x y
+        | x == "out" -> [makeTypePure t ++ " " ++ y ++ "__copy__val;"]
+        | otherwise  -> [makeTypeSignal t ++ " " ++ x ++ ";"
+                        ,makeTypePure t ++ " " ++ y ++ "__copy__val;"]
+      COPYV t x y -> []
+      SAVE (x,t) -> [makeTypeSignal t ++ " " ++ x ++ "__save;"
+                    ,makeTypePure t ++ " " ++ x ++ "__save__val;"]
+      SAVEV (x,t) -> [makeTypeVector t ++ " " ++ x ++ "__savev;"
+                     ,makeTypePure t ++ " " ++ x ++ "__savev__val;"]
       PUTSTATE x f -> []
       LOOP qs -> concat (map procedureSignal qs)
       BREAK -> []
       SWITCH (s,t) a _-> [makeTypePure t ++ " " ++ s ++ "__now__" ++ show a ++ ";"]
       GETSTREAM d (x,t) -> [makeTypePure t ++ " " ++ x ++ "__now__" ++ show d ++ ";"]
       PUTSTREAM _ (y,t) _ -> [makeTypeSignal t ++ " " ++ y ++ ";"]
+      PUTOUTPUTSTREAM _ _ _ -> []
+      PUTOUTPUTSTREAMV t _ y _ -> [makeTypeVector t ++ "::iterator " ++ y ++ "__it;"]
       GETINPUT (x,t) -> [makeTypePure t ++ " " ++ x ++ "__aux;"]
       PUTOUTPUT _ _ -> []
       GET (x,t)   -> [makeTypePure t ++ " " ++ x ++ "__aux;"
@@ -375,6 +429,8 @@ procedureSignals = unlines . nub . filter (/="") . concat . map procedureSignal
       PUT (y,t) _
         | y == "out" -> []
         | otherwise  -> [makeTypeSignal t ++ " " ++ y ++ ";"]
+      PUTV (y,t) _ -> [makeTypeVector t ++ "::iterator " ++ y ++ "__it;"
+                      ,makeTypeVector t ++ " " ++ y ++ ";"]
       COND m _    -> ["sc_lv<" ++ show m ++ "> cond;"]
       IF _ qs     -> concat (map procedureSignal qs)
       ELSEIF _ qs -> concat (map procedureSignal qs)
@@ -483,6 +539,8 @@ makeSpecialFile fid nid@(NameId name id) ins out args = case name of
   "sub"  -> makeSpecialFileArith fid nid ins out
 
   x | isPrefixOf "sli" x -> makeSpecialFileSli fid nid ins out args
+
+  x -> error x
 
 makeSpecialFileSli fid (NameId name id) [(in1,t1)] (out,t) [a1,a2]
   = (c ++ ".h", content)

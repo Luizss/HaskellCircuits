@@ -2,8 +2,8 @@
 #define EQU1__H_
 #include "systemc.h"
 SC_MODULE(equ1_) {
-sc_fifo_in<sc_lv<32> > in1;
-sc_fifo_in<sc_lv<32> > in2;
+sc_fifo_in<sc_lv<1> > in1;
+sc_fifo_in<sc_lv<1> > in2;
 sc_fifo_out<sc_lv<1> > out;
 
 

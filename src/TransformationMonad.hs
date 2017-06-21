@@ -307,6 +307,29 @@ doesLogicalConnectionExist conn = do
   st <- get
   return (elem conn (logicalConnections st))
 
+getLogicalOutputs :: TM [(Name,Name,FType,Maybe Int)]
+getLogicalOutputs = do
+  st <- get
+  return $ logicalOutputs st
+  
+addLogicalOutput :: (Name,Name,FType,Maybe Int) -> TM ()
+addLogicalOutput x = do
+  st <- get
+  put (st { logicalOutputs = x : logicalOutputs st })
+
+doesLogicalOutputExist :: Name -> TM Bool
+doesLogicalOutputExist x = do
+  st <- get
+  if elem x (map fst4 (logicalOutputs st))
+    then debug x
+    else debug ("Nope " ++ x)
+  return (elem x (map fst4 (logicalOutputs st)))
+
+getLogicalOutput :: Name -> TM (Name, FType, Maybe Int)
+getLogicalOutput x = do
+  st <- get
+  return $ (\(a,b,f,c) -> (b,f,c)) $ just $ find ((==x) . fst4) (logicalOutputs st)
+
 addSystemCFile :: File -> TM ()
 addSystemCFile file = do
   st <- get

@@ -5,6 +5,7 @@ sc_fifo_in<sc_lv<32> > out;
 sc_fifo_out<sc_lv<32> > n;
 sc_fifo_out<sc_lv<32> > k;
 sc_fifo_out<sc_lv<32> > s;
+ sc_fifo_out<sc_lv<32> > a;
 
 void proc();
 
@@ -15,6 +16,7 @@ SC_THREAD(proc);
 
 void testbench::proc() {
 
+  a.write(0b00000000000000000000000000000000);
   s.write(0b00000000000000000000000000000011);
   s.write(0b00000000000000000000000000000101);
   s.write(0b00000000000000000000000000000111);

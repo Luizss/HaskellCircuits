@@ -6,15 +6,11 @@ SC_MODULE(top) {
 
 mainFunc m;
 testbench tb;
-sc_fifo<sc_lv<32> > n;
-sc_fifo<sc_lv<32> > k;
 sc_fifo<sc_lv<32> > s;
-sc_fifo<sc_lv<32> > out;
+sc_fifo<sc_lv<31> > out;
 
 
 SC_CTOR(top) : m("m"), tb("tb") {
-m.n(n); tb.n(n);
-m.k(k); tb.k(k);
 m.s(s); tb.s(s);
 m.out(out); tb.out(out);
 

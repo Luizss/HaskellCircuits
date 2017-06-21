@@ -72,6 +72,7 @@ data TState =
   , instances          :: [TInst]
   , connections        :: [CConn]
   , logicalConnections :: [Name]
+  , logicalOutputs     :: [(Name, Name, FType, Maybe Int)]
   , systemC            :: SystemC
   , timesForked        :: [(CompName, String, Int)]
   } deriving Show
@@ -147,6 +148,7 @@ initialTState = TState {
   , instances = []
   , connections = []
   , logicalConnections = []
+  , logicalOutputs = []
   , systemC = []
   , timesForked = []
   }
@@ -163,6 +165,8 @@ specialFuncs
     ,("sli",NoLoc,SpecialF,3,(NonRecursive, NoRecursiveTypes, False))
     ,("cat",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
     ,("cons",NoLoc,SpecialF,2,
+       (NonRecursive,OutputInputRecursive, False))
+    ,("consR",NoLoc,SpecialF,2,
        (NonRecursive,OutputInputRecursive, False))
     ,("now",NoLoc,SpecialF,2,
        (NonRecursive, InputRecursive, False))
@@ -185,10 +189,13 @@ type CProc = [CProcUnit]
 data CProcUnit = GETINPUT (FTyped String)
                | GETSTREAM Int (FTyped String)
                | PUTSTREAM Int (FTyped String) String
-               | SWITCH (FTyped String) Int Int 
+               | SWITCH (FTyped String) Int Int
                | PUTOUTPUT String String
+               | PUTOUTPUTSTREAM Int String String
+               | PUTOUTPUTSTREAMV FType Int String String
                | GET (FTyped String)
                | PUT (FTyped String) String
+               | PUTV (FTyped String) String
                | COND Int String
                | IF Int CProc
                | ELSEIF Int CProc
@@ -197,8 +204,21 @@ data CProcUnit = GETINPUT (FTyped String)
                | BREAK
                | DESTROY [(String, FType)]
                | PUTSTATE String String
+               | SAVE (FTyped String)
+               | SAVEV (FTyped String)
+               | COPY FType String String
+               | PCOPY Int FType String String
+               | COPYV FType String String
+               | BLOB
                deriving (Show, Eq)
 
+data TransitionType = ConsRTransition Int
+                    | RestTransition
+                    | ConsTransition Int
+                    | IdTransition
+                    | FunctionTransition
+                    deriving Show
+                    
 data I = I [CInput] COutput
        | ConstBinI String COutput
        | ConstHexI String COutput
@@ -216,4 +236,3 @@ data C = C F [TInst] [CInput] COutput [CConn] CProc
 type File = (Name, String)
 
 type SystemC = [File]
-

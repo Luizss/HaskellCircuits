@@ -28,7 +28,7 @@ count :: Eq a => a -> [a] -> Int
 count x = length . filter (==x)
 
 mapFst :: (a -> b) -> (a,c) -> (b,c)
-mapFst f (a,c) = (f a,c)
+mapFst f (a,c) = (f a,cT)
 
 mapSec :: (a -> b) -> (c,a) -> (c,b)
 mapSec f (c,a) = (c, f a)
@@ -38,6 +38,7 @@ getTypeFromFExpr (FApp _ _ t) = t
 getTypeFromFExpr (FAExpr (_, _, t)) = t
 
 fst3 (f,_,_) = f
+fst4 (f,_,_,_) = f
 
 equalFType :: FType -> FType -> Bool
 equalFType (BitVec _ i1) (BitVec _ i2) = i1 == i2
@@ -46,4 +47,4 @@ equalFType (Nat _ i1) (Nat _ i2) = i1 == i2
 equalFType _ _ = False
            
 isStreamFunc :: Name -> Bool
-isStreamFunc name = elem name [{-"cons","consR",-}"rest","now"]
+isStreamFunc name = elem name ["cons","consR","rest","now"]
