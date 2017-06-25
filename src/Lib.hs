@@ -57,6 +57,7 @@ test' fileName text tbs = do
           Left  _ -> return ()
         getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
+        applyHighOrder
         toComponents
         toSystemC tbs
       st = runTM transformation
@@ -123,6 +124,7 @@ a = do
           Left  _ -> return ()
         getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
+        applyHighOrder
         toComponents
       st = runTM transformation
   putStrLn "TOKENS"

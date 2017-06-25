@@ -154,6 +154,32 @@ getFunctions = do
   st <- get
   return (tFuncs st)
 
+putFunctions :: [TFunc] -> TM ()
+putFunctions fs = do
+  st <- get
+  put (st { tFuncs = fs })
+
+removeFunction :: Name -> TM ()
+removeFunction name = do
+  fs <- getFunctions
+  let fs' = filter (\(n,_,_,_,_,_) -> n /= name) fs
+  putFunctions fs'
+
+isFunctionHighOrder :: Name -> TM Bool
+isFunctionHighOrder name = do
+  mf <- searchFunction name
+  return $ case mf of
+    Nothing -> False
+    Just (_,_,_,_,_,[]) -> False
+    Just _ -> True
+
+highOrderArgs :: Name -> TM [Int]
+highOrderArgs name = do
+  mf <- searchFunction name
+  return $ case mf of
+    Nothing -> []
+    Just (_,_,_,_,_,xs) -> xs
+
 getComponents :: TM [TComp]
 getComponents = do
   st <- get
@@ -167,12 +193,20 @@ putComponents comps = do
 searchFunction :: Name -> TMM TFunc
 searchFunction name = do
   fs <- getFunctions
-  return (find (\(n,_,_,_,_) -> n == name) fs)
+  return (find (\(n,_,_,_,_,_) -> n == name) fs)
 
 searchComponent :: Name -> TMM TComp
 searchComponent name = do
   cs <- getComponents
   return (find (\(n,_) -> n == name) cs)
+
+changeFunction :: Name -> FGuards -> TMM ()
+changeFunction name fgs = do
+  mf <- searchFunction name
+  removeFunction name
+  cont1 mf $ \(n, s, F vars _ ft, a, fc, ho) -> do
+    addFunc (n, s, F vars fgs ft, a, fc, ho)
+    ret ()
 
 {-changeMainName :: Name -> Name -> TM ()
 changeMainName = do

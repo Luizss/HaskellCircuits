@@ -75,7 +75,7 @@ topLevel lst (_, C _ _ inps out _ _) = do
           where go n
                   | n == length (last tbs) = []
                   | otherwise =
-                      let vals = map (!!n) tbs
+                      let vals = map (!! n) tbs
                           xs = zip inps vals
                       in map fill xs ++ [seeOut] ++ go (n+1)
                 seeOut = "cout << out.read() << endl;"
@@ -89,6 +89,8 @@ topLevel lst (_, C _ _ inps out _ _) = do
 toSystemC :: [[Int]] -> TMM ()
 toSystemC tbs = do
   comps <- getComponents
+  debug $ "comps " ++ show (length comps)
+  debugs comps
   maybeMain <- searchComponent "main"
   cont1 maybeMain $ \main -> do
     topLevel tbs main
@@ -97,11 +99,12 @@ toSystemC tbs = do
 
 componentToSystemC :: TComp -> TMM ()
 componentToSystemC (name, C f insts inps out conns proced) = do
+  debug $ "COMPNAME " ++ name
   msc <- sconnections conns
   cont1 msc $ \sc -> do
     addSystemCFile (changeIfMain name ++ ".h", content sc)
     mapM_ instanceFromFile insts
-    debug "sigs"
+    debug $ "sigs " ++ name
     debugs proced
     debug (procedureSignals proced)
     ret ()
@@ -146,6 +149,7 @@ instanceFromFile (comp,fid,nid@(NameId n _),inst,_) = case inst of
   ConstBinI bin out      -> addSystemCFile $ makeConstBinFile fid  nid bin out
   ConstHexI hex out      -> addSystemCFile $ makeConstHexFile fid nid hex out
   ConstDecI dec out      -> addSystemCFile $ makeConstDecFile fid nid dec out
+  ConstStrI str out      -> addSystemCFile $ makeConstStrFile fid nid str out
   SpecialI inps out args
     | isPrefixOf "now" n || isPrefixOf "rest" n || isPrefixOf "consR" n -> ok
     | otherwise -> addSystemCFile $ makeSpecialFile fid nid inps out args
@@ -171,6 +175,7 @@ includeInstances =
       ConstBinI _ _  -> name ++ (show fid) ++ "_"
       ConstHexI _ _  -> name ++ (show fid) ++ "_"
       ConstDecI _ _  -> name ++ (show fid) ++ "_"
+      ConstStrI _ _  -> name ++ (show fid) ++ "_"
       _ -> name
 
     makeInclude :: Name -> String
@@ -257,6 +262,7 @@ instanceDeclaration
       ConstBinI _ _      -> name ++ (show fid) ++ "_ " ++ name ++ show id ++ ";"
       ConstHexI _ _      -> name ++ (show fid) ++ "_ " ++ name ++ show id ++ ";"
       ConstDecI _ _      -> name ++ (show fid) ++ "_ " ++ name ++ show id ++ ";"
+      ConstStrI _ _      -> name ++ (show fid) ++ "_ " ++ name ++ show id ++ ";"
       _               -> name ++ " " ++ name ++ (show id) ++ ";"
 
 processDeclaration [] = ""
@@ -336,30 +342,67 @@ procedureToSystemC name p
 
     procedureUnitToSystemC :: CProcUnit -> String
     procedureUnitToSystemC p = case p of
-      BLOB -> "//blob"
-      COPY _ x y -> unlines [x ++ ".write(" ++ y ++ ".read());"
+      BLOB x -> "//blob " ++ show x
+      COPY _ x y -> unlines [y ++ "__copy__val = " ++ y ++ ".read();"
+                            ,x ++ ".write(" ++ y ++ "__copy__val);"
+                            ,"if (" ++ y ++ "__copy__val != 0) {"
                             ,"while (" ++ y ++ ".nb_read(" ++ y ++ "__copy__val)) {"
                             , x ++ ".write(" ++ y ++ "__copy__val);"
+                            ,"if (" ++ y ++ "__copy__val == 0) break;"
+                            ,"}"
                             ,"}"]
       PCOPY k _ x y -> unlines $
-                       map (\i -> x ++ ".write(" ++ y ++ "__now__" ++ show i ++ ");") [1..k]
-                       ++ ["while (" ++ y ++ ".nb_read(" ++ y ++ "__copy__val)) {"
+                       map (\i -> unlines
+                             [x ++ ".write(" ++ y ++ "__now__" ++ show i ++ ");"
+                             ,"if (" ++ y ++ "__now__" ++ show i ++ " != 0) {"]) [1..k]
+                       ++ [y ++ "__copy__val = " ++ y ++ ".read();"
+                          ,x ++ ".write(" ++ y ++ "__copy__val);"
+                          ,"if (" ++ y ++ "__copy__val != 0) {"
+                          ,"while (" ++ y ++ ".nb_read(" ++ y ++ "__copy__val)) {"
                           , x ++ ".write(" ++ y ++ "__copy__val);"
+                          ,"if (" ++ y ++ "__copy__val == 0) break;"
+                          ,"}"
                           ,"}"]
+                       ++ replicate k "}"
       COPYV t x y -> unlines ["for(std::vector<" ++ makeTypePure t ++ " >::iterator " ++ y ++ "__it_ = " ++ y ++ ".begin(); " ++ y ++ "__it_ != " ++ y ++ ".end(); ++" ++ y ++ "__it_) {"
                             , x ++ ".write(*" ++ y ++ "__it_);"
                             ,"}"]
-      SAVE (x,_) -> unlines ["wait(SC_ZERO_TIME);"
+      CLEARV v -> v ++ "__savev.clear();"
+      SAVE (x,_) -> unlines [x ++ "__save__val = " ++ x ++ ".read();"
+                            ,x ++ "__save.write(" ++ x ++ "__save__val);"
+                            ,"if (" ++ x ++ "__save__val != 0) {"
                             ,"while (" ++ x ++ ".nb_read(" ++ x ++ "__save__val)) {"
                             , x ++ "__save.write(" ++ x ++ "__save__val);"
+                            ,"if (" ++ x ++ "__save__val == 0) break;"
+                            ,"}"
                             ,"}"]
-      SAVEV (x,_) -> unlines ["wait(SC_ZERO_TIME);"
+      SAVEV (x,_) -> unlines [x ++ "__savev__val = " ++ x ++ ".read();"
+                             ,x ++ "__savev.push_back(" ++ x ++ "__savev__val);"
+                             ,"if (" ++ x ++ "__savev__val != 0) {"
                              ,"while (" ++ x ++ ".nb_read(" ++ x ++ "__savev__val)) {"
-                             , x ++ "__savev.push_back(" ++ x ++ "__savev__val);"
+                             ,x ++ "__savev.push_back(" ++ x ++ "__savev__val);"
+                             ,"if (" ++ x ++ "__savev__val == 0) break;"
+                             ,"}"
+                             ,"}"]
+      RESTV x -> x ++ "__savev.erase(" ++ x ++ "__savev.begin());"
+      MAKEV _ x y -> unlines [y ++ "__savev__val = " ++ y ++ ".read();"
+                             ,x ++ "__savev.push_back(" ++ y ++ "__savev__val);"
+                             ,"if (" ++ y ++ "__savev__val != 0) {"
+                             ,"while (" ++ y ++ ".nb_read(" ++ y ++ "__savev__val)) {"
+                             ,x ++ "__savev.push_back(" ++ y ++ "__savev__val);"
+                             ,"if (" ++ y ++ "__savev__val == 0) break;"
+                             ,"}"
                              ,"}"]
       PUTSTATE x f -> x ++ "__aux = " ++ f ++ "__aux;"
       GETINPUT (x,_) -> x ++ "__aux = " ++ x ++ ".read();"
-      GETSTREAM d (x,_) -> x ++ "__now__" ++ show d ++ " = " ++ x ++ ".read();"
+      GETSTREAMSAFE (i,f) d (x,_)
+        | d == f -> x ++ "__now__" ++ show d ++ " = " ++ x ++ ".read();" ++ replicate (f-i) '}'
+        | otherwise -> unlines $
+          [x ++ "__now__" ++ show d ++ " = " ++ x ++ ".read();"
+          ,"if (" ++ x ++ "__now__" ++ show d ++ " == 0) {"]
+          ++ map (\d' -> x ++ "__now__" ++ show d' ++ " = 0;") [(d+1)..f]
+          ++ ["} else {"]
+      GETSTREAMV d (x,_) -> x ++ "__now__" ++ show d ++ " = *(" ++ x ++ "__savev.begin() + " ++ show (d-1) ++ ");"
       PUTSTREAM d (y,_) x -> y ++ ".write(" ++ x ++ "__now__" ++ show d ++ ");"
       PUTOUTPUTSTREAM d y x -> y ++ ".write(" ++ x ++ "__now__" ++ show d ++ ");"
       PUTOUTPUTSTREAMV _ d y x -> unlines [y ++ "__it = " ++ y ++ ".begin();"
@@ -388,14 +431,27 @@ procedureToSystemC name p
       ELSE qs -> "} else {\n"
                  ++ unlines (map procedureUnitToSystemC qs) ++ "\n"
                  ++ "}"
-      DESTROY ss -> unlines (map (\(s,_) -> "while(" ++ s ++ ".nb_read(" ++ s ++ "__destroy)) {}") ss)
+      DESTROY 0 (s,_) -> unlines
+        [s ++ "__destroy = " ++ s ++ ".read();"
+        ,"if (" ++ s ++ "__destroy != 0) {"
+        ,"while(" ++ s ++ ".nb_read(" ++ s ++ "__destroy)) { if (" ++ s ++"__destroy == 0) break; }"
+        ,"}"]
+      DESTROY n (s,_) -> unlines
+        ["if (" ++ intercalate " && " (map (\i -> s ++ "__now__" ++ show i ++ " != 0") [1..n]) ++ ") {"
+        ,s ++ "__destroy = " ++ s ++ ".read();"
+        ,"if (" ++ s ++ "__destroy != 0) {"
+        ,"while(" ++ s ++ ".nb_read(" ++ s ++ "__destroy)) { if (" ++ s ++"__destroy == 0) break; }"
+        ,"}"
+        ,"}"]
+      DESTROYV (s,_) -> s ++ "__savev.clear();"
 
 procedureSignals :: CProc -> String
 procedureSignals = unlines . nub . filter (/="") . concat . map procedureSignal
   where 
     procedureSignal :: CProcUnit -> [String]
     procedureSignal p = case p of
-      BLOB -> []
+      RESTV x -> []
+      BLOB _ -> []
       COPY t x y
         | x == "out" && y == "out" -> [makeTypePure t ++ " " ++ y ++ "__copy__val;"]
         | x == "out" -> [makeTypeSignal t ++ " " ++ y ++ ";"
@@ -409,16 +465,23 @@ procedureSignals = unlines . nub . filter (/="") . concat . map procedureSignal
         | x == "out" -> [makeTypePure t ++ " " ++ y ++ "__copy__val;"]
         | otherwise  -> [makeTypeSignal t ++ " " ++ x ++ ";"
                         ,makeTypePure t ++ " " ++ y ++ "__copy__val;"]
-      COPYV t x y -> []
+      COPYV t x _
+        | x == "out" -> []
+        | otherwise  -> [makeTypeSignal t ++ " " ++ x ++ ";"]
       SAVE (x,t) -> [makeTypeSignal t ++ " " ++ x ++ "__save;"
                     ,makeTypePure t ++ " " ++ x ++ "__save__val;"]
       SAVEV (x,t) -> [makeTypeVector t ++ " " ++ x ++ "__savev;"
                      ,makeTypePure t ++ " " ++ x ++ "__savev__val;"]
+      MAKEV t x y -> [makeTypeVector t ++ " " ++ x ++ "__savev;"
+                     ,makeTypePure t ++ " " ++ y ++ "__savev__val;"
+                     ,makeTypeSignal t ++ " " ++ y ++ ";"]
+      CLEARV v -> []
       PUTSTATE x f -> []
       LOOP qs -> concat (map procedureSignal qs)
       BREAK -> []
       SWITCH (s,t) a _-> [makeTypePure t ++ " " ++ s ++ "__now__" ++ show a ++ ";"]
-      GETSTREAM d (x,t) -> [makeTypePure t ++ " " ++ x ++ "__now__" ++ show d ++ ";"]
+      GETSTREAMSAFE _ d (x,t) -> [makeTypePure t ++ " " ++ x ++ "__now__" ++ show d ++ ";"]
+      GETSTREAMV d (x,t) -> [makeTypePure t ++ " " ++ x ++ "__now__" ++ show d ++ ";"]
       PUTSTREAM _ (y,t) _ -> [makeTypeSignal t ++ " " ++ y ++ ";"]
       PUTOUTPUTSTREAM _ _ _ -> []
       PUTOUTPUTSTREAMV t _ y _ -> [makeTypeVector t ++ "::iterator " ++ y ++ "__it;"]
@@ -435,8 +498,8 @@ procedureSignals = unlines . nub . filter (/="") . concat . map procedureSignal
       IF _ qs     -> concat (map procedureSignal qs)
       ELSEIF _ qs -> concat (map procedureSignal qs)
       ELSE qs     -> concat (map procedureSignal qs)
-      DESTROY ss -> map (\(s,t) -> makeTypePure t ++ " " ++ (s ++ "__destroy;")) ss
-      
+      DESTROY _ (s,t) -> [makeTypePure t ++ " " ++ s ++ "__destroy;"]
+      DESTROYV _ -> []
 
 makeForkFile :: NameId -> Int -> CInput -> [COutput] -> File
 makeForkFile (NameId name id) n (_,t) outs =
@@ -524,6 +587,31 @@ makeConstDecFile fid (NameId name id) cons (out, t) =
           ++ "}\n"
           ++ endif
 
+makeConstStrFile fid (NameId name id) stream (out, t) =
+  (c ++ ".h", content)
+  where c = name ++ show fid ++ "_"
+        content
+          = ifndef c
+          ++ "#include \"systemc.h\"\n"
+          ++ "SC_MODULE("++c++") {\n"
+          ++ makeTypeOutput t ++ " " ++ out ++ ";\n"
+          ++ "void proc();\n"
+          ++ "SC_CTOR("++c++") {\n"
+          ++ "SC_THREAD(proc);\n"
+          ++ "}\n"
+          ++ "};\n\n"
+          ++ "void " ++ c ++ "::proc() {\n"
+          ++ "while(true) {\n"
+          ++ unlines (map f stream)
+          ++ "}\n"
+          ++ "}\n"
+          ++ endif
+        f fcons = out ++ ".write(" ++ (case fcons of
+          FBin (L _ b) -> "\"" ++ b ++ "\""
+          FHex (L _ h) -> "\"0x" ++ h ++ "\""
+          FDec (L _ d) -> show d
+          FForeverWait -> "") ++ ");\n"
+
 makeSpecialFile fid nid@(NameId name id) ins out args = case name of
   "cat"  -> makeSpecialFileCat fid nid ins out
 
@@ -538,9 +626,35 @@ makeSpecialFile fid nid@(NameId name id) ins out args = case name of
   "add"  -> makeSpecialFileArith fid nid ins out
   "sub"  -> makeSpecialFileArith fid nid ins out
 
+  x | isPrefixOf "mrest" x -> makeSpecialFileMRest fid nid ins out args
   x | isPrefixOf "sli" x -> makeSpecialFileSli fid nid ins out args
 
   x -> error x
+
+makeSpecialFileMRest fid (NameId name id) [(in1,t1)] (out,t) [a1]
+  = (c ++ ".h", content)
+  where c = name ++ show fid ++ "_"
+        content = unlines
+          [ifndef c
+          ,"#include \"systemc.h\""
+          ,"SC_MODULE(" ++ c ++ ") {"
+          , inputs [(in1,t1)]
+          , outputs [(out,t)]
+          , makeTypePure t ++ " v;"
+          ,"void proc();"
+          ,"SC_CTOR(" ++ c ++ ") {"
+          ,"SC_THREAD(proc);"
+          ,"}"
+          ,"};"
+          ,"void " ++ c ++ "::proc() {"
+          ,"while(true) {"
+          , unlines (replicate a1 (in1 ++ ".read();"))
+          , "while(" ++ in1 ++ ".nb_read(v)) {"
+          , out ++ ".write(v);"
+          ,"}"
+          ,"}"
+          ,"}"
+          ,"#endif"]
 
 makeSpecialFileSli fid (NameId name id) [(in1,t1)] (out,t) [a1,a2]
   = (c ++ ".h", content)

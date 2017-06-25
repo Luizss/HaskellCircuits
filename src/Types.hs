@@ -27,6 +27,7 @@ type FVar = L Name
 
 data FType = BitVec SrcLoc Int
            | Bit SrcLoc
+           | Function SrcLoc
            | Nat SrcLoc Int
            | Stream FType
            deriving (Show,Eq)
@@ -119,8 +120,9 @@ data TypeClassification = OutputRecursive
 type FunctionClassification
   = (RecursionClassification, TypeClassification, IsConsExpr)
 
-  
-type TFunc = (Name, SrcLoc, F, Arity, FunctionClassification)
+type HighOrder = [Int]
+
+type TFunc = (Name, SrcLoc, F, Arity, FunctionClassification, HighOrder)
 
 type TFuncType = (Name, SrcLoc, [PTypeExpr])
 
@@ -155,23 +157,25 @@ initialTState = TState {
 
 specialFuncs :: [TFunc]
 specialFuncs
-  = [("add",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
-    ,("sub",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
-    ,("mul",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
-    ,("and",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
-    ,("or" ,NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
-    ,("not",NoLoc,SpecialF,1,(NonRecursive, NoRecursiveTypes, False))
-    ,("equ",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
-    ,("sli",NoLoc,SpecialF,3,(NonRecursive, NoRecursiveTypes, False))
-    ,("cat",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False))
-    ,("cons",NoLoc,SpecialF,2,
-       (NonRecursive,OutputInputRecursive, False))
-    ,("consR",NoLoc,SpecialF,2,
-       (NonRecursive,OutputInputRecursive, False))
-    ,("now",NoLoc,SpecialF,2,
-       (NonRecursive, InputRecursive, False))
-    ,("rest",NoLoc,SpecialF,2,
-       (NonRecursive,OutputInputRecursive, False))
+  = [("add",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("sub",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("mul",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("and",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("or" ,NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("not",NoLoc,SpecialF,1,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("equ",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("sli",NoLoc,SpecialF,3,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("cat",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False),[])
+    ,("cons",NoLoc,SpecialF,2
+     ,(NonRecursive,OutputInputRecursive, False),[])
+    ,("consR",NoLoc,SpecialF,2
+     ,(NonRecursive,OutputInputRecursive, False),[])
+    ,("now",NoLoc,SpecialF,2
+     ,(NonRecursive, InputRecursive, False),[])
+    ,("rest",NoLoc,SpecialF,2
+     ,(NonRecursive,OutputInputRecursive, False),[])
+    ,("mrest",NoLoc,SpecialF,2
+     ,(NonRecursive,OutputInputRecursive, False),[])
     ]
 
 ------------------ Components
@@ -187,7 +191,8 @@ type CConn = (CompName,(NameId,CSignal),(NameId,CSignal))
 type CProc = [CProcUnit]
 
 data CProcUnit = GETINPUT (FTyped String)
-               | GETSTREAM Int (FTyped String)
+               | GETSTREAMSAFE (Int,Int) Int (FTyped String)
+               | GETSTREAMV Int (FTyped String)
                | PUTSTREAM Int (FTyped String) String
                | SWITCH (FTyped String) Int Int
                | PUTOUTPUT String String
@@ -202,14 +207,19 @@ data CProcUnit = GETINPUT (FTyped String)
                | ELSE CProc
                | LOOP CProc
                | BREAK
-               | DESTROY [(String, FType)]
+--               | DESTROY [(String, FType)]
+               | DESTROY Int (String, FType)
+               | DESTROYV (String, FType)
                | PUTSTATE String String
                | SAVE (FTyped String)
                | SAVEV (FTyped String)
                | COPY FType String String
                | PCOPY Int FType String String
                | COPYV FType String String
-               | BLOB
+               | MAKEV FType String String
+               | CLEARV String
+               | RESTV String
+               | BLOB Int
                deriving (Show, Eq)
 
 data TransitionType = ConsRTransition Int
@@ -218,11 +228,12 @@ data TransitionType = ConsRTransition Int
                     | IdTransition
                     | FunctionTransition
                     deriving Show
-                    
+
 data I = I [CInput] COutput
        | ConstBinI String COutput
        | ConstHexI String COutput
        | ConstDecI Int COutput
+       | ConstStrI [FCons] COutput
        | SpecialI [CInput] COutput [Int]
        | FifoI CInput COutput
        | ForkI Int CInput [COutput]

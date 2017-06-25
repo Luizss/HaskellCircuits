@@ -5,6 +5,7 @@ module Function where
 import Prelude hiding (log)
 import Control.Monad (forM, forM_)
 import Control.Monad.Trans (lift)
+import Data.List (elemIndex)
 
 --------------------- Internal Imports
 
@@ -50,7 +51,7 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
       
           cont1 mft $ \ft -> do
         
-            addFunc (funcName, srcLoc, F args (NoFGuards fExpr) ft, length args, (classifyRecursion funcName (NoFGuards fExpr), classifyTypes fts ft, isConsExpr (NoFGuards fExpr)))
+            addFunc (funcName, srcLoc, F args (NoFGuards fExpr) ft, length args, (classifyRecursion funcName (NoFGuards fExpr), classifyTypes fts ft, isConsExpr (NoFGuards fExpr)), isHighOrder fts)
             ret ()
 
       PGuards guards -> do
@@ -70,7 +71,7 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
       
           cont1 mft $ \ft -> do
         
-            addFunc (funcName, srcLoc, F args (FGuards fguards) ft, length args, (classifyRecursion funcName (FGuards fguards), classifyTypes fts ft, isConsExpr (FGuards fguards)))
+            addFunc (funcName, srcLoc, F args (FGuards fguards) ft, length args, (classifyRecursion funcName (FGuards fguards), classifyTypes fts ft, isConsExpr (FGuards fguards)), isHighOrder fts)
             ret ()
     
   where
@@ -147,6 +148,7 @@ fromParsedTypeExprToFunctionType texpr = case texpr of
   PTApp (PTAExpr (L s (Upp "Vec"))) (PTAExpr (L _ (Dec n)))
     -> ret $ BitVec s n
   PTAExpr (L s (Upp "Bit")) -> ret $ Bit s
+  PTAExpr (L s (Upp "Function")) -> ret $ Function s
   PTApp (PTAExpr (L s (Upp "Nat"))) (PTAExpr (L _ (Dec n)))
     -> ret $ Nat s n
   x -> throw (TErr
@@ -166,8 +168,8 @@ checkForArityErrs = do
     ok = return ()
     
     checkFunc :: TFunc -> TM ()
-    checkFunc (_, _, SpecialF, _,_) = ok
-    checkFunc (name, _loc, F vars fg _, _,_) = case fg of
+    checkFunc (_, _, SpecialF, _,_,_) = ok
+    checkFunc (name, _loc, F vars fg _, _,_,_) = case fg of
 
       NoFGuards body -> check body
       FGuards guards ->
@@ -176,16 +178,19 @@ checkForArityErrs = do
       where
         check :: FExpr -> TM ()
         check (FAExpr _) = ok
+        check (FApp (L _ "consR",_) _ _) = ok
         check (FApp (lname,_) fexprs _) = do
           let arity = length fexprs
           mf <- searchFunction (getVal lname)
           case mf of
-            Nothing -> throw (TErr
-                              FunctionNotDeclared
-                              (Just ("In function " ++ name))
-                              ("Function " ++ (getVal lname) ++ " is not declared.")
-                              (getLoc lname))
-            Just (_,_,_,arity',_)
+            Nothing
+              | elem lname (map fst vars) -> ok
+              | otherwise -> throw (TErr
+                                    FunctionNotDeclared
+                                    (Just ("In function " ++ name))
+                                    ("Function " ++ (getVal lname) ++ " is not declared.")
+                                    (getLoc lname))
+            Just (_,_,_,arity',_,_)
               | arity == arity' -> ok
               | otherwise -> throw (TErr
                                     ArityMismatch
@@ -200,7 +205,129 @@ checkForArityErrs = do
                                     (getLoc lname))
           mapM_ check fexprs
 
+applyHighOrder :: TM ()
+applyHighOrder = do
+  fs <- getFunctions
+  mapM_ high fs
+  where
+    high :: TFunc -> TMM ()
+    high (_, _, SpecialF, _,_,_) = mok
+    high (_,_,_,_,_,_:_) = mok
+    high (name,loc,F vars fg _,_,_,[]) = case fg of
+      NoFGuards body -> do
+        body' <- change body
+        changeFunction name (NoFGuards body')
+      FGuards guards -> do
+        guards' <- forM guards $ \(c,e) -> do
+          c' <- change c
+          e' <- change e
+          return (c',e')
+        changeFunction name (FGuards guards')
+      where
+        change :: FExpr -> TM FExpr
+        change id@(FAExpr _) = return id
+        change id@(FApp (L s fname,i) fexprs ft)
+          | fname == name = do
+              fexprs' <- mapM change fexprs
+              return (FApp (L s fname,i) fexprs' ft)
+          | otherwise = do
+              isIt <- isFunctionHighOrder fname
+              case isIt of
+                True  -> do
+                  as <- highOrderArgs fname
+                  let namesNindexes = zip (map toName (indexes as fexprs)) as
+                      fnameNew = fname ++ restOfName namesNindexes
+                  addNewFunction fname (map toName (indexes as fexprs)) as
+                  fexprs' <- mapM change fexprs
+                  return $ FApp (L s fnameNew,i) (takeOut as fexprs') ft
+                False -> do
+                  fexprs' <- mapM change fexprs
+                  return (FApp (L s fname,i) fexprs' ft)
+
+addNewFunction :: Name -> [Name] -> [Int] -> TMM ()
+addNewFunction fname substs as = do
+  let namesNinds = zip substs as
+      newFname = fname ++ restOfName namesNinds
+  mf <- searchFunction fname
+  cont1 mf $ \(_,loc,F vars fgs ft, a, fc,_) -> do
+    let substInps = map (getVal . fst) $ indexes as vars
+    fgs' <- newBody (fname, newFname) substInps substs as fgs
+    addFunc (newFname, loc, F (takeOut as vars) fgs' ft, a, fc, [])
+    removeFunction fname
+    ret ()
+
+newBody :: (Name,Name) -> [Name] -> [Name] -> [Int] -> FGuards -> TM FGuards
+newBody (fname,newFname) sInps substs as fg = case fg of
+  NoFGuards e -> do
+    e' <- newExpr e
+    return $ NoFGuards e'
+  FGuards    fgs -> do
+    fgs' <- forM fgs $ \(c,e) -> do
+      c' <- newExpr c
+      e' <- newExpr e
+      return (c',e')
+    return $ FGuards fgs'
+  where
+    newExpr :: FExpr -> TM FExpr
+    newExpr fex = case fex of
+      FApp (L s n,id) fexs ft -> do
+        isIt <- isFunctionHighOrder n
+        case isIt of
+          True
+            | n == fname -> do
+                debug $ "hey " ++ n
+                fexs' <- mapM newExpr fexs
+                return $ FApp (L s newFname,id) (takeOut as fexs') ft
+            | otherwise -> do
+                debug $ "HOHGGH " ++ n
+                as' <- highOrderArgs n
+                fexs' <- mapM newExpr fexs
+                let namesNindexes = zip (map toName (indexes as' fexs')) as'
+                    nnew = n ++ restOfName namesNindexes
+                addNewFunction n (map toName (indexes as' fexs')) as'
+                return $ FApp (L s nnew,id) (takeOut as' fexs') ft
+          False
+            | n == fname -> do
+                debug $ "hey " ++ n
+                fexs' <- mapM newExpr fexs
+                return $ FApp (L s newFname,id) (takeOut as fexs') ft
+            | elem n sInps -> do
+                debug n
+                debug $ sub n
+                fexs' <- mapM newExpr fexs
+                return $ FApp (L s (sub n),id) fexs' ft
+            | otherwise    -> do
+                debug $ "nope " ++ n
+                fexs' <- mapM newExpr fexs
+                return $ FApp (L s n,id) fexs' ft
+      FAExpr (FVar (L s v), id, ft)
+        | elem v sInps -> return $ FAExpr (FVar (L s (sub v)), id, ft)
+      x -> return x
+
+    sub :: Name -> Name
+    sub x = case elemIndex x sInps of
+      Nothing -> error "sub"
+      Just i  -> substs !! i
+
+restOfName :: [(Name,Int)] -> String
+restOfName = concat . map (\(n,i) -> "__" ++ show i ++ n)
+
+takeOut :: [Int] -> [a] -> [a]
+takeOut inds = map just . filter isJust . mapIndex f
+  where f i x
+          | elem i inds = Nothing
+          | otherwise   = Just x
+          
+toName :: FExpr -> Name
+toName (FAExpr (FVar (L _ x), _, Function _)) = x
+toName x = error $ "toname " ++ show x
+
 --------------------- Classifying Function
+
+isHighOrder :: [FType] -> [Int]
+isHighOrder = map just . filter isJust . mapIndex isFunctionType
+  where isFunctionType i (Function _) = Just i
+        isFunctionType i  _           = Nothing
 
 isConsExpr :: FGuards -> IsConsExpr
 isConsExpr gs = case gs of
@@ -283,3 +410,4 @@ decideAcrossGuards = foldl decide' NonRecursive
 -- odot : fromLocatedTokenToFunctionVariable
 toFVar :: LToken -> FVar
 toFVar (L src (Low s)) = L src s
+

@@ -2,9 +2,9 @@ module Components where
 
 ----------------------- External Imports
 
-import Prelude hiding (lookup,log)
+import Prelude as P hiding (lookup,log) 
 import Control.Monad.State
-import Data.List ((\\), findIndex, nub, nubBy, elem, delete, deleteBy)
+import Data.List ((\\), findIndex, nub, nubBy, elem, delete, deleteBy, elemIndex)
 import Control.Monad
 
 ----------------------- Internal Imports
@@ -28,6 +28,7 @@ toC :: Name -> TMM ()
 toC name
   | special name = mok
   | otherwise = do
+      debug $ "NAME " ++name
       maybeC <- searchComponent name
       case maybeC of
         Just c -> mok
@@ -48,7 +49,7 @@ toC name
                 ret ()
 
 synth :: TFunc -> TMM C
-synth tfunc@(name,_,_,_,clss@(rc,_,_)) = case rc of
+synth tfunc@(name,_,_,_,clss@(rc,_,_),_) = case rc of
   LeftRecursive           -> synthLeftRecursion tfunc clss
   RightRecursive          -> synthRightRecursion tfunc
   MultipleRecursive       -> cannotSynthErr
@@ -64,13 +65,17 @@ synth tfunc@(name,_,_,_,clss@(rc,_,_)) = case rc of
   
 
 synthNonRecursiveFunction :: TFunc -> TMM C
-synthNonRecursiveFunction tfunc@(name,_,f@(F _ _ returnType),_,_) = do
+synthNonRecursiveFunction tfunc@(name,_,f@(F _ _ returnType),_,_,_) = do
   let deps   = getDependencies f
       consts = getConstantsFromF f
+      constStreams = getConstantStreamsFromF f
   cs <- mapM toC (map fst3 (nub deps))
   cont cs $ do
     okDeps <- mapM (makeInstancesFromDep name) deps
     mapM (makeInstancesFromConst name) consts
+    debug "44444"
+    debugs constStreams
+    mapM (makeInstancesFromConstStreams name) constStreams
     -- throw err with okdeps
     cont okDeps $ do
       connect tfunc
@@ -87,6 +92,32 @@ synthNonRecursiveFunction tfunc@(name,_,f@(F _ _ returnType),_,_) = do
                 proced
         ret c
 
+makename :: [FExpr] -> Name
+makename = concat . map f
+  where f :: FExpr -> Name
+        f (FAExpr (FCons fcons, _, t)) = case fcons of
+          FBin (L _ b) -> "_bin" ++ b
+          FHex (L _ h) -> "_hex" ++ h
+          FDec (L _ d) -> "_dec" ++ show d
+          FForeverWait -> ""
+        f _ = error "makename"
+
+makename' :: [FCons] -> Name
+makename' = concat . map f
+  where f :: FCons -> Name
+        f fcons = case fcons of
+          FBin (L _ b) -> "_bin" ++ b
+          FHex (L _ h) -> "_hex" ++ h
+          FDec (L _ d) -> "_dec" ++ show d
+          FForeverWait -> ""
+
+constantsWithForeverWait :: [FExpr] -> Bool
+constantsWithForeverWait fexs = and (map isCons fexs) && isFW (last fexs)
+  where isCons (FAExpr (FCons _,_,_)) = True
+        isCons _ = False
+        isFW (FAExpr (FCons FForeverWait,_,_)) = True
+        isFW _ = False
+
 synthLeftRecursion :: TFunc -> FunctionClassification -> TMM C
 synthLeftRecursion tfunc clss@(_,tc,_) = case tc of
   InputRecursive       -> synthLeftRecursionWithInputStream tfunc
@@ -95,13 +126,17 @@ synthLeftRecursion tfunc clss@(_,tc,_) = case tc of
   NoRecursiveTypes     -> synthLeftRecursionWithNormalTypes tfunc
 
 synthLeftRecursionWithInputStream :: TFunc -> TMM C
-synthLeftRecursionWithInputStream tfunc@(name,_,f@(F _ _ returnType),_,_) = do
+synthLeftRecursionWithInputStream tfunc@(name,_,f@(F _ _ returnType),_,_,_) = do
   let deps   = filter ((/=name) . fst3) (getDependencies f)
       consts = getConstantsFromF f
+      constStreams = getConstantStreamsFromF f
   cs <- mapM toC (map fst3 (nub deps))
   cont cs $ do
     okDeps <- mapM (makeInstancesFromDep name) deps
     mapM_ (makeInstancesFromConst name) consts
+    debug "11111"
+    debugs constStreams
+    mapM (makeInstancesFromConstStreams name) constStreams
     -- throw err with okdeps
     cont okDeps $ do
       connect tfunc
@@ -119,13 +154,17 @@ synthLeftRecursionWithInputStream tfunc@(name,_,f@(F _ _ returnType),_,_) = do
         ret c
 
 synthLeftRecursionWithNormalTypes :: TFunc -> TMM C
-synthLeftRecursionWithNormalTypes tfunc@(name,_,f@(F _ _ returnType),_,_) = do
+synthLeftRecursionWithNormalTypes tfunc@(name,_,f@(F _ _ returnType),_,_,_) = do
   let deps   = filter ((/=name) . fst3) (getDependencies f)
       consts = getConstantsFromF f
+      constStreams = getConstantStreamsFromF f
   cs <- mapM toC (map fst3 (nub deps))
   cont cs $ do
     okDeps <- mapM (makeInstancesFromDep name) deps
     mapM_ (makeInstancesFromConst name) consts
+    debug "22222"
+    debugs constStreams
+    mapM (makeInstancesFromConstStreams name) constStreams
     -- throw err with okdeps
     cont okDeps $ do
       connect tfunc
@@ -143,12 +182,12 @@ synthLeftRecursionWithNormalTypes tfunc@(name,_,f@(F _ _ returnType),_,_) = do
         ret c
 
 synthRightRecursion :: TFunc -> TMM C
-synthRightRecursion (_,_,f,_,_) = do
+synthRightRecursion (_,_,f,_,_,_) = do
   debug "righttt"
   ret $ C f [] [] ("aaa",Bit NoLoc) [] []
 
 procedure :: TFunc -> TMM CProc
-procedure tfunc@(name,_,_,_,(classification,_,_)) = case classification of
+procedure tfunc@(name,_,_,_,(classification,_,_),_) = case classification of
   LeftRecursive  -> procedureLeftRecursive tfunc
   RightRecursive -> noRet
   MultipleRecursive -> noRet
@@ -156,7 +195,7 @@ procedure tfunc@(name,_,_,_,(classification,_,_)) = case classification of
   NonRecursive -> procedureNonRecursive tfunc
 
 procedureNonRecursive :: TFunc -> TMM CProc
-procedureNonRecursive tfunc@(name,_,f@(F inps fguards rType),a,_) = case fguards of
+procedureNonRecursive tfunc@(name,_,f@(F inps fguards rType),a,_,_) = case fguards of
 
   NoFGuards (FAExpr (FVar (L _ vs), _, t)) -> do
     yn <- doesLogicalConnectionExist (name ++ "__" ++ vs)
@@ -171,7 +210,7 @@ procedureNonRecursive tfunc@(name,_,f@(F inps fguards rType),a,_) = case fguards
     
     let isId i = case fgs !! (i-1) of
           (_, FAExpr (FVar ln,_,t))
-            | elem ln (map fst inps) -> Just (getVal ln,t)
+            | elem ln (map fst inps) -> Just (getVal ln,t, just (elemIndex ln (map fst inps)))
           _ -> Nothing
         typeOfExpr i = case fgs !! (i-1) of
           (_, expr) -> getTypeFromFExpr expr
@@ -206,8 +245,8 @@ procedureNonRecursive tfunc@(name,_,f@(F inps fguards rType),a,_) = case fguards
           savs  = nows - rests
           getstreams
             | nows == 0 = []
-            | otherwise = for [(rests+1)..nows] $ \d -> GETSTREAM d (inp, t)
-      return $ getstreams
+            | otherwise = for [(rests+1)..nows] $ \d -> GETSTREAMSAFE(rests+1,nows) d (inp, t)
+      return getstreams
     sPutConds' <- forM [1..n] $ \i -> do
       x <- forM sInps $ \(inp',t) -> do
         let inp = getVal inp'
@@ -273,17 +312,24 @@ procedureNonRecursive tfunc@(name,_,f@(F inps fguards rType),a,_) = case fguards
                   True  -> [COPY (typeOfExpr i) "out" fifoOutExpr]
                   False -> [GET (fifoOutExpr, rType)
                            ,PUTOUTPUT "out" fifoOutExpr]
-                Just (v,t)
-                  | isStreamT t && immediateOutput name v fgs -> [COPY t "out" (v ++ "__save")]
-                  | isStreamT t && increasingOutput name v fgs -> [COPYV t "out" (v ++ "__savev")]
+                Just (v,t,a')
+                  | isStreamT t && immediateOutput name a' v fgs -> [COPY t "out" (v ++ "__save")]
+                  | isStreamT t && increasingOutput name a' v fgs -> [COPYV t "out" (v ++ "__savev")]
+                  | isStreamT t && functionOutput name v fgs -> [COPYV t "out" (v ++ "__savev")]
                   | isStreamT t -> [PCOPY (numberOfGets fgs v) t "out" v]
                   | otherwise -> [PUTOUTPUT "out" v]
-          return $ putInputs ++ outputs ++ [DESTROY (map (\(a,b) -> (getVal a, b)) sInps)]
+              destroys = map destroy $ filter (\((_,t),_) -> isStreamT t) (zip inps [1..a])
+              destroy ((s',ty),a') =
+                let s = getVal s'
+                in if isVector name s a' fgs
+                   then DESTROYV (s, ty)
+                   else DESTROY (numberOfGets fgs s) (s,ty)
+          return $ putInputs ++ outputs ++ destroys
     ifelses <- forM [1..n] (ifElseIfElse n)
     ret $ getInputs ++ concat sInitStates ++ putConds ++ sPutConds ++ getConds ++ [cond] ++ ifelses
 
 procedureLeftRecursive :: TFunc -> TMM CProc
-procedureLeftRecursive tfunc@(_,_,_,_,(_,tc,_)) = case tc of
+procedureLeftRecursive tfunc@(_,_,_,_,(_,tc,_),_) = case tc of
   InputRecursive       -> procedureLeftRecursiveWithStreamInput tfunc
   OutputRecursive      -> procedureLeftRecursiveWithStreamInput tfunc
   OutputInputRecursive -> procedureLeftRecursiveWithStreamInput tfunc
@@ -326,7 +372,7 @@ numberOfRests ces name = maximum (map (\(c,e) -> max (go 0 c) (go 0 e)) ces)
           _ -> c
 
 procedureLeftRecursiveWithStreamInput :: TFunc -> TMM CProc
-procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_) = case fguards of
+procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_,_) = case fguards of
 
   NoFGuards expr -> throw (TErr
                            RecursionWithoutCondition
@@ -346,7 +392,7 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
           (_, FApp (L _ x,_) _ _)
             | x == name -> (True, Nothing)
           (_, FAExpr (FVar ln,_,t))
-            | elem ln (map fst inps) -> (False, Just (getVal ln, t))
+            | elem ln (map fst inps) -> (False, Just (getVal ln, t, just (elemIndex ln (map fst inps))))
           _ -> (False, Nothing)
         typeOfExpr i = case fgs !! (i-1) of
           (_, expr) -> getTypeFromFExpr expr
@@ -374,13 +420,13 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
                         ++ show i
                         ++ "__out"
     putConds' <- forM [1..n] $ \i -> do
-      forM nsInps $ \(inp',t) -> do
+      forM inps $ \(inp',t) -> do
         let inp = getVal inp'
         yn <- doesLogicalConnectionExist (fifoName i inp)
         return $ case yn of
           False -> []
           True
-            | isStreamT t -> []
+            | isStreamT t -> [COPYV t (fifoName i inp) (inp++"__savev")] ---m
             | otherwise   -> [PUT (fifoName i inp, t) inp]
     sInitStates <- forM (filter (\((_,t),_) -> isStreamT t) (zip inps [1..a])) $ \((inp',t),h) -> do
       let inp = getVal inp'
@@ -388,26 +434,33 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
           nows  = getNumber
           rests = numberOfRests fgs inp
           savs  = nows - rests
-          savestreams = for [1..n] sstreams
-          sstreams i | fst (isRecursiveGuard i fgs) = case transitionExpression inp' fgs i h of
-                         (_,ConsRTransition d)  -> [SAVE (inp,t)]
-                         (_,RestTransition)     -> [] 
-                         (_,ConsTransition d)   -> [SAVEV (inp,t)] -- ??????
-                         (_,IdTransition)       -> [] -- ??????
-                         (_,FunctionTransition) -> [] -- ??????
-                     | otherwise = []
+          savestreams
+            | isVector name inp h fgs = [SAVEV (inp,t)]
+            | immediateOutput name h inp fgs = [SAVE (inp,t)]
+            | otherwise = []
+          -- savestreams = for [1..n] sstreams
+          -- sstreams i | fst (isRecursiveGuard i fgs) = case transitionExpression inp' fgs i h of
+          --                (_,ConsRTransition d)  -> 
+          --                (_,RestTransition)     -> saveornotsave h name (inp,t) fgs
+          --                (_,ConsTransition d)   -> [SAVEV (inp,t)]
+          --                (_,IdTransition)       -> saveornotsave h name (inp,t) fgs
+          --                (_,FunctionTransition) -> [SAVEV (inp,t)] ---m
+          --            | otherwise = []
           getstreams
-            | nows == 0 = []
-            | otherwise = for [(rests+1)..nows] $ \d -> GETSTREAM d (inp, t)
-      return $ getstreams ++ concat savestreams
+            | nows == 0 = [BLOB 555]
+            | isVector name inp h fgs = [BLOB 666] --for [(rests+1)..nows] $ \d -> GETSTREAMV d (inp, t) ---m
+            | otherwise = for [(rests+1)..nows] $ \d -> GETSTREAMSAFE (rests+1,nows) d (inp, t)
+      return $ savestreams ++ getstreams
     sSwitchStates <- forM sInps $ \(inp',t) -> do
       let inp = getVal inp'
           getNumber = numberOfGets fgs inp
           nows = getNumber
           rests = numberOfRests fgs inp
           savs = nows - rests
-      return $ for [(rests+1)..nows] $ \d -> SWITCH (inp,t) (d - rests) d
-    sGetStreams <- forM sInps $ \(inp',t) -> do
+      return $ concat $ for [(rests+1)..nows] $ \d -> if rests == 0
+                                                      then [] ----m
+                                                      else [SWITCH (inp,t) (d - rests) d]
+    sGetStreams <- forM (filter (\((_,t),_) -> isStreamT t) (zip inps [1..a])) $ \((inp',t),h) -> do
       let inp = getVal inp'
           getNumber = numberOfGets fgs inp
           nows = getNumber
@@ -415,7 +468,8 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
           savs = nows - rests
       return $ case nows of
         0 -> []
-        _ -> for [(savs+1)..nows] $ \d -> GETSTREAM d (inp,t)
+        _ | isVector name inp h fgs -> for [1..nows] $ \d -> GETSTREAMV d (inp,t) ---m
+          | otherwise -> for [(savs+1)..nows] $ \d -> GETSTREAMSAFE (savs+1, nows) d (inp,t)
     sPutConds' <- forM [1..n] $ \i -> do
       x <- forM sInps $ \(inp',t) -> do
         let inp = getVal inp'
@@ -432,17 +486,15 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
         False -> return [GET (fifoOutName i, Bit NoLoc)]
         True -> do
           (lo,lot,isNow) <- getLogicalOutput (fifoOutName i)
-          debug "KKKKK"
-          debugs (lo,lot,isNow)
           return $ case (isStreamT lot,isNow) of
             (False,_)  -> [PUT (fifoOutName i, Bit NoLoc) lo
                           ,GET (fifoOutName i, Bit NoLoc)]
             (True,Just z) -> [PUTSTREAM z (fifoOutName i, Bit NoLoc) lo
                              ,GET (fifoOutName i, Bit NoLoc)]
             (True,Nothing) -> [] -- err?
-    let putConds = concat $ concat putConds'
+    let putConds  = concat $ concat putConds'
         sPutConds = concat sPutConds'
-        getConds = concat getConds'
+        getConds  = concat getConds'
         cond = COND n name
         ifElseIfElse n i
           | i == 1    = IF     (i-1) <$> insideCond i
@@ -526,13 +578,15 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
           case isIt of
             True  -> do
               puts' <- forM [1..a] $ \j -> do
-                putInputs' <- forM nsInps $ \(inp',t) -> do
+                putInputs' <- forM inps $ \(inp',t) -> do
                   let inp = getVal inp'
                   yn <- doesLogicalConnectionExist (fifoInRec inp j)
-                  case yn of
-                    False -> return Nothing
-                    True  -> return $ Just $ PUT (fifoInRec inp j,t) inp
-                return $ map just $ filter isJust putInputs'
+                  return $ case yn of
+                    False -> []
+                    True
+                      | isStreamT t -> [] --m
+                      | otherwise   -> [PUT (fifoInRec inp j,t) inp]
+                return $ concat putInputs'
               sPuts' <- forM [1..a] $ \j -> do
                 putInputs' <- forM sInps $ \(inp',t) -> do
                   let inp = getVal inp'
@@ -546,7 +600,7 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
               gets' <- forM (zip inps [1..a]) $ \((_,t),j) -> do
                 yn <- doesLogicalOutputExist (fifoOutRec j)
                 return $ case (yn,isStreamT t) of
-                  (True,_) -> [BLOB]
+                  (True,_) -> []
                   (_,True) -> []
                   _        -> [GET (fifoOutRec j, t)]
               let puts = concat puts'
@@ -560,9 +614,11 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
                         x <- forM inps $ \(L _ nsInp,t) -> do
                           forM [1..d] $ \d' -> do
                             yn <- doesLogicalConnectionExist (sFifoConsRInp nsInp h d')
-                            case yn of
-                              False -> return []
-                              True  -> return [PUT (sFifoConsRInp nsInp h d',t) nsInp]
+                            return $ case yn of
+                              False -> []
+                              True
+                                | isStreamT t -> [COPYV t (sFifoConsRInp nsInp h d') (nsInp++"__savev")] ---m
+                                | otherwise   -> [PUT (sFifoConsRInp nsInp h d',t) nsInp]
                         y <- forM sInps $ \(L _ sInp,t) -> do ------ aqui tem caso normal?????
                           forM [1..d] $ \d' -> do
                             let getNumber = numberOfGets fgs sInp
@@ -570,16 +626,18 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
                               yn <- doesLogicalConnectionExist (sFifoConsRNowInp sInp h d' w)
                               case yn of
                                 False -> return []
-                                True  -> return [PUTSTREAM d' (sFifoConsRNowInp sInp h d' w,t) sInp]
+                                True  -> return [PUTSTREAM w (sFifoConsRNowInp sInp h d' w,t) sInp]
                         return $ concat $ concat $ x ++ concat y
-                      (_,RestTransition)     -> return [] 
+                      (_,RestTransition) -> return []
                       (_,ConsTransition d)   -> do
-                        x <- forM nsInps $ \(L _ nsInp,t) -> do
+                        x <- forM inps $ \(L _ nsInp,t) -> do
                           forM [1..d] $ \d' -> do
                             yn <- doesLogicalConnectionExist (sFifoConsRInp nsInp h d')
-                            case yn of
-                              False -> return []
-                              True  -> return [PUT (sFifoConsRInp nsInp h d',t) nsInp]
+                            return $ case yn of
+                              False -> []
+                              True
+                                | isStreamT t -> [COPYV t (sFifoConsRInp nsInp h d') (nsInp++"__savev")] ---m
+                                | otherwise   -> [PUT (sFifoConsRInp nsInp h d',t) nsInp]
                         y <- forM sInps $ \(L _ sInp,t) -> do ------ aqui tem caso normal?????
                           forM [1..d] $ \d' -> do
                             let getNumber = numberOfGets fgs sInp
@@ -587,10 +645,25 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
                               yn <- doesLogicalConnectionExist (sFifoConsRNowInp sInp h d' w)
                               case yn of
                                 False -> return []
-                                True  -> return [PUTSTREAM d' (sFifoConsRNowInp sInp h d' w,t) sInp]
+                                True  -> return [PUTSTREAM w (sFifoConsRNowInp sInp h d' w,t) sInp]
                         return $ concat $ concat $ x ++ concat y
                       (_,IdTransition)       -> return [] -- ??????
-                      (_,FunctionTransition) -> return [] -- ??????
+                      (_,FunctionTransition) -> do
+                        x <- forM inps $ \(L _ nsInp,t) -> do
+                          yn <- doesLogicalConnectionExist (fifoInRec nsInp h)
+                          return $ case yn of
+                            False -> []
+                            True
+                              | isStreamT t -> [COPYV t (fifoInRec nsInp h) (nsInp++"__savev")] ---m
+                              | otherwise   -> [PUT (fifoInRec nsInp h,t) nsInp]
+                        y <- forM sInps $ \(L _ sInp,t) -> do ------ aqui tem caso normal?????
+                          let getNumber = numberOfGets fgs sInp
+                          forM [1..getNumber] $ \w -> do
+                            yn <- doesLogicalConnectionExist (sFifoInRec sInp h w)
+                            return $ case yn of
+                              False -> []
+                              True  -> [PUTSTREAM w (sFifoInRec sInp h w,t) sInp]
+                        return $ concat $ x ++ concat y -- ??????
               getStreams <- forM (filter (\((_,t),_) -> isStreamT t)
                                    (zip inps [1..a])) $ \((inp,t),h) ->
                 case transitionExpression inp fgs i h of
@@ -605,8 +678,10 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
                               return $ case (isStreamT lot, isNow) of
                                 (False,_) -> [PUTOUTPUT "out" lo]
                                 (True,Nothing) -> [COPY lot "out" lo]
-                                (True,Just z) -> [PUTOUTPUTSTREAM z "out" lo]
-                      (_,RestTransition)     -> return [] 
+                                (True,Just z)  -> [PUTOUTPUTSTREAM z "out" lo]
+                      (_,RestTransition)
+                        | isVector name (getVal inp) h fgs -> return [[RESTV (getVal inp)]]
+                        | otherwise -> return []
                       (_,ConsTransition d)   -> do
                         forM [1..d] $ \d' -> do
                           yn <- doesLogicalOutputExist (sFifoConsROut h d')
@@ -616,15 +691,26 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
                             True -> do
                               (lo,lot,isNow) <- getLogicalOutput (sFifoConsROut h d')
                               return $ case (isStreamT lot, isNow) of
-                                (False,_) -> [PUTV (getVal inp ++ "__savev", lot) lo]
-                                (True,Nothing) -> [COPYV lot (getVal inp ++ "__savev") lo]
-                                (True,Just z) -> [PUTOUTPUTSTREAMV lot z (getVal inp ++ "__savev") lo]
+                                (False,_)      -> [PUTV (getVal inp ++ "__savev", lot) lo]
+                                (True,Nothing) -> [] -- caso impossivel?? [COPYV lot (getVal inp ++ "__savev") lo] --m
+                                (True,Just z)  -> [PUTOUTPUTSTREAMV lot z (getVal inp ++ "__savev") lo]
                       (_,IdTransition)       -> return [] -- ??????
-                      (_,FunctionTransition) -> return [] -- ??????
+                      (_,FunctionTransition) -> do --m
+                        yn <- doesLogicalOutputExist (fifoOutRec h)
+                        case yn of
+                          False -> return [[CLEARV (getVal inp)
+                                           ,MAKEV t (getVal inp) (fifoOutRec h)]]
+                          True -> do
+                            (lo,lot,isNow) <- getLogicalOutput (fifoOutRec h)
+                            return $ case (isStreamT lot, isNow) of
+                              (False,_)      -> [] --[[PUTV (getVal inp ++ "__savev", lot) lo]]
+                              (True,Nothing) -> [[CLEARV (getVal inp)
+                                                 ,MAKEV lot (getVal inp) lo]] --m
+                              (True,Just z)  -> [] --[[PUTOUTPUTSTREAMV lot z (getVal inp ++ "__savev") lo]]
               putStates' <- forM (zip inps [1..a]) $ \((inp,t),j) -> do
                 yn <- doesLogicalOutputExist (fifoOutRec j)
                 return $ case (yn, isStreamT t) of
-                  (True,_) -> [BLOB]
+                  (True,_) -> []
                   (_,True) -> []
                   _        -> [PUTSTATE (getVal inp) (fifoOutRec j)]
               sIgnores <- forM sInps $ \(inp',t) -> do
@@ -634,7 +720,7 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
                     rests = numberOfRests fgs inp
                     savs = nows - rests
                 return $ if nows < rests
-                  then for [(nows+1)..rests] $ \d -> GETSTREAM d (inp,t)
+                  then for [(nows+1)..rests] $ \d -> GETSTREAMSAFE (nows+1,rests) d (inp,t)
                   else []
               let putStates = concat putStates' 
               return $ puts ++ sPuts ++ gets ++ concat putStreams ++ concat (concat getStreams) ++ putStates ++ concat sIgnores
@@ -660,32 +746,106 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
                       True  -> [COPY (typeOfExpr i) "out" fifoOutExpr]
                       False -> [GET (fifoOutExpr, rType)
                                ,PUTOUTPUT "out" fifoOutExpr]
-                    Just (v,t)
-                      | isStreamT t && immediateOutput name v fgs -> [COPY t "out" (v ++ "__save")]
-                      | isStreamT t && increasingOutput name v fgs -> [COPYV t "out" (v ++ "__savev")]
+                    Just (v,t,a')
+                      | isStreamT t && immediateOutput name a' v fgs -> [COPY t "out" (v ++ "__save")]
+                      | isStreamT t && isVector name v a' fgs -> [COPYV t "out" (v ++ "__savev")]
                       | isStreamT t -> [PCOPY (numberOfGets fgs v) t "out" v] --[COPY t "out" v]
                       | otherwise -> [PUTOUTPUT "out" v]
-              return $ putInputs ++ sPutInputs ++ outputs ++ [DESTROY (map (\(a,b) -> (getVal a, b)) sInps), BREAK]
+                  destroys = map destroy $ filter (\((_,t),_) -> isStreamT t) (zip inps [1..a])
+                  destroy ((s',ty),a') =
+                    let s = getVal s'
+                    in if isVector name s a' fgs
+                       then DESTROYV (s, ty)
+                       else DESTROY (numberOfGets fgs s) (s,ty)
+              return $ putInputs ++ sPutInputs ++ outputs ++ destroys++ [BREAK]
     ifelses <- forM [1..n] (ifElseIfElse n)
     ret $ initStates ++ concat sInitStates ++ [LOOP (concat sSwitchStates ++ concat sGetStreams ++ putConds ++ sPutConds ++ getConds ++ [cond] ++ ifelses)]
 
-immediateOutput :: Name -> Name -> [(FExpr,FExpr)] -> Bool
-immediateOutput name v fgs = or (map (g . snd) fgs)
-  where g :: FExpr -> Bool
-        g (FApp (ln, _) fexs _)
-          | getVal ln == name = or (map (isConsRTransition . transType (L NoLoc v)) fexs)
-        g _ = False
-        isConsRTransition (ConsRTransition _) = True
-        isConsRTransition _ = False
+isVector :: Name -> Name -> Int -> [(FExpr,FExpr)] -> Bool
+isVector name v a fgs
+  = increasingOutput name a v fgs
+  || functionOutput name v fgs
+  || functionTransition name a fgs
+  || idOutput name a v fgs
 
-increasingOutput :: Name -> Name -> [(FExpr,FExpr)] -> Bool
-increasingOutput name v fgs = or (map (g . snd) fgs)
+{-saveornotsave :: Int -> Name -> (Name,FType) -> [(FExpr,FExpr)] -> CProc
+saveornotsave h name (v,t) fgs =
+  case or [functionOutput name v fgs, idOutput h name v fgs] of
+    True  -> [SAVEV (v,t)]
+    False -> []-}
+
+idOutput :: Name -> Int -> Name -> [(FExpr,FExpr)] -> Bool
+idOutput name h v fgs = or (map (g . snd) fgs)
   where g :: FExpr -> Bool
         g (FApp (ln, _) fexs _)
-          | getVal ln == name = or (map (isConsTransition . transType (L NoLoc v)) fexs)
+          | getVal ln == name = or (map isIdTransition (zip fexs [1..]))
         g _ = False
-        isConsTransition (ConsTransition _) = True
-        isConsTransition _ = False
+        isIdTransition :: (FExpr,Int) -> Bool
+        isIdTransition (_,i)
+          | i == h = False
+        isIdTransition (FAExpr (FVar (L _ v'), _, _),_)
+          | v == v' = True
+        isIdTransition _ = False
+
+functionTransition :: Name -> Int -> [(FExpr,FExpr)] -> Bool
+functionTransition name a fgs = or (map (g . snd) fgs)
+  where g :: FExpr -> Bool
+        g (FApp (ln, _) fexs _)
+          | getVal ln == name = isFunc (fexs !! (a-1))
+        g _ = False
+        isFunc :: FExpr -> Bool
+        isFunc (FApp (L _ n,_) fexs' _)
+          | n == "consR" = False
+          | n == "cons"  = False
+          | n == "rest"  = False
+          | n == "now"   = False
+          | otherwise    = True
+        isFunc _ = False
+
+functionOutput :: Name -> Name -> [(FExpr,FExpr)] -> Bool
+functionOutput name v fgs = or (map g fgs)
+  where g :: (FExpr,FExpr) -> Bool
+        g (cond,expr) = isFunc cond || gExpr expr
+        gExpr :: FExpr -> Bool
+        gExpr (FApp (ln, _) fexs _)
+          | getVal ln == name = or (map isFunc fexs)
+        gExpr _ = False
+        isFunc :: FExpr -> Bool
+        isFunc (FApp (L _ n,_) fexs' _)
+          | n == "consR" = or (map (hasVar v) fexs')
+          | n == "cons"  = or (map (hasVar v) fexs')
+          | n == "rest"  = False
+          | n == "now"   = False
+          | otherwise    = or (map (hasVar v) fexs')
+        isFunc _ = False
+        hasVar :: Name -> FExpr -> Bool
+        hasVar v (FApp (L _ m,_) fexs _)
+          | m == "consR" = or (map (hasVar v) fexs)
+          | m == "cons"  = or (map (hasVar v) fexs)
+          | m == "now"   = False
+          | m == "rest"  = False
+          | otherwise    = or (map (hasVar v) fexs)
+        hasVar v (FAExpr (FVar (L _ v'), _, _))
+          | v == v' = True
+        hasVar _ _ = False
+
+immediateOutput :: Name -> Int -> Name -> [(FExpr,FExpr)] -> Bool
+immediateOutput name a v fgs = or (map (g . snd) fgs)
+  where g :: FExpr -> Bool
+        g (FApp (ln, _) fexs _)
+          | getVal ln == name = case fexs !! (a-1) of
+              FApp (L _ "consR",_) _ _ -> True
+              _ -> False
+        g _ = False
+
+increasingOutput :: Name -> Int -> Name -> [(FExpr,FExpr)] -> Bool
+increasingOutput name a v fgs = or (map (g . snd) fgs)
+  where g :: FExpr -> Bool
+        g (FApp (ln, _) fexs _)
+          | getVal ln == name = case fexs !! (a-1) of
+              FApp (L _ "cons",_) _ _ -> True
+              _ -> False
+        g _ = False
 
 transitionExpression :: L Name -> [(FExpr,FExpr)] -> Int -> Int -> (FExpr, TransitionType)
 transitionExpression inp fgs g h = case snd (fgs !! (g-1)) of
@@ -709,7 +869,7 @@ transType inp fex = case fex of
         go _ n _ = n
   
 procedureLeftRecursiveNormal :: TFunc -> TMM CProc
-procedureLeftRecursiveNormal tfunc@(name,_,f@(F inps fguards rType),a,_) = case fguards of
+procedureLeftRecursiveNormal tfunc@(name,_,f@(F inps fguards rType),a,_,_) = case fguards of
 
   NoFGuards expr -> throw (TErr
                            RecursionWithoutCondition
@@ -723,7 +883,7 @@ procedureLeftRecursiveNormal tfunc@(name,_,f@(F inps fguards rType),a,_) = case 
 
     let isId i = case fgs !! (i-1) of
           (_, FAExpr (FVar ln,_,t))
-            | elem ln (map fst inps) -> Just (getVal ln, t)
+            | elem ln (map fst inps) -> Just (getVal ln, t, just (elemIndex ln (map fst inps)))
           _ -> Nothing
         typeOfExpr i = case fgs !! (i-1) of
           (_, expr) -> getTypeFromFExpr expr
@@ -835,12 +995,12 @@ procedureLeftRecursiveNormal tfunc@(name,_,f@(F inps fguards rType),a,_) = case 
               gets' <- forM (zip inps [1..a]) $ \((_,t),j) -> do
                 yn <- doesLogicalOutputExist (fifoOutRec j)
                 return $ case yn of
-                  True  -> [BLOB]
+                  True  -> []
                   False -> [GET (fifoOutRec j, t)]
               putStates' <- forM (zip inps [1..a]) $ \((inp,t),j) -> do
                 yn <- doesLogicalOutputExist (fifoOutRec j)
                 return $ case yn of 
-                  True  -> [BLOB]
+                  True  -> []
                   False -> [PUTSTATE (getVal inp) (fifoOutRec j)]
               let puts = concat puts'
                   gets = concat gets'
@@ -861,9 +1021,10 @@ procedureLeftRecursiveNormal tfunc@(name,_,f@(F inps fguards rType),a,_) = case 
                       True  -> [COPY (typeOfExpr i) "out" fifoOutExpr]
                       False -> [GET (fifoOutExpr, rType)
                                ,PUTOUTPUT "out" fifoOutExpr]
-                    Just (v,t)
-                      | isStreamT t && immediateOutput name v fgs -> [COPY t "out" (v ++ "__save")]
-                      | isStreamT t && increasingOutput name v fgs -> [COPYV t "out" (v ++ "__savev")]
+                    Just (v,t,a')
+                      | isStreamT t && immediateOutput name a' v fgs -> [COPY t "out" (v ++ "__save")]
+                      | isStreamT t && increasingOutput name a' v fgs -> [COPYV t "out" (v ++ "__savev")]
+                      | isStreamT t && functionOutput name v fgs -> [COPYV t "out" (v ++ "__savev")]
                       | isStreamT t -> [PCOPY (numberOfGets fgs v) t "out" v] --[COPY t "out" v]
                       | otherwise -> [PUTOUTPUT "out" v]
               return $ putInputs ++ outputs ++ [BREAK]
@@ -907,6 +1068,21 @@ makeInstancesFromConst compName (const, fid, ftype) = case const of
                , False)
     addInstance inst
   FForeverWait -> ok
+
+makeInstancesFromConstStreams :: Name -> ([FCons],Id,FType) -> TM ()
+makeInstancesFromConstStreams compName (stream,fid,ftype) = do
+  let nameInst = "const_stream" ++ makename' stream
+  debug "lllllllllll"
+  debug nameInst
+  id <- getIdForInstance compName nameInst
+  let inst = (compName
+             , fid
+             , NameId nameInst id
+             , ConstStrI
+               stream
+               ("out", ftype)
+             , False)
+  addInstance inst
 
 makeInstancesFromDep :: CompName -> (Name, Id, [FType]) -> TMM ()
 makeInstancesFromDep compName (dep, fid, ts)
@@ -969,7 +1145,7 @@ appendNats xs = (++"_") $ concat $ map (("_"++) . show. toInt) xs
 toInt (Nat _ i) = i
 
 connect :: TFunc -> TMM ()
-connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
+connect (comp, _, F inps fguards ftype, arity,_,_) = case fguards of
   
   FGuards fguards -> do
     m <- forM (zip [1..] fguards) $ \(i, (fcond, fexpr)) -> do
@@ -988,6 +1164,7 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
       ConstBinI _ out   -> out
       ConstHexI _ out   -> out
       ConstDecI _ out   -> out
+      ConstStrI _ out   -> out
       SpecialI  _ out _ -> out
       FifoI     _ out   -> out
 
@@ -1001,6 +1178,8 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
       ConstHexI inp _
         | otherwise -> error''
       ConstDecI inp _
+        | otherwise -> error''
+      ConstStrI inp _
         | otherwise -> error''
       SpecialI inps _ _
         | i < length inps -> ret $ inps !! i
@@ -1022,6 +1201,21 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
     connectOutter :: FExpr -> TMM ()
     connectOutter fexp = do
       case fexp of
+        FApp (L _ "consR", id) args t
+          | constantsWithForeverWait args -> do
+              let instName = "const_stream" ++ makename args
+              minst <- getNextInstance comp instName
+              mayThrow minst (TErr
+                              CouldntGetNextInstance
+                              Nothing
+                              ("19Couldn't get next instance for "
+                               ++ instName)
+                              NoLoc)
+              cont1 minst $ \inst@(_,_,nid,ins,_) -> do
+                addConnection (comp
+                              ,(nid, getOut ins)
+                              ,(NameId comp 1, ("out", t)))
+                setInstanceUsed comp nid
         FApp (L _ instName, id) args ftype -> do
           let nats = takeNats args
               pos = appendNats nats
@@ -1059,7 +1253,7 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
                               ,(NameId comp 1, ("out", t)))
                 setInstanceUsed comp nid'
                 ret ()
-            
+
         FAExpr (FCons (FBin (L _ c)), id, Nat _ _) -> mok
         FAExpr (FCons (FBin (L _ c)), id, t) -> do
           let instName = "const_bin_" ++ c
@@ -1110,6 +1304,24 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
 
     connectInner :: FExpr -> TInst -> (FExpr,Int) -> TMM ()
     connectInner fexpr inst@(_,_,nid,ins,_) (expr,n) = case expr of
+      FApp (L _ "consR", id) args t
+        | constantsWithForeverWait args -> do
+            let instName = "const_stream" ++ makename args
+            minst <- getNextInstance comp instName
+            mayThrow minst (TErr
+                            CouldntGetNextInstance
+                            Nothing
+                            ("3Couldn't get next instance for "
+                             ++ instName)
+                            NoLoc)
+            cont1 minst $ \inst@(_,_,nid',ins',_) -> do
+              mayInp <- getInput n ins
+              cont1 mayInp $ \inp -> do
+                addConnection (comp
+                              ,(nid', getOut ins')
+                              ,(nid, inp))
+                setInstanceUsed comp nid'
+                ret ()
       FApp (L _ instName, id) args' ftype -> do
         let nats = takeNats args'
             pos = appendNats nats
@@ -1270,6 +1482,21 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
           fifoNId = NameId fifoName 1
       addInstance (comp, 1, fifoNId, fifo, True)
       case fexpr of
+        FApp (L _ "consR", id) args t
+          | constantsWithForeverWait args -> do
+              let instName = "const_stream" ++ makename args
+              minst <- getNextInstance comp instName
+              mayThrow minst (TErr
+                              CouldntGetNextInstance
+                              Nothing
+                              ("8Couldn't get next instance for "
+                               ++ instName)
+                              NoLoc)
+              cont1 minst $ \inst@(_,_,nid,ins,_) -> do
+                addConnection (comp
+                              ,(nid, getOut ins)
+                              ,(fifoNId, ("in", t)))
+                setInstanceUsed comp nid
         FApp (L _ instName, id) [FAExpr (_,_,Nat _ k), FAExpr (FVar (L _ var),_,t')] _
           | instName == "now" -> do
 
@@ -1395,6 +1622,24 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
       :: String -> Int -> FExpr -> TInst -> (FExpr,Int) -> TMM ()
     connectInnerCond
       txt i fexpr inst@(_,_,nid,ins,_) (expr,n) = case expr of
+      FApp (L _ "consR", id) args t
+        | constantsWithForeverWait args -> do
+            let instName = "const_stream" ++ makename args
+            minst <- getNextInstance comp instName
+            mayThrow minst (TErr
+                            CouldntGetNextInstance
+                            Nothing
+                            ("15Couldn't get next instance for "
+                             ++ instName)
+                            NoLoc)
+            cont1 minst $ \inst@(_,_,nid',ins',_) -> do
+              mayInp <- getInput n ins
+              cont1 mayInp $ \inp -> do
+                addConnection (comp
+                              ,(nid', getOut ins')
+                              ,(nid, inp))
+                setInstanceUsed comp nid'
+                ret ()
       FApp (L _ instName, id) [FAExpr (_,_,Nat _ k), FAExpr (FVar (L _ var),_,_)] t
         | instName == "now" -> do
 
@@ -2083,6 +2328,21 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
           fifoNId = NameId fifoName 1
       addInstance (comp, 1, fifoNId, fifo, True)
       case fexpr of
+        FApp (L _ "consR", id) args t
+          | constantsWithForeverWait args -> do
+              let instName = "const_stream" ++ makename args
+              minst <- getNextInstance comp instName
+              mayThrow minst (TErr
+                              CouldntGetNextInstance
+                              Nothing
+                              ("8Couldn't get next instance for "
+                               ++ instName)
+                              NoLoc)
+              cont1 minst $ \inst@(_,_,nid,ins,_) -> do
+                addConnection (comp
+                              ,(nid, getOut ins)
+                              ,(fifoNId, ("in", t)))
+                setInstanceUsed comp nid
         FApp (L _ cons, id) [expr1, expr2] t'
           | cons == "cons"  -> connectOutterConsR i n 1 (expr1, expr2)
           | cons == "consR" -> connectOutterConsR i n 1 (expr1, expr2)
@@ -2213,6 +2473,24 @@ connect (comp, _, F inps fguards ftype, arity,_) = case fguards of
       :: String -> Int -> Int -> FExpr -> TInst -> (FExpr,Int) -> TMM ()
     connectInnerRecursive
       txt i j fexpr inst@(_,_,nid,ins,_) (expr,n) = case expr of
+      FApp (L _ "consR", id) args t
+        | constantsWithForeverWait args -> do
+            let instName = "const_stream" ++ makename args
+            minst <- getNextInstance comp instName
+            mayThrow minst (TErr
+                            CouldntGetNextInstance
+                            Nothing
+                            ("15Couldn't get next instance for "
+                             ++ instName)
+                            NoLoc)
+            cont1 minst $ \inst@(_,_,nid',ins',_) -> do
+              mayInp <- getInput n ins
+              cont1 mayInp $ \inp -> do
+                addConnection (comp
+                              ,(nid', getOut ins')
+                              ,(nid, inp))
+                setInstanceUsed comp nid'
+                ret ()
       FApp (L _ instName, id) [FAExpr (_,_,Nat _ k), FAExpr (FVar (L _ var),_,_)] t
         | instName == "now" -> do
             let c = countFunction instName k var fexpr
@@ -2488,7 +2766,7 @@ isFExprNat _ = False
 
 special :: Name -> Bool
 special n
-  = n `elem` ["add","sub","mul","and","or","not","equ","sli","rep","cat","cons","consR","now","rest"]
+  = n `elem` ["add","sub","mul","and","or","not","equ","sli","rep","cat","cons","consR","now","rest","mrest"]
 
 getVariablesFromF :: F -> [(Name, Id, [FType])]
 getVariablesFromF (F fvars fguards ftype) = case fguards of
@@ -2503,11 +2781,26 @@ getVariablesFromF (F fvars fguards ftype) = case fguards of
 getConstantsFromF :: F -> [(FCons, Id, FType)]
 getConstantsFromF (F fvars fguards ftype) = case fguards of
   NoFGuards expr -> go expr
-  FGuards condsExprs
-    -> concat $ map (\(a,b) -> go a ++ go b) condsExprs
-  where go (FApp _ es t) = concat (map go es)
+  FGuards condsExprs -> concat $ map (\(a,b) -> go a ++ go b) condsExprs
+  where go (FApp (L _ "consR",_) es _)
+          | constantsWithForeverWait es = []
+        go (FApp _ es t) = concat (map go es)
         go (FAExpr (FCons c, id, t)) = [(c, id, t)]
         go (FAExpr _) = []
+
+getConstantStreamsFromF :: F -> [([FCons],Id, FType)]
+getConstantStreamsFromF (F fvars fguards ftype) = case fguards of
+  NoFGuards expr -> go expr
+  FGuards condsExprs -> concat $ map (\(a,b) -> go a ++ go b) condsExprs
+  where go :: FExpr -> [([FCons],Id,FType)]
+        go (FApp (L _ "consR",id) es t)
+          | constantsWithForeverWait es = [(concat (map go' es), id, t)]
+          | otherwise = concat (map go es)
+        go (FApp (L _ _,_) es _) = concat (map go es)
+        go _ = []
+        go' (FAExpr (FCons FForeverWait, _, _)) = []
+        go' (FAExpr (FCons c, _, _)) = [c]
+        go' _ = []
 
 getInputsFromF :: F -> [CInput]
 getInputsFromF (F fvars expr ftype) = map (\(x,y) -> (getVal x,y)) fvars

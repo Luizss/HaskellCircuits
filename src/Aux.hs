@@ -28,7 +28,7 @@ count :: Eq a => a -> [a] -> Int
 count x = length . filter (==x)
 
 mapFst :: (a -> b) -> (a,c) -> (b,c)
-mapFst f (a,c) = (f a,cT)
+mapFst f (a,c) = (f a,c)
 
 mapSec :: (a -> b) -> (c,a) -> (c,b)
 mapSec f (c,a) = (c, f a)
@@ -48,3 +48,17 @@ equalFType _ _ = False
            
 isStreamFunc :: Name -> Bool
 isStreamFunc name = elem name ["cons","consR","rest","now"]
+
+mapIndex = mapIndex' 0
+mapIndex' _ f [] = []
+mapIndex' i f (x:xs) = f i x : mapIndex' (i+1) f xs
+
+indexes :: [Int] -> [a] -> [a]
+indexes is xs = map just
+                $ filter isJust
+                $ mapIndex f xs
+  where f i b
+          | elem i is = Just b
+          | otherwise = Nothing
+
+

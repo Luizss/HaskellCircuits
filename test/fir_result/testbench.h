@@ -1,0 +1,42 @@
+#include "systemc.h"
+
+SC_MODULE(testbench) {
+sc_fifo_in<sc_lv<32> > out;
+sc_fifo_out<sc_lv<32> > bs;
+sc_fifo_out<sc_lv<32> > xs;
+sc_fifo_out<sc_lv<32> > a;
+sc_fifo_out<sc_lv<32> > c;
+
+
+void proc();
+
+SC_CTOR(testbench) {
+SC_THREAD(proc);
+}
+};
+
+void testbench::proc() {
+
+  
+  a.write(0b00000000000000000000000000000000);
+  
+  xs.write(0b00000000000000000000000000000011);
+  xs.write(0b00000000000000000000000000000101);
+  xs.write(0b00000000000000000000000000011101);
+  xs.write(0b00000000000000000000000000000000);
+  
+  bs.write(0b00000000000000000000000000000011);
+  bs.write(0b00000000000000000000000000000101);
+  bs.write(0b00000000000000000000000000011101);
+  bs.write(0b00000000000000000000000000000000);
+  
+  c.write(0b00000000000000000000000000000011);
+  c.write(0b00000000000000000000000000000101);
+  c.write(0b00000000000000000000000000000111);
+  c.write(0b00000000000000000000000000000000);
+  
+  while (true) {
+  cout << "ANS: " << out.read() << endl;
+  }
+
+}
