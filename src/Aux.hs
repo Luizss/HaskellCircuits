@@ -61,4 +61,4 @@ indexes is xs = map just
           | elem i is = Just b
           | otherwise = Nothing
 
-
+for l f = map f l

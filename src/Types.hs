@@ -7,7 +7,9 @@ import Data.Map hiding ((\\), map, findIndex)
 
 ------------------ Internal Imports
 
-import LexerCore
+import Parser2
+import Lexer2
+import LexerCore hiding (L(..), SrcLoc(..))
 import ParserCore
 
 ------------------ Aliases
@@ -63,6 +65,7 @@ type TMM a = TM (Maybe a)
 data TState =
   TState {
   sourceCode           :: SourceCode
+  , dataDecls          :: [(L Name, [PConstr])]
   , actualStage        :: TStage
   , parsedResult       :: PResult
   , tLogs              :: [TLog]
@@ -140,6 +143,7 @@ data NameId = NameId Name Id
 initialTState :: TState
 initialTState = TState {
   sourceCode = ""
+  , dataDecls = []
   , actualStage = TInitialStage
   , parsedResult = PResult []
   , tLogs   = []

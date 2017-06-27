@@ -4,8 +4,10 @@ module TransformationMonad where
 
 --- Imports
 
+import Parser2
 import ParserCore
-import LexerCore
+import Lexer2
+import LexerCore hiding (L(..), SrcLoc(..))
 import Aux
 import Types
 import Control.Monad.State
@@ -214,7 +216,12 @@ changeMainName = do
   putComponents $ map ifMainChange cs
   where ifMainChange ("main",main) = ("mainFunc",main)
         ifMainChange x = x-}
-        
+
+addData :: (L Name, [PConstr]) -> TM ()
+addData x = do
+  st <- get
+  put (st { dataDecls = x : dataDecls st })
+
 getInstances :: TM [TInst]
 getInstances = do
   st <- get

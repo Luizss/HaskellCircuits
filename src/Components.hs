@@ -15,8 +15,6 @@ import TransformationMonad
 import Types
 import Aux
 
-for l f = map f l
-
 toComponents :: TM ()
 toComponents = do
   log "Entering toComponents"

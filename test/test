@@ -1,12 +1,11 @@
-main (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32) = h (g : Function) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
+data Geometry = Triangle Int Int
+              | Square Int
+              | Circle (Maybe Int)
 
-h (f : Function) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
- | equ (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (0 : Vec 32) : Bit = (a : Stream (Vec 32))
- | equ (now (2 : Nat 2) (s : Stream (Vec 32)) : Vec 32) (0 : Vec 32) : Bit = (a : Stream (Vec 32))
- | equ (now (3 : Nat 3) (s : Stream (Vec 32)) : Vec 32) (0 : Vec 32) : Bit = (a : Stream (Vec 32))
- | (1 : Bit) = h (f : Function) (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (consR (k (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (f : Function) (now (2 : Nat 2) (s : Stream (Vec 32)) : Vec 32) (now (3 : Nat 3) (s : Stream (Vec 32)) : Vec 32) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
-
-g (x : Vec 32) (y : Vec 32) (z : Vec 32) : Vec 32 = add (add (x : Vec 32) (y : Vec 32) : Vec 32) (z : Vec 32) : Vec 32
-
-k (x : Vec 32) (f : Function) (y : Vec 32) (z : Vec 32) : Vec 32 = f (x : Vec 32) (y : Vec 32) (z : Vec 32) : Vec 32
-
+area :: (Geometry -> Geometry) -> Int
+area (Triangle b h)
+  | equ b 0 = 0
+  | otherwise = mul b h
+area (Square l) = mul l l
+area (Circle Nothing) = 0
+area (Circle (Just r)) = Circle
