@@ -79,8 +79,8 @@ guards : guards '|' guard { $3 : $1  }
 guard : expr '=' expr { ($1, $3) }
 
 aexprs : aexprs aexpr    { $2 : $1 }
-      | aexpr          { [$1] }
-      | {- empty -}   { [] }
+       | aexpr           { [$1] }
+       | {- empty -}     { [] }
       
 expr : VARID aexprs { PApp $1 (r $2) }
      | CONID aexprs { PApp $1 (r $2) }
@@ -93,8 +93,10 @@ aexpr : VARID        { PAExpr $1 }
       | CONID        { PAExpr $1 }
       | '(' expr ')' { $2 }
  
-typeExpr : typeExpr aType { PTApp $1 $2 } 
-         | aType          { $1 }
+typeExpr : CONID atypes2 { PTApp $1 (r $2) }
+         | VARID atypes2 { PTApp $1 (r $2) }
+         | aType         { $1 }
+         
 aType : VARID   { PTAExpr $1 }
       | CONID   { PTAExpr $1 }
       | DEC     { PTAExpr $1 }
@@ -105,11 +107,13 @@ function_type_decl : VARID '::' type_decl { PFType $1 $3 }
 type_decl : btype '->' type_decl { PTArrow $1 $3 }
           | btype                { $1 }
 
-btype : btype atype              { PTApp $1 $2 }
+btype : VARID atypes2            { PTApp $1 (r $2) }
+      | CONID atypes2            { PTApp $1 (r $2) }
       | atype                    { $1 }
       
 atype : CONID                    { PTAExpr $1 }
       | VARID                    { PTAExpr $1 }
+      | DEC                      { PTAExpr $1 }
       | '(' type_decl ')'        { $2 }
       
 vars : vars VARID    { $2 : $1 }
@@ -126,7 +130,10 @@ data_decl : data CONID '=' constrs { PDataType $2 (r $4) }
 
 atypes : atype atypes { $1 : $2  }
        | {- empty-}   { [] }
-       
+
+atypes2 : atype atypes2 { $1 : $2  }
+        | atype { [$1] }
+
 {
 
 instance Eq a => Eq (L a) where
@@ -151,7 +158,7 @@ data PGuards = PNoGuards PExpr
              | PGuards [(PExpr,PExpr)]
              deriving Show
 
-data PFType = PTApp PFType PFType
+data PFType = PTApp LToken [PFType]
             | PTArrow PFType PFType
             | PTAExpr LToken
             deriving (Show, Eq)
@@ -162,6 +169,7 @@ data PExpr = PApp LToken [PExpr]
 
 data PConstr = PConstr LToken [PFType]
              deriving Show
+
 
 data PState = NoState deriving Show
 type P a = StateT PState (Either String) a

@@ -17,9 +17,19 @@ a = do
       tks' = layout tks
       Right expr = parse' tks'
       transformation = do
-        mk <- gatherFunctions expr
-        debugs mk
-        debugs (toCore (just mk))
+        storeDataInState expr
+        storeCoreInState expr
+        putDataDefsInState
+        putFunctionTypesInState
+        c <- getCore
+        debug "!!!!!!!!!"
+        debugs c
+        x <- getCFuncTypes
+        debug "AAAAAAAAA"
+        debugs x
+        a <- typeCheck
+        debugs "TYPECHECK"
+        debugs a
       st = runTM transformation
   putStrLn "TOKENS"
   print tks
@@ -34,6 +44,6 @@ showE :: TState -> IO ()
 showE state = do
   forM_ (reverse (tLogs state)) $ \log -> case log of
     TLogErr terr _ -> putStrLn $ show terr
-    TLogDebug msg _ -> putStrLn msg
+    --TLogDebug msg _ -> putStrLn msg
     _ -> return ()
 

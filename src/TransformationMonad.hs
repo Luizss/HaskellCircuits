@@ -92,6 +92,11 @@ cont maybes cont
   | and (map isJust maybes) = cont
   | otherwise = noRet
 
+cont_ :: [Maybe a] -> ([a] -> TMM b) -> TMM b
+cont_ maybes cont
+  | and (map isJust maybes) = cont (map just maybes)
+  | otherwise = noRet
+
 contIf :: Bool -> TMM b -> TMM b
 contIf bool cont
   | bool = cont
@@ -217,10 +222,40 @@ changeMainName = do
   where ifMainChange ("main",main) = ("mainFunc",main)
         ifMainChange x = x-}
 
-addData :: (L Name, [PConstr]) -> TM ()
+getDataDecls :: TM [(L Name, [CConstr])]
+getDataDecls = do
+  st <- get
+  return (dataDecls st)
+
+addData :: (L Name, [CConstr]) -> TM ()
 addData x = do
   st <- get
   put (st { dataDecls = x : dataDecls st })
+
+addCFuncType :: (Name, [Constraint], [CFType]) -> TM ()
+addCFuncType x = do
+  st <- get
+  put (st { funcTypes = x : funcTypes st })
+
+getCFuncTypes :: TM [(Name, [Constraint], [CFType])]
+getCFuncTypes = do
+  st <- get
+  return (funcTypes st)
+
+searchCFuncType :: Name -> TMM (Name, [Constraint], [CFType])
+searchCFuncType name = do
+  fts <- getCFuncTypes
+  return (find (\(n,_,_) -> n == name) fts)
+
+setCore :: Core -> TM ()
+setCore core' = do
+  st <- get
+  put (st { core = core' })
+
+getCore :: TM Core
+getCore = do
+  st <- get
+  return (core st)
 
 getInstances :: TM [TInst]
 getInstances = do
@@ -468,3 +503,55 @@ testF2 = do
     a' <- a
     b' <- b
     return $ a' + b'
+
+---------- typecheck
+
+getIt :: TM [[CFType]]
+getIt = do
+  st <- get
+  return(typeCheckState st)
+  
+getTypeCheckState :: TMM [CFType]
+getTypeCheckState = do
+  st <- get
+  let tcs = typeCheckState st
+  case tcs of
+    []   -> noRet
+    x:xs -> ret x
+
+putTypeCheckState :: [CFType] -> TM ()
+putTypeCheckState ft = do
+  debug $ "STATEPUT: " ++ show ft
+  st <- get
+  let tcs = typeCheckState st
+  put ( st { typeCheckState = ft : tcs } )
+
+popTypeCheckState :: TM ()
+popTypeCheckState = do
+  debug "STATE POP"
+  st <- get
+  let tcs = typeCheckState st
+  case tcs of
+    [] -> error "yyyyy1"
+    x:xs -> put ( st { typeCheckState = xs } )
+
+modifyTypeCheckState :: ([CFType] -> [CFType]) -> TM ()
+modifyTypeCheckState func = do
+  debug $ "STATE MODIFIED"
+  st <- get
+  let tcs = typeCheckState st
+  case tcs of
+    []   -> return ()
+    x:xs -> do
+      put ( st { typeCheckState = func x : xs })
+
+emptyTypeCheckState :: TM ()
+emptyTypeCheckState =
+  modifyTypeCheckState (\_ -> [])
+
+isEmptyTypeCheckState :: TM Bool
+isEmptyTypeCheckState = do
+  x <- getTypeCheckState
+  case x of
+    Nothing -> return True
+    Just x  -> return False

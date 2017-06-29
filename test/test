@@ -1,11 +1,17 @@
+data MaybeInt = Nothing
+              | Just Int
+              
 data Geometry = Triangle Int Int
               | Square Int
-              | Circle (Maybe Int)
+              | Circle (MaybeInt)
 
-area :: (Geometry -> Geometry) -> Int
+map :: (Int 43 -> Int 3) -> Int 43 -> Int 43
+map f x = x
+
+area :: Geometry -> Int
 area (Triangle b h)
   | equ b 0 = 0
-  | otherwise = mul b h
+  | True = mul b h
 area (Square l) = mul l l
 area (Circle Nothing) = 0
-area (Circle (Just r)) = Circle
+area (Circle (Just r)) = 1

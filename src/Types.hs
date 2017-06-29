@@ -7,8 +7,8 @@ import Data.Map hiding ((\\), map, findIndex)
 
 ------------------ Internal Imports
 
-import Parser2
-import Lexer2
+import Parser2 as P2
+import Lexer2 as L2
 import LexerCore hiding (L(..), SrcLoc(..))
 import ParserCore
 
@@ -62,10 +62,13 @@ type TM a = State TState a
 
 type TMM a = TM (Maybe a)
 
+
 data TState =
   TState {
   sourceCode           :: SourceCode
-  , dataDecls          :: [(L Name, [PConstr])]
+  , dataDecls          :: [(L Name, [CConstr])]
+  , funcTypes          :: [(Name, [Constraint], [CFType])]
+  , typeCheckState     :: [[CFType]]
   , actualStage        :: TStage
   , parsedResult       :: PResult
   , tLogs              :: [TLog]
@@ -79,6 +82,7 @@ data TState =
   , logicalOutputs     :: [(Name, Name, FType, Maybe Int)]
   , systemC            :: SystemC
   , timesForked        :: [(CompName, String, Int)]
+  , core               :: Core
   } deriving Show
 
 data ErrType = ErrConstantAsFunction
@@ -98,6 +102,7 @@ data ErrType = ErrConstantAsFunction
              | TypeNotPermitted
              | CannotSynth
              | RecursionWithoutCondition
+             | CantMatchTypes
              deriving (Show,Eq)
 
 data TErr = TErr ErrType (Maybe WhereMsg) Msg SrcLoc
@@ -144,6 +149,8 @@ initialTState :: TState
 initialTState = TState {
   sourceCode = ""
   , dataDecls = []
+  , funcTypes = preDefinedfunctionsTypes
+  , typeCheckState = []
   , actualStage = TInitialStage
   , parsedResult = PResult []
   , tLogs   = []
@@ -157,7 +164,30 @@ initialTState = TState {
   , logicalOutputs = []
   , systemC = []
   , timesForked = []
+  , core = Core []
   }
+
+type Constraint = (Name,Name)
+
+preDefinedfunctionsTypes :: [(Name, [Constraint], [CFType])]
+preDefinedfunctionsTypes
+  = [("True" ,[],[ty "Bool"])
+    ,("False",[],[ty "Bool"])
+    ,("and"  ,[],[ty "Bool", ty "Bool", ty "Bool"])
+    ,("or"   ,[],[ty "Bool", ty "Bool", ty "Bool"])
+    ,("not"  ,[],[ty "Bool", ty "Bool"])
+    ,("equ"  ,[("NotRec","a")],[tyvar "a", tyvar "a", ty "Bool"])
+    ,("add"  ,[("Num","a")],[tyvar "a", tyvar "a", tyvar "a"])
+    ,("sub"  ,[("Num","a")],[tyvar "a", tyvar "a", tyvar "a"])
+    ,("mul"  ,[("Num","a")],[tyvar "a", tyvar "a", tyvar "a"])
+    ,("div"  ,[],[fixed "m" "n", fixed "m" "n", fixed "m" "n"])
+    ]
+  where ty    = CTAExpr . L NoLoc . L2.Upp
+        tyvar = CTAExpr . L NoLoc . L2.Low
+        fixed m n
+          = CTApp (L NoLoc (L2.Upp "Fixed")) [tyvar m,tyvar n]
+        int n
+          = CTApp (L NoLoc (L2.Upp "Int")) [tyvar n]
 
 specialFuncs :: [TFunc]
 specialFuncs
@@ -175,7 +205,7 @@ specialFuncs
     ,("consR",NoLoc,SpecialF,2
      ,(NonRecursive,OutputInputRecursive, False),[])
     ,("now",NoLoc,SpecialF,2
-     ,(NonRecursive, InputRecursive, False),[])
+     ,(NonRecursive,InputRecursive, False),[])
     ,("rest",NoLoc,SpecialF,2
      ,(NonRecursive,OutputInputRecursive, False),[])
     ,("mrest",NoLoc,SpecialF,2
@@ -251,3 +281,40 @@ data C = C F [TInst] [CInput] COutput [CConn] CProc
 type File = (Name, String)
 
 type SystemC = [File]
+
+------------- core
+
+data Core = Core [CFunc]
+          deriving Show
+
+data CFunc = CFunc L2.LToken [L2.LToken] CGuards [CFType]
+           -- data colocada no estado
+           deriving Show
+
+data CGuards = CNoGuards P2.PExpr
+             | CGuards [(P2.PExpr,P2.PExpr)]
+             deriving Show
+
+data CFType = CTApp L2.LToken [CFType]
+            | CTArrow SrcLoc [CFType]
+            | CTAExpr L2.LToken
+            deriving (Show, Eq)
+
+data CConstr = CConstr L2.LToken [CFType]
+             deriving Show
+
+------- typedcore
+
+data TCore = TCore [TCFunc]
+           deriving Show
+
+data TCFunc = TCFunc L2.LToken [(L2.LToken,CFType)] TCGuards CFType
+           deriving Show
+
+data TCGuards = TCNoGuards TCExpr
+              | TCGuards [(TCExpr,TCExpr)]
+              deriving Show
+
+data TCExpr = TCApp L2.LToken [TCExpr] CFType
+            | TCAExpr (L2.LToken,CFType)
+            deriving Show
