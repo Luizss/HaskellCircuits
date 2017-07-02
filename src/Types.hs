@@ -7,10 +7,8 @@ import Data.Map hiding ((\\), map, findIndex)
 
 ------------------ Internal Imports
 
-import Parser2 as P2
-import Lexer2 as L2
-import LexerCore hiding (L(..), SrcLoc(..))
-import ParserCore
+import Parser
+import Lexer
 
 ------------------ Aliases
 
@@ -73,10 +71,8 @@ data TState =
   , actualStage        :: TStage
   , typeChanges        :: [(CFType, CFType)]
   , tCore              :: TCore
-  , parsedResult       :: PResult
   , tLogs              :: [TLog]
   , tFuncs             :: [TFunc]
-  , tTypes             :: [TFuncType]
   , functionIds        :: [(Name, Id, [FType])]
   , components         :: [TComp]
   , instances          :: [TInst]
@@ -135,8 +131,6 @@ type HighOrder = [Int]
 
 type TFunc = (Name, SrcLoc, F, Arity, FunctionClassification, HighOrder)
 
-type TFuncType = (Name, SrcLoc, [PTypeExpr])
-
 type TComp = (Name, C)
 
 type TInst = (CompName, Id, NameId, I, Used)
@@ -157,10 +151,8 @@ initialTState = TState {
   , tCore = TCore []
   , typeChanges = typeChangesInitial
   , actualStage = TInitialStage
-  , parsedResult = PResult []
   , tLogs   = []
   , tFuncs  = specialFuncs
-  , tTypes  = []
   , functionIds = []
   , components = []
   , instances = []
@@ -187,12 +179,12 @@ preDefinedfunctionsTypes
     ,("mul"  ,[("Num","a")],[tyvar "a", tyvar "a", tyvar "a"])
     ,("div"  ,[],[fixed "m" "n", fixed "m" "n", fixed "m" "n"])
     ]
-  where ty    = CTAExpr . L NoLoc . L2.Upp
-        tyvar = CTAExpr . L NoLoc . L2.Low
+  where ty    = CTAExpr . L NoLoc . Upp
+        tyvar = CTAExpr . L NoLoc . Low
         fixed m n
-          = CTApp (L NoLoc (L2.Upp "Fixed")) [tyvar m,tyvar n]
+          = CTApp (L NoLoc (Upp "Fixed")) [tyvar m,tyvar n]
         int n
-          = CTApp (L NoLoc (L2.Upp "Int")) [tyvar n]
+          = CTApp (L NoLoc (Upp "Int")) [tyvar n]
 
 specialFuncs :: [TFunc]
 specialFuncs
@@ -221,8 +213,8 @@ typeChangesInitial :: [(CFType,CFType)]
 typeChangesInitial
   = [(CTAExpr (noLocUpp "Int"), CTApp (noLocUpp "Vec") [CTAExpr (noLocDec 32)])
     ,(CTAExpr (noLocUpp "Bool"), CTAExpr (noLocUpp "Bit"))]
-  where noLocUpp = L NoLoc . L2.Upp
-        noLocDec = L NoLoc . L2.Dec
+  where noLocUpp = L NoLoc . Upp
+        noLocDec = L NoLoc . Dec
 
 ------------------ Components
 
@@ -299,20 +291,20 @@ type SystemC = [File]
 data Core = Core [CFunc]
           deriving Show
 
-data CFunc = CFunc L2.LToken [L2.LToken] CGuards [CFType]
+data CFunc = CFunc LToken [LToken] CGuards [CFType]
            -- data colocada no estado
            deriving Show
 
-data CGuards = CNoGuards P2.PExpr
-             | CGuards [(P2.PExpr,P2.PExpr)]
+data CGuards = CNoGuards PExpr
+             | CGuards [(PExpr,PExpr)]
              deriving Show
 
-data CFType = CTApp L2.LToken [CFType]
+data CFType = CTApp LToken [CFType]
             | CTArrow SrcLoc [CFType]
-            | CTAExpr L2.LToken
+            | CTAExpr LToken
             deriving (Show, Eq)
 
-data CConstr = CConstr L2.LToken [CFType]
+data CConstr = CConstr LToken [CFType]
              deriving Show
 
 ------- typedcore
@@ -320,13 +312,13 @@ data CConstr = CConstr L2.LToken [CFType]
 data TCore = TCore [TCFunc]
            deriving (Show,Eq)
 
-data TCFunc = TCFunc L2.LToken [(L2.LToken,CFType)] TCGuards CFType
+data TCFunc = TCFunc LToken [(LToken,CFType)] TCGuards CFType
            deriving (Show,Eq)
 
 data TCGuards = TCNoGuards TCExpr
               | TCGuards [(TCExpr,TCExpr)]
               deriving (Show,Eq)
 
-data TCExpr = TCApp L2.LToken [TCExpr] CFType
-            | TCAExpr (L2.LToken,CFType)
+data TCExpr = TCApp LToken [TCExpr] CFType
+            | TCAExpr (LToken,CFType)
             deriving (Show,Eq)

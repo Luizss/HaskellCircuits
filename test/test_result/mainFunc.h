@@ -2,28 +2,28 @@
 #define MAINFUNC_H_
 
 #include "systemc.h"
-#include "h__0g.h"
+#include "add1_.h"
 
 
 SC_MODULE(mainFunc) {
-sc_fifo_in<sc_lv<32> > s;
-sc_fifo_in<sc_lv<32> > a;
+sc_fifo_in<sc_lv<32> > __i0;
+sc_fifo_in<sc_lv<32> > __i1;
 
 sc_fifo_out<sc_lv<32> > out;
 
-sc_fifo<sc_lv<32> > main1_a__h__0g1_a;
-sc_fifo<sc_lv<32> > main1_s__h__0g1_s;
-sc_fifo<sc_lv<32> > h__0g1_out__main1_out;
+sc_fifo<sc_lv<32> > main1___i1__add1_in2;
+sc_fifo<sc_lv<32> > main1___i0__add1_in1;
+sc_fifo<sc_lv<32> > add1_out__main1_out;
 
-h__0g h__0g1;
+add1_ add1;
 
 
 
-SC_CTOR(mainFunc) : h__0g1("h__0g1") {
+SC_CTOR(mainFunc) : add1("add1") {
 
-h__0g1.a(a);
-h__0g1.s(s);
-h__0g1.out(out);
+add1.in2(__i1);
+add1.in1(__i0);
+add1.out(out);
 
 
 }

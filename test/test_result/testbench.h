@@ -2,8 +2,8 @@
 
 SC_MODULE(testbench) {
 sc_fifo_in<sc_lv<32> > out;
-sc_fifo_out<sc_lv<32> > s;
-sc_fifo_out<sc_lv<32> > a;
+sc_fifo_out<sc_lv<32> > __i0;
+sc_fifo_out<sc_lv<32> > __i1;
 
 
 void proc();
@@ -13,18 +13,9 @@ SC_THREAD(proc);
 }
 };
 
-void testbench::proc() {
+void testbench::proc() {__i0.write(1);
+__i1.write(2);
+cout << out.read() << endl;
 
-  s.write(0b00000000000000000000000000000011);
-  s.write(0b00000000000000000000000000000101);
-  s.write(0b00000000000000000000000000011101);
-  s.write(0b00000000000000000000000000000101);
-  s.write(0b00000000000000000000000000011101);
-  s.write(0b00000000000000000000000000000000);
-  a.write(0b00000000000000000000000000000000);
-  
-  while (true) {
-  cout << "ANS: " << out.read() << endl;
-  }
 
 }

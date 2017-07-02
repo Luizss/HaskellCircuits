@@ -4,8 +4,8 @@ import Data.List (dropWhile)
 import Control.Monad (forM_,forM,zipWithM)
 import Data.List (foldl,find,nub)
 
-import Lexer2
-import Parser2
+import Lexer
+import Parser
 import Types
 import TransformationMonad
 import Aux
@@ -405,7 +405,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     isNumType cft = case cft of
       CTApp (L _ (Upp "Fixed")) _ -> True
       CTApp (L _ (Upp   "Int")) _ -> True
-      --CTAExpr (L _ (Upp   "Int")) -> True
+      CTAExpr (L _ (Upp   "Int")) -> True
       _ -> False
 
     isRecursiveType :: CFType -> TM Bool

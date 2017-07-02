@@ -9,24 +9,23 @@ import Data.List (elemIndex)
 
 --------------------- Internal Imports
 
-import ParserCore
-import LexerCore
+import Lexer
 import Types
 import TransformationMonad
 import Aux
-
+  
 --------------------- Transforming PResult to TFuncs and adding them to state
 
 getParsedFunctions_TransformToF_AddToState :: TM ()
 getParsedFunctions_TransformToF_AddToState = do
   newStage TInterpretationStage
-  PResult fs <- getParsedResult
+  TCore fs <- getTCore
   mapM_ fromParsedFunctionToF_AddToState fs
 
-fromParsedFunctionToF_AddToState :: PFunc -> TMM ()
-fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
+fromParsedFunctionToF_AddToState :: TCFunc -> TMM ()
+fromParsedFunctionToF_AddToState (TCFunc name varsNtypes guards typeExpr) = do
   
-  let fname  = fmap fromLow name
+  let fname  = fmap fromLowOrUpp name
       srcLoc = getLoc name
       vars   = map fst varsNtypes
       types  = map snd varsNtypes
@@ -41,7 +40,7 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
 
     case guards of
 
-      PNoGuards body -> do
+      TCNoGuards body -> do
         
         mFExpr <- getFExpr body
   
@@ -54,7 +53,7 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
             addFunc (funcName, srcLoc, F args (NoFGuards fExpr) ft, length args, (classifyRecursion funcName (NoFGuards fExpr), classifyTypes fts ft, isConsExpr (NoFGuards fExpr)), isHighOrder fts)
             ret ()
 
-      PGuards guards -> do
+      TCGuards guards -> do
 
         mfguards <- forM guards $ \(condExpr,expr) -> do
 
@@ -76,9 +75,10 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
     
   where
 
-    funcName = fromLow $ getVal name
-    
-    fromLow (Low n) = n
+    funcName = fromLowOrUpp $ getVal name
+
+    fromLowOrUpp (Upp n) = n
+    fromLowOrUpp (Low n) = n
 
     makeFunctionId :: Name -> [FExpr] -> FType -> TM Id
     makeFunctionId name fexs ft = do
@@ -95,10 +95,10 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
     
     -- odot transforms pexpr to fexpr
     -- naming: fromParsedExpressionToFunctionExpression
-    getFExpr :: PExpr -> TMM FExpr
+    getFExpr :: TCExpr -> TMM FExpr
     getFExpr expr = case expr of
       
-      PApp (L src (Low s)) es ty -> do
+      TCApp (L src (Low s)) es ty -> do
         mes' <- mapM getFExpr es
         cont mes' $ do
           let es' = map just mes'
@@ -107,7 +107,7 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
             id <- makeFunctionId s es' ft
             ret $ FApp (L src s, id) es' ft
         
-      PAExpr (L s (Low v), t)
+      TCAExpr (L s (Low v), t)
         | v == "_'_" -> do
             mft <- fromParsedTypeExprToFunctionType t
             cont1 mft $ \ft -> do
@@ -118,17 +118,17 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
             cont1 mft $ \ft -> do
               id <- makeFunctionId' v ft
               ret $ FAExpr (FVar (L s v), id, ft)
-      PAExpr (L s (Bin i), t) -> do
+      TCAExpr (L s (Bin i), t) -> do
         mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft -> do
           id <- makeFunctionId' ("const_bin_" ++ i) ft
           ret $ FAExpr (FCons(FBin (L s i)), id, ft)
-      PAExpr (L s (Hex i), t) -> do
+      TCAExpr (L s (Hex i), t) -> do
         mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft -> do
           id <- makeFunctionId' ("const_hex_" ++ i) ft
           ret $ FAExpr (FCons(FHex (L s i)), id, ft)
-      PAExpr (L s (Dec i), t) -> do
+      TCAExpr (L s (Dec i), t) -> do
         mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft -> do
           id <- makeFunctionId' ("const_dec_" ++ show i) ft
@@ -140,16 +140,18 @@ fromParsedFunctionToF_AddToState (PFunc name varsNtypes guards typeExpr) = do
                   "Expression construction error"
                   NoLoc) >> noRet
 
-fromParsedTypeExprToFunctionType :: PTypeExpr -> TMM FType
-fromParsedTypeExprToFunctionType texpr = case texpr of
-  PTApp (PTAExpr (L s (Upp "Stream"))) x -> do
-    mft <- fromParsedTypeExprToFunctionType x
-    cont1 mft (ret . Stream)
-  PTApp (PTAExpr (L s (Upp "Vec"))) (PTAExpr (L _ (Dec n)))
+fromParsedTypeExprToFunctionType :: CFType -> TMM FType
+fromParsedTypeExprToFunctionType cft = case cft of
+  CTArrow s _ -> ret $ Function s
+  CTApp (L s (Upp "Stream")) xs -> do
+    mfts <- mapM fromParsedTypeExprToFunctionType xs
+    cont_ mfts $ \fts -> do
+      ret $ Stream $ head fts
+  CTApp (L s (Upp "Vec")) [CTAExpr (L _ (Dec n))]
     -> ret $ BitVec s n
-  PTAExpr (L s (Upp "Bit")) -> ret $ Bit s
-  PTAExpr (L s (Upp "Function")) -> ret $ Function s
-  PTApp (PTAExpr (L s (Upp "Nat"))) (PTAExpr (L _ (Dec n)))
+  CTAExpr (L s (Upp "Bit")) -> ret $ Bit s
+  CTAExpr (L s (Upp "Function")) -> ret $ Function s
+  CTApp (L s (Upp "Nat")) [CTAExpr (L _ (Dec n))]
     -> ret $ Nat s n
   x -> throw (TErr
               TypeNotPermitted

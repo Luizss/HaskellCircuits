@@ -10,14 +10,16 @@ import System.Directory
 
 ---------------- Internal Imports
 
-import LexerCore
-import LayoutCore (layout)
-import ParserCore
+import Lexer
+import Parser
+import Layout
 import TransformationMonad
 import Function
 import Types
 import Components
 import ToSystemC
+import Core
+import TypeSynth
 
 getTestInputs :: IO [String]
 getTestInputs = do
@@ -48,13 +50,24 @@ test' :: FileName -> String -> [[Int]] -> IO ()
 test' fileName text tbs = do
   let tks  = tokenize text
       tks' = layout tks
-      expr = parse' tks'
+      Right expr = parse' tks'
       transformation = do
-        case expr of
-          Right e -> do
-            putSourceCode text
-            putParsedResult e
-          Left  _ -> return ()
+        storeDataInState expr
+        storeCoreInState expr
+        putDataDefsInState
+        putFunctionTypesInState
+        c <- getCore
+        debug "!!!!!!!!!"
+        debugs c
+        x <- getCFuncTypes
+        debug "AAAAAAAAA"
+        debugs x
+        debugs "TYPECHECK"
+        typeCheck
+        debugs "TYPESYNTH"
+        typeSynth
+        tc <- getTCore
+        debugs tc
         getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
         applyHighOrder
@@ -77,13 +90,24 @@ withText :: FileName -> String -> [[Int]] -> IO ()
 withText fileName text tbs = do
   let tks  = tokenize text
       tks' = layout tks
-      expr = parse' tks'
+      Right expr = parse' tks'
       transformation = do
-        case expr of
-          Right e -> do
-            putSourceCode text
-            putParsedResult e
-          Left  _ -> return ()
+        storeDataInState expr
+        storeCoreInState expr
+        putDataDefsInState
+        putFunctionTypesInState
+        c <- getCore
+        debug "!!!!!!!!!"
+        debugs c
+        x <- getCFuncTypes
+        debug "AAAAAAAAA"
+        debugs x
+        debugs "TYPECHECK"
+        typeCheck
+        debugs "TYPESYNTH"
+        typeSynth
+        tc <- getTCore
+        debugs tc
         getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
         toComponents
@@ -110,22 +134,40 @@ makeSystemC dirName files = do
       forM_ files $ \(filename, content) ->
         writeFile (dir ++ filename) content
 
-a :: IO ()
-a = do
+a :: [[Int]] -> IO ()
+a tbs = do
   tx <- readFile "test/test"
   let tks = tokenize tx
       tks' = layout tks
-      expr = parse' tks'
+      Right expr = parse' tks'
       transformation = do
-        case expr of
-          Right e -> do
-            putSourceCode tx
-            putParsedResult e
-          Left  _ -> return ()
+        storeDataInState expr
+        storeCoreInState expr
+        putDataDefsInState
+        putFunctionTypesInState
+        c <- getCore
+        debug "!!!!!!!!!"
+        debugs c
+        x <- getCFuncTypes
+        debug "AAAAAAAAA"
+        debugs x
+        debugs "TYPECHECK"
+        typeCheck
+        debugs "TYPESYNTH"
+        typeSynth
+        tc<-getTCore
+        debugs tc
         getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
+        hey<-getFunctions
+        debug "FUNCTION"
+        debugs hey
         applyHighOrder
+        debug "COMPONENTS"
         toComponents
+        comp <- getComponents
+        debugs comp
+        toSystemC tbs
       st = runTM transformation
   putStrLn "TOKENS"
   print tks
@@ -133,14 +175,20 @@ a = do
   print tks'
   putStrLn "EXPR"
   print expr
-  putStrLn "FUNCTION"
-  print (tFuncs st)
-  putStrLn "COMPONENT"
-  print (components st)
+  putStrLn "CORE"
+  showE st
+  putStrLn "SYST"
+  print $ systemC st
   when (getErrs st == []) $ do
+    print st
+    forM_ (systemC st) $ \(x,y) -> do
+      putStrLn x
+      putStrLn y
+    makeSystemC "test/test" (systemC st)
     showE st
-    putStrLn "NICE!"
+    putStrLn "Ok!"
   when (getErrs st /= []) $ do
+    print tks
     showE st
   
 getErrs = filter isErr . tLogs

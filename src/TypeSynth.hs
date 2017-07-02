@@ -3,7 +3,7 @@ module TypeSynth where
 import Control.Monad (forM_,forM)
 import TransformationMonad
 import Types
-import Lexer2
+import Lexer
 import Aux
 
 noLocLow = L NoLoc . Low

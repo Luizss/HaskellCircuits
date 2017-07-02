@@ -4,10 +4,8 @@ module TransformationMonad where
 
 --- Imports
 
-import Parser2
-import ParserCore
-import Lexer2 as L2
-import LexerCore hiding (L(..), SrcLoc(..))
+import Parser
+import Lexer
 import Aux
 import Types
 import Control.Monad.State
@@ -133,18 +131,6 @@ putSourceCode :: SourceCode -> TM ()
 putSourceCode s = do
   state <- get
   put (state { sourceCode = s })
-
--- start function: put program that comes from parser
-putParsedResult :: PResult -> TM ()
-putParsedResult p = do
-  state <- get
-  put (state { parsedResult = p })
-
--- getting the parsedResult
-getParsedResult :: TM PResult
-getParsedResult = do
-  st <- get
-  return (parsedResult st)
 
 addFunc :: TFunc -> TM ()
 addFunc x = do
@@ -294,8 +280,8 @@ changeType cft = do
 addTypeChange :: Name -> Int -> TM ()
 addTypeChange name n = do
   st <- get
-  let noLocUpp = L NoLoc . L2.Upp
-      noLocDec = L NoLoc . L2.Dec
+  let noLocUpp = L NoLoc . Upp
+      noLocDec = L NoLoc . Dec
       vec = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec n)]
       typeC = (CTAExpr (noLocUpp name), vec)
   put $ st { typeChanges = typeC : typeChanges st }
@@ -530,11 +516,6 @@ incrementForkedIndex :: CompName -> String -> TM ()
 incrementForkedIndex comp v = do
   i <- getForkedIndex comp v
   putForkedIndex comp v (i + 1)
-
-addFuncType :: TFuncType -> TM ()
-addFuncType x = do
-  state <- get
-  put (state { tTypes =  x : tTypes state })
 
 getFunctionId :: Name -> [FType] -> TM Id
 getFunctionId name ftypes = do
