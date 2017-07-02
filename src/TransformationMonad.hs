@@ -6,7 +6,7 @@ module TransformationMonad where
 
 import Parser2
 import ParserCore
-import Lexer2
+import Lexer2 as L2
 import LexerCore hiding (L(..), SrcLoc(..))
 import Aux
 import Types
@@ -222,16 +222,96 @@ changeMainName = do
   where ifMainChange ("main",main) = ("mainFunc",main)
         ifMainChange x = x-}
 
-getDataDecls :: TM [(L Name, [CConstr])]
+getTCore :: TM TCore
+getTCore = do
+  st <- get
+  return $ tCore st
+
+putTCore :: TCore -> TM ()
+putTCore tCore' = do
+  st <- get
+  put $ st { tCore = tCore' }
+
+addTCFunc :: TCFunc -> TM ()
+addTCFunc f = do
+  TCore fs <- getTCore
+  putTCore $ TCore (f : fs)
+
+getDataDecls :: TM [(L Name, [CConstr], IsRec, Used)]
 getDataDecls = do
   st <- get
   return (dataDecls st)
 
-addData :: (L Name, [CConstr]) -> TM ()
+putDataDecls :: [(L Name, [CConstr], IsRec, Used)] -> TM ()
+putDataDecls dds = do
+  st <- get
+  put $ st { dataDecls = dds }
+
+searchDataDecl :: Name -> TMM (L Name, [CConstr], IsRec, Used)
+searchDataDecl name = do
+  dds <- getDataDecls
+  return (find (\(L _ n,_,_,_) -> n == name) dds)
+  
+isTypeRecursive :: Name -> TM Bool
+isTypeRecursive name = do
+  dds <- getDataDecls
+  bools <- forM dds $ \(L _ n, _, isRec, _) -> do
+    if n == name
+      then return isRec
+      else return False
+  return $ or bools
+
+addData :: (L Name, [CConstr], IsRec, Used) -> TM ()
 addData x = do
   st <- get
   put (st { dataDecls = x : dataDecls st })
 
+setDataUsed :: Name -> TMM ()
+setDataUsed name = do
+  dds <- getDataDecls
+  mdd <- searchDataDecl name
+  cont1 mdd $ \(ln,ccs,isr,_) -> do
+    putDataDecls $ (ln,ccs,isr,True) : filter (\(L _ n,_,_,_) -> n /= name) dds
+    ret ()
+
+getTypeChanges :: TM [(CFType,CFType)]
+getTypeChanges = do
+  st <- get
+  return $ typeChanges st
+
+changeType :: CFType -> TMM CFType
+changeType cft = do
+  tcs <- getTypeChanges
+  debug $ "CHANGE TYPE: " ++ show cft
+  case find ((== cft) . fst) tcs of
+    Nothing -> do
+      debug "NOTHING"
+      return $ Just cft
+    Just (_,s) -> do
+      debugs s
+      return $ Just s
+
+addTypeChange :: Name -> Int -> TM ()
+addTypeChange name n = do
+  st <- get
+  let noLocUpp = L NoLoc . L2.Upp
+      noLocDec = L NoLoc . L2.Dec
+      vec = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec n)]
+      typeC = (CTAExpr (noLocUpp name), vec)
+  put $ st { typeChanges = typeC : typeChanges st }
+
+isThereTypeChange :: CFType -> TM Bool
+isThereTypeChange cft = do
+  tcs <- getTypeChanges
+  return $ case find ((== cft) . fst) tcs of
+    Nothing -> False
+    Just _  -> True
+
+{-changeType :: CFType -> TM CFType
+changeType cft = case cft of
+  CTAExpr (L _ (Upp _)) -> 
+  cft-}
+  
 addCFuncType :: (Name, [Constraint], [CFType]) -> TM ()
 addCFuncType x = do
   st <- get
@@ -506,12 +586,12 @@ testF2 = do
 
 ---------- typecheck
 
-getIt :: TM [[CFType]]
+getIt :: TM [([Constraint],[CFType])]
 getIt = do
   st <- get
-  return(typeCheckState st)
+  return (typeCheckState st)
   
-getTypeCheckState :: TMM [CFType]
+getTypeCheckState :: TMM ([Constraint],[CFType])
 getTypeCheckState = do
   st <- get
   let tcs = typeCheckState st
@@ -519,7 +599,7 @@ getTypeCheckState = do
     []   -> noRet
     x:xs -> ret x
 
-putTypeCheckState :: [CFType] -> TM ()
+putTypeCheckState :: ([Constraint],[CFType]) -> TM ()
 putTypeCheckState ft = do
   debug $ "STATEPUT: " ++ show ft
   st <- get
@@ -535,23 +615,23 @@ popTypeCheckState = do
     [] -> error "yyyyy1"
     x:xs -> put ( st { typeCheckState = xs } )
 
-modifyTypeCheckState :: ([CFType] -> [CFType]) -> TM ()
+modifyTypeCheckState
+  :: ([CFType] -> [CFType]) -> TM ()
 modifyTypeCheckState func = do
   debug $ "STATE MODIFIED"
   st <- get
   let tcs = typeCheckState st
   case tcs of
     []   -> return ()
-    x:xs -> do
-      put ( st { typeCheckState = func x : xs })
+    (cs,x):xs -> do
+      put ( st { typeCheckState = (cs,func x) : xs })
 
-emptyTypeCheckState :: TM ()
-emptyTypeCheckState =
-  modifyTypeCheckState (\_ -> [])
-
+{-
 isEmptyTypeCheckState :: TM Bool
 isEmptyTypeCheckState = do
-  x <- getTypeCheckState
+
+x <- getTypeCheckState
   case x of
     Nothing -> return True
     Just x  -> return False
+-}

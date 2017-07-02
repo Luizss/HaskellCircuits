@@ -9,8 +9,8 @@ import Control.Monad
 
 ----------------------- Internal Imports
 
-import Function
-import LexerCore
+import Function2
+import Lexer2
 import TransformationMonad
 import Types
 import Aux

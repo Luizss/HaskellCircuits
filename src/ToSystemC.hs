@@ -6,7 +6,7 @@ import Data.List (nub,intercalate,isPrefixOf)
 import Data.String (lines,unlines)
 import Data.Char (toUpper)
 
-import LexerCore
+import Lexer2
 import Components
 import Types
 import TransformationMonad

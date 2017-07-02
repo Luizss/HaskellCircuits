@@ -62,3 +62,6 @@ indexes is xs = map just
           | otherwise = Nothing
 
 for l f = map f l
+
+both :: (a -> b) -> (a,a) -> (b,b)
+both f (a1,a2) = (f a1, f a2)

@@ -62,14 +62,17 @@ type TM a = State TState a
 
 type TMM a = TM (Maybe a)
 
+type IsRec = Bool
 
 data TState =
   TState {
   sourceCode           :: SourceCode
-  , dataDecls          :: [(L Name, [CConstr])]
+  , dataDecls          :: [(L Name, [CConstr], IsRec, Used)]
   , funcTypes          :: [(Name, [Constraint], [CFType])]
-  , typeCheckState     :: [[CFType]]
+  , typeCheckState     :: [([Constraint],[CFType])]
   , actualStage        :: TStage
+  , typeChanges        :: [(CFType, CFType)]
+  , tCore              :: TCore
   , parsedResult       :: PResult
   , tLogs              :: [TLog]
   , tFuncs             :: [TFunc]
@@ -151,6 +154,8 @@ initialTState = TState {
   , dataDecls = []
   , funcTypes = preDefinedfunctionsTypes
   , typeCheckState = []
+  , tCore = TCore []
+  , typeChanges = typeChangesInitial
   , actualStage = TInitialStage
   , parsedResult = PResult []
   , tLogs   = []
@@ -211,6 +216,13 @@ specialFuncs
     ,("mrest",NoLoc,SpecialF,2
      ,(NonRecursive,OutputInputRecursive, False),[])
     ]
+
+typeChangesInitial :: [(CFType,CFType)]
+typeChangesInitial
+  = [(CTAExpr (noLocUpp "Int"), CTApp (noLocUpp "Vec") [CTAExpr (noLocDec 32)])
+    ,(CTAExpr (noLocUpp "Bool"), CTAExpr (noLocUpp "Bit"))]
+  where noLocUpp = L NoLoc . L2.Upp
+        noLocDec = L NoLoc . L2.Dec
 
 ------------------ Components
 
@@ -306,15 +318,15 @@ data CConstr = CConstr L2.LToken [CFType]
 ------- typedcore
 
 data TCore = TCore [TCFunc]
-           deriving Show
+           deriving (Show,Eq)
 
 data TCFunc = TCFunc L2.LToken [(L2.LToken,CFType)] TCGuards CFType
-           deriving Show
+           deriving (Show,Eq)
 
 data TCGuards = TCNoGuards TCExpr
               | TCGuards [(TCExpr,TCExpr)]
-              deriving Show
+              deriving (Show,Eq)
 
 data TCExpr = TCApp L2.LToken [TCExpr] CFType
             | TCAExpr (L2.LToken,CFType)
-            deriving Show
+            deriving (Show,Eq)

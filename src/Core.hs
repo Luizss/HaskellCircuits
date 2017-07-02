@@ -2,7 +2,7 @@ module Core where
 
 import Data.List (dropWhile)
 import Control.Monad (forM_,forM,zipWithM)
-import Data.List (foldl,find)
+import Data.List (foldl,find,nub)
 
 import Lexer2
 import Parser2
@@ -14,11 +14,23 @@ storeDataInState :: P2Result -> TM ()
 storeDataInState (P2Result pdecls) = do
   forM_ (filter isData pdecls)
     $ \(PDataType (L s (Upp name)) pconstrs) -> do
-    let x = map
+    let cconstrs
+          = map
             (\(PConstr ltk pfts)
-              -> CConstr ltk (map (toCFTy' . substIntFixed) pfts))
+              -> CConstr ltk (map (toCFTy' {-. substIntFixed-}) pfts))
             pconstrs
-    addData (L s name, x)
+        isRec = isRecursiveData name cconstrs
+    addData (L s name, cconstrs, isRec, False)
+
+isRecursiveData :: Name -> [CConstr] -> Bool
+isRecursiveData name cconstrs = or $ map isRec cconstrs
+  where isRec :: CConstr -> Bool
+        isRec (CConstr _ cfts) = or $ map isSameType cfts
+        isSameType :: CFType -> Bool
+        isSameType t = case t of
+          CTAExpr (L _ (Upp x))
+            | x == name -> True
+          _ -> False
 
 substIntFixed :: PFType -> PFType
 substIntFixed pft = case pft of
@@ -33,7 +45,6 @@ substIntFixed pft = case pft of
                                  ,PTAExpr (noLocDec 32)]
   y -> y
   
-
 isData (PDataType _ _) = True
 isData  _              = False
 
@@ -43,7 +54,7 @@ gatherFunctions (P2Result pds) = do
   fs <- glueFunctions pds'
   ret $ map patternsToGuards fs
   where patternsToGuards (n,ft,fd)
-          = (n,substIntFixed ft,varsFromPats fd,concatGuards (map destroyPats fd))
+          = (n,{-substIntFixed -}ft,varsFromPats fd,concatGuards (map destroyPats fd))
 
 varsFromPats :: [([Pat], a)] -> [Name]
 varsFromPats xs = map toName [0..(length pats - 1)]
@@ -76,20 +87,20 @@ takeFunctionDef name = map patsNguards . takeWhile (isSameFunc name)
 
 destroyPats :: ([Pat],PGuards) -> PGuards
 destroyPats (pats, pgs) =
-  destroy (zip pats (map makeExpr [0..])) pgs
+  destroy (zip3 pats (map makeExpr [0..]) [0..]) pgs
           
-destroy :: [(Pat, PExpr)] -> PGuards -> PGuards
+destroy :: [(Pat, PExpr,Int)] -> PGuards -> PGuards
 destroy [] pgs = pgs
-destroy ((pat,expr):pis) pgs = case pat of
-    Pat (L _ (Low  x)) -> destroy pis (replaceBy x expr pgs)
+destroy ((pat,expr,i):pis) pgs = case pat of
+    Pat (L _ (Low  x)) -> destroy pis (replaceBy x (expr,i) pgs)
     Pat (L _ (Upp  x)) -> destroy pis (df (x,expr) pgs)
     Pat (L _ (Bin  x)) -> error "bindechex" -- type?
     Pat (L _ (Hex  x)) -> error "bindechex" -- type?
     Pat (L _ (Dec  x)) -> error "bindechex" -- type?
     ConsPat (L _ (Upp x)) pats ->
-      let argExprs = zip pats (map
+      let argExprs = zip3 pats (map
                                 (concatExpr x expr)
-                                (zip pats [0..]))
+                                (zip pats [0..])) [0..]
           pgs'  = destroy argExprs pgs
           pgs'' = df (x,expr) pgs'
       in destroy pis pgs''
@@ -99,13 +110,16 @@ concatExpr :: Name -> PExpr -> (Pat,Int) -> PExpr
 concatExpr x pexpr (p,i)
   = PApp (noLocLow ("__get__" ++ x ++ "__" ++ show i)) [pexpr]
 
-replaceBy :: Name -> PExpr -> PGuards -> PGuards
-replaceBy name pexpr pgs =
+replaceBy :: Name -> (PExpr,Int) -> PGuards -> PGuards
+replaceBy name (pexpr,i) pgs =
   let replace :: PExpr -> PExpr
       replace e = case e of
         PAExpr (L _ (Low x))
           | x == name -> pexpr
         PAExpr x -> PAExpr x
+        PApp (L l (Low x)) exps
+          | x == name
+            -> PApp (L l (Low ("__i" ++ show i))) (map replace exps)
         PApp ltn exps -> PApp ltn (map replace exps)
   in case pgs of
     PNoGuards e -> PNoGuards $ replace e
@@ -190,12 +204,11 @@ toCFTy' (PTArrow pft1 pft2)
 putDataDefsInState :: TM ()
 putDataDefsInState = do
   dds <- getDataDecls
-  forM_ dds $ \(L s name, constrs) -> do
+  forM_ dds $ \(L s name, constrs, isRec, _) -> do
     forM_ constrs $ \(CConstr (L _ (Upp datacons)) cfts) -> do
       let typeCons = CTAExpr (L s (Upp name))
           bool = CTAExpr (L s (Upp "Bool"))
-      addCFuncType
-        ("__is__" ++ datacons, [], [typeCons, bool])
+      addCFuncType ("__is__" ++ datacons, [], [typeCons, bool])
       addCFuncType (datacons, [], cfts ++ [typeCons])
       forM_ (zip cfts [0..]) $ \(cft,i) -> do
         addCFuncType ("__get__" ++ datacons ++ "__" ++ show i
@@ -209,12 +222,45 @@ putFunctionTypesInState = do
 
 funcName (CFunc (L _ (Low name)) _ _ _) = name
 
-typeCheck :: TMM TCore
+fixedFunctions :: TCore -> TCore
+fixedFunctions (TCore tcfs)
+  = TCore $ map substFunctions tcfs
+
+substFunctions :: TCFunc -> TCFunc
+substFunctions (TCFunc name vars tcgs fty)
+  = TCFunc name vars (substGuards tcgs) fty
+  where substGuards gs = case gs of
+          TCNoGuards e -> TCNoGuards $ substExpr e
+          TCGuards ces -> TCGuards $ map (both substExpr) ces
+
+isNumFunc f = elem f ["add","sub","mul"]
+
+isFixed :: CFType -> Bool
+isFixed ty = case ty of
+  CTApp (L _ (Upp "Fixed")) _ -> True
+  _ -> False
+
+substExpr :: TCExpr -> TCExpr
+substExpr tcexpr = case tcexpr of
+  TCApp (L l (Low name)) args ty
+    | isNumFunc name && isFixed ty
+      -> TCApp (L l (Low (name ++ "F"))) args ty
+  x -> x
+
+typeCheck :: TMM ()
 typeCheck = do
+  mtcore <- typeCheck'
+  cont1 mtcore $ \tcore -> do
+    debugs tcore
+    putTCore tcore
+    ret ()
+
+typeCheck' :: TMM TCore
+typeCheck' = do
   Core fs <- getCore
   mtcs <- forM fs typeCheckEach
   cont_ mtcs $ \tcs -> do
-    ret $ TCore tcs
+    ret $ fixedFunctions $ TCore tcs
 
 getName :: LToken -> Name
 getName = getN . getVal
@@ -239,18 +285,18 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
       CGuards ces -> do
         let bool = [CTAExpr (noLocUpp "Bool")]
         mces' <- forM ces $ \(c,e) -> do
-          debug "************"
-          debug $ "COND: " ++ show c
-          debug "************"
+          ---debug "************"
+          ---debug $ "COND: " ++ show c
+          ---debug "************"
           mc' <- typeCheckExpr bool c
-          debug "************"
-          debug $ "EXPR: " ++ show e
-          debug "************"
+          ---debug "************"
+          ---debug $ "EXPR: " ++ show e
+          ---debug "************"
           me' <- typeCheckExpr ftype e
-          debug "&&&&&&&&&&"
-          debugs "RESULTS"
-          debugs (mc', me')
-          debug "&&&&&&&&&&"
+          ---debug "&&&&&&&&&&"
+          ---debugs "RESULTS"
+          ---debugs (mc', me')
+          ---debug "&&&&&&&&&&"
           cont2 mc' me' $ \c' e' -> ret (c',e')
         cont_ mces' $ ret . TCGuards
 
@@ -258,16 +304,17 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     typeCheckExpr ft expr = typeCheckExpr' ft (expr,0)
       
     typeCheckExpr' :: [CFType] -> (PExpr,Int) -> TMM TCExpr
-    typeCheckExpr' ft (expr,i)  = case expr of
+    typeCheckExpr' ft (expr,i) = case expr of
       PApp ltk args -> do
 
         debug $ "INSIDE " ++ show (expr,i)
-        debug $ "GETTYPE " ++ show (ltk,args)
         mty <- getType ltk
+        debug $ "GETTYPE expr " ++ show (ltk,args) ++ ": " ++ show mty
         
-        cont1 mty $ \(_,ty) -> do
-          
-          putTypeCheckState ty
+        cont1 mty $ \(cs,_ty) -> do
+
+          let ty = cTArrowInv' _ty
+          putTypeCheckState (cs,ty)
           
           let argsI = zip args [0..]
 
@@ -282,7 +329,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
             mty' <- getTypeCheckState
 
             debug "B"
-            cont1 mty' $ \ty' -> do
+            cont1 mty' $ \(cs',ty') -> do
 
               popTypeCheckState
 
@@ -292,24 +339,29 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
 
                 Nothing -> do
 
-                  debug $ "HERE1: " ++ show ft
-                  match (last ft) (last ty')
-                  ret $ TCApp ltk args' (last ty')
+                  debug $ "HERE1 " ++ show (cs,cs')
+                  mr <- match (last ft) (last ty')
+                  cont1 mr $ \r -> do
+                    ok <- matchConstraint r (nub (cs ++ cs'))
+                    cont [ok] $ ret $ TCApp ltk args' (last ty')
 
-                Just ty'' -> do
+                Just (cs'',ty'') -> do
 
-                  debug $ "HERE2"
-                  match (ty'' !! i) (last ty')
-                  ret $ TCApp ltk args' (last ty')
+                  debug $ "HERE2 "++ show (cs,cs',cs'')
+                  debug $ "TY': " ++ show (ty',ty'',i)
+                  mr <- match (ty'' !! i) (last ty')
+                  cont1 mr $ \r -> do
+                    ok <- matchConstraint r (nub (cs ++ cs' ++ cs''))
+                    cont [ok] $ ret $ TCApp ltk args' (last ty')
 
       PAExpr ltk -> do
 
         debug $ "INSIDE " ++ show (expr,i)
-        debug $ "GETTYPE expr " ++ show ltk
         mTy <- getType ltk
-
+        debug $ "GETTYPE expr " ++ show ltk ++ ": " ++ show mTy
+        
         debug "C"
-        cont1 mTy $ \(_,ty) -> do
+        cont1 mTy $ \(cs,ty) -> do
           
           mTy' <- getTypeCheckState
           
@@ -321,16 +373,48 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
               mTy'' <- match (last ft) (cTArrow ty)
               debug "D"
               cont1 mTy'' $ \ty'' -> do
-                ret $ TCAExpr (ltk, ty'')
+                ok <- matchConstraint ty'' cs
+                cont [ok] $ ret $ TCAExpr (ltk, ty'')
                 
-            Just ty' -> do
+            Just (cs',ty') -> do
 
               debug "HERE4"
               mTy'' <- match (ty' !! i) (cTArrow ty)
               debug "E"
               cont1 mTy'' $ \ty'' -> do
-                ret $ TCAExpr (ltk, ty'')
+                ok <- matchConstraint ty'' (nub (cs' ++ cs))
+                cont [ok] $ ret $ TCAExpr (ltk, ty'')
 
+    matchConstraint :: CFType -> [Constraint] -> TMM ()
+    matchConstraint cft cs = do
+      checkeds <- mapM check cs
+      cont checkeds mok
+      where check :: Constraint -> TMM ()
+            check cons = case cons of
+              ("NotRec",var) -> do
+                isIt <- isRecursiveType cft
+                case isIt of
+                  False -> mok
+                  True -> debug ("constrainterr " ++ show (var,cons,cft))>> noRet
+              ("Num",var)
+                | isNumType cft -> mok
+                | otherwise -> debug ("constrainterr " ++ show (var,cons,cft))>> noRet
+              _ -> mok
+
+    isNumType :: CFType -> Bool
+    isNumType cft = case cft of
+      CTApp (L _ (Upp "Fixed")) _ -> True
+      CTApp (L _ (Upp   "Int")) _ -> True
+      --CTAExpr (L _ (Upp   "Int")) -> True
+      _ -> False
+
+    isRecursiveType :: CFType -> TM Bool
+    isRecursiveType cft = case cft of
+      CTApp (L _ (Upp name)) _ -> isTypeRecursive name
+      CTAExpr (L _ (Upp name)) -> isTypeRecursive name
+      _ -> error "isRecursiveType error"
+      
+    
     cTArrow :: [CFType] -> CFType
     cTArrow [] = error "cTArrow"
     cTArrow [x] = x
@@ -339,6 +423,10 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     cTArrowInv :: CFType -> [CFType]
     cTArrowInv (CTArrow _ as) = as
     cTArrowInv x = [x]
+
+    cTArrowInv' :: [CFType] -> [CFType]
+    cTArrowInv' [CTArrow _ as] = as
+    cTArrowInv' xs = xs
     
     isInput ltk = elem ltk vars
     tyvar = CTAExpr . L NoLoc . Low
@@ -353,10 +441,12 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     getType' (L _ (Dec d)) = ret ([("Num","a")],[tyvar "a"])
     getType' ltk
       | isInput ltk = do
+          debug $ "FFFFF " ++ show vars
           let mty = snd <$> find ((==ltk) . fst) varsWithTypes
           cont1 mty $ \ty ->
             ret ([], [ty])
       | otherwise = do
+          debug $ "GGGGGG " ++ show vars
           mm <- searchCFuncType (getName ltk)
           cont1 mm $ \(_,constraints,cfts) -> do
             ret (constraints,cfts)
@@ -369,6 +459,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
       
     match' :: CFType -> CFType -> TMM CFType
     match' (CTArrow l vs1) (CTArrow _ vs2) = do
+      debug "AAAAAAAAAAAAAAAAARRRRRRRRRRRRRRRROOOOOOOOOOOOWWWW"
       mArgs' <- zipWithM match' vs1 vs2
       x <- cont_ mArgs' $ \args' ->
         ret $ CTArrow l args' -- ???
