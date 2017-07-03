@@ -1,8 +1,8 @@
 module Aux where
 
 import Types
-import LexerCore
-import ParserCore
+import Lexer
+import Parser
 
 just (Just x) = x
 just _ = error "From Justa"
@@ -65,3 +65,6 @@ for l f = map f l
 
 both :: (a -> b) -> (a,a) -> (b,b)
 both f (a1,a2) = (f a1, f a2)
+
+isLowVar (CTAExpr (L _ (Low _))) = True
+isLowVar _ = False

@@ -118,6 +118,21 @@ fromParsedFunctionToF_AddToState (TCFunc name varsNtypes guards typeExpr) = do
             cont1 mft $ \ft -> do
               id <- makeFunctionId' v ft
               ret $ FAExpr (FVar (L s v), id, ft)
+              
+      TCApp (L src (Upp s)) es ty -> do
+        mes' <- mapM getFExpr es
+        cont mes' $ do
+          let es' = map just mes'
+          mft <- fromParsedTypeExprToFunctionType ty
+          cont1 mft $ \ft -> do
+            id <- makeFunctionId s es' ft
+            ret $ FApp (L src s, id) es' ft
+      TCAExpr (L s (Upp v), t) -> do
+        mft <- fromParsedTypeExprToFunctionType t
+        cont1 mft $ \ft -> do
+        id <- makeFunctionId' v ft
+        ret $ FAExpr (FVar (L s v), id, ft)
+              
       TCAExpr (L s (Bin i), t) -> do
         mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft -> do
@@ -134,10 +149,10 @@ fromParsedFunctionToF_AddToState (TCFunc name varsNtypes guards typeExpr) = do
           id <- makeFunctionId' ("const_dec_" ++ show i) ft
           ret $ FAExpr (FCons(FDec (L s i)), id, ft)
 
-      _ -> throw (TErr
+      x -> throw (TErr
                   ExpressionConstructionErr
                   (Just ("In function " ++ funcName))
-                  "Expression construction error"
+                  ("Expression construction error: " ++ show x)
                   NoLoc) >> noRet
 
 fromParsedTypeExprToFunctionType :: CFType -> TMM FType

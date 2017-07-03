@@ -17,7 +17,7 @@ storeDataInState (P2Result pdecls) = do
     let cconstrs
           = map
             (\(PConstr ltk pfts)
-              -> CConstr ltk (map (toCFTy' {-. substIntFixed-}) pfts))
+              -> CConstr ltk (map (toCFTy' . substIntFixed) pfts))
             pconstrs
         isRec = isRecursiveData name cconstrs
     addData (L s name, cconstrs, isRec, False)
@@ -41,8 +41,7 @@ substIntFixed pft = case pft of
   PTAExpr (L s (Upp "Int")) -> PTApp (L s (Upp "Int"))
                                [PTAExpr (noLocDec 32)]
   PTAExpr (L s (Upp "Fixed")) -> PTApp (L s (Upp "Fixed"))
-                                 [PTAExpr (noLocDec 32)
-                                 ,PTAExpr (noLocDec 32)]
+                                 [PTAExpr (noLocDec 32)]
   y -> y
   
 isData (PDataType _ _) = True
@@ -54,7 +53,7 @@ gatherFunctions (P2Result pds) = do
   fs <- glueFunctions pds'
   ret $ map patternsToGuards fs
   where patternsToGuards (n,ft,fd)
-          = (n,{-substIntFixed -}ft,varsFromPats fd,concatGuards (map destroyPats fd))
+          = (n,substIntFixed ft,varsFromPats fd,concatGuards (map destroyPats fd))
 
 varsFromPats :: [([Pat], a)] -> [Name]
 varsFromPats xs = map toName [0..(length pats - 1)]
@@ -348,7 +347,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
                 Just (cs'',ty'') -> do
 
                   debug $ "HERE2 "++ show (cs,cs',cs'')
-                  debug $ "TY': " ++ show (ty',ty'',i)
+                  debug $ "TY': " ++ show i ++ ": " ++ show (ty',ty'',i)
                   mr <- match (ty'' !! i) (last ty')
                   cont1 mr $ \r -> do
                     ok <- matchConstraint r (nub (cs ++ cs' ++ cs''))
@@ -405,7 +404,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     isNumType cft = case cft of
       CTApp (L _ (Upp "Fixed")) _ -> True
       CTApp (L _ (Upp   "Int")) _ -> True
-      CTAExpr (L _ (Upp   "Int")) -> True
+      --CTAExpr (L _ (Upp   "Int")) -> True
       _ -> False
 
     isRecursiveType :: CFType -> TM Bool
@@ -446,8 +445,8 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
           cont1 mty $ \ty ->
             ret ([], [ty])
       | otherwise = do
-          debug $ "GGGGGG " ++ show vars
-          mm <- searchCFuncType (getName ltk)
+          debug $ "GGGGGG " ++ show (head ftype)
+          mm <- searchCFuncType (getName ltk) (head ftype)
           cont1 mm $ \(_,constraints,cfts) -> do
             ret (constraints,cfts)
 

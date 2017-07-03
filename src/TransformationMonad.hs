@@ -265,24 +265,60 @@ getTypeChanges = do
   st <- get
   return $ typeChanges st
 
+getNumberFromType :: CFType -> Int
+getNumberFromType cft = case cft of
+  CTApp (L _ (Upp "Vec")) [CTAExpr (L _ (Dec n))] -> n
+  CTApp (L _ (Upp "Stream")) [x] -> getNumberFromType x
+  CTAExpr (L _ (Upp "Bit")) -> 1
+  n -> error $ "getnumberfromtype " ++ show n
+
 changeType :: CFType -> TMM CFType
-changeType cft = do
-  tcs <- getTypeChanges
-  debug $ "CHANGE TYPE: " ++ show cft
-  case find ((== cft) . fst) tcs of
-    Nothing -> do
-      debug "NOTHING"
-      return $ Just cft
-    Just (_,s) -> do
-      debugs s
-      return $ Just s
+changeType cft = case cft of
+  CTApp (L s (Upp "Int")) a
+    -> ret $ CTApp (L s (Upp "Vec")) a
+  CTApp (L s (Upp "Fixed")) a
+    -> ret $ CTApp (L s (Upp "Vec")) a
+  CTApp (L s (Upp "List")) [a] -> do
+    ma' <- changeType a
+    cont1 ma' $ \a' -> do
+      let n = getNumberFromType a'
+          vec = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec (n+1))]
+      ret $ CTApp (L s (Upp "Stream")) [vec]
+  _ -> do
+    tcs <- getTypeChanges
+    debug $ "CHANGE TYPE: " ++ show cft
+    case find ((== cft) . fst) tcs of
+      Nothing -> do
+        debug "NOTHING"
+        return $ Just cft
+      Just (_,s) -> do
+        debugs s
+        return $ Just s
+  where noLocUpp = L NoLoc . Upp
+        noLocDec = L NoLoc . Dec
 
 addTypeChange :: Name -> Int -> TM ()
 addTypeChange name n = do
   st <- get
   let noLocUpp = L NoLoc . Upp
       noLocDec = L NoLoc . Dec
-      vec = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec n)]
+      vec
+        | n == 1 = CTAExpr (noLocUpp "Bit")
+        | otherwise = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec n)]
+      typeC = (CTAExpr (noLocUpp name), vec)
+  put $ st { typeChanges = typeC : typeChanges st }
+
+addTypeChangeStream :: Name -> Int -> TM ()
+addTypeChangeStream name n = do
+  st <- get
+  let noLocUpp = L NoLoc . Upp
+      noLocDec = L NoLoc . Dec
+      vec
+        | n == 1
+        = CTApp (noLocUpp "Stream") [CTAExpr (noLocUpp "Bit")]
+        | otherwise
+        = CTApp (noLocUpp "Stream")
+          [CTApp (noLocUpp "Vec") [CTAExpr (noLocDec n)]]
       typeC = (CTAExpr (noLocUpp name), vec)
   put $ st { typeChanges = typeC : typeChanges st }
 
@@ -308,8 +344,13 @@ getCFuncTypes = do
   st <- get
   return (funcTypes st)
 
-searchCFuncType :: Name -> TMM (Name, [Constraint], [CFType])
-searchCFuncType name = do
+searchCFuncType :: Name -> CFType
+                -> TMM (Name, [Constraint], [CFType])
+searchCFuncType "Cons" x = do
+  ret $ ("Cons",[]
+        ,[x,CTApp (noLocUpp "List") [x],CTApp (noLocUpp "List") [x]])
+  where noLocUpp = L NoLoc . Upp
+searchCFuncType name x = do
   fts <- getCFuncTypes
   return (find (\(n,_,_) -> n == name) fts)
 
