@@ -1517,6 +1517,7 @@ connect (comp, _, F inps fguards ftype, arity,_,_) = case fguards of
                   pos = appendNats nats
           
               minst <- getNextInstance comp (put_ instName ++ pos)
+              debug $ "hey1 " ++ instName
               mayThrow minst (TErr
                               CouldntGetNextInstance
                               Nothing
@@ -1939,6 +1940,7 @@ connect (comp, _, F inps fguards ftype, arity,_,_) = case fguards of
           let nats = takeNats args
               pos = appendNats nats
           minst <- getNextInstance comp (put_ instName ++ pos)
+          debug $ "hey2 " ++ instName
           mayThrow minst (TErr
                           CouldntGetNextInstance
                           Nothing
@@ -2375,6 +2377,7 @@ connect (comp, _, F inps fguards ftype, arity,_,_) = case fguards of
           let nats = takeNats args
               pos = appendNats nats
           minst <- getNextInstance comp (put_ instName ++ pos)
+          debug $ "hey3 " ++ show args
           mayThrow minst (TErr
                           CouldntGetNextInstance
                           Nothing

@@ -161,13 +161,18 @@ a tbs = do
         checkForArityErrs
         hey<-getFunctions
         debug "FUNCTION"
-        debugs hey
+        debug (showFuncs hey)
         applyHighOrder
+        debug "FUNCTION HIGH ORDER"
+        heya<-getFunctions
+        debug (showFuncs heya)
         debug "COMPONENTS"
         toComponents
         comp <- getComponents
         debugs comp
         toSystemC tbs
+        debug "CORE"
+        ret ()
       st = runTM transformation
   putStrLn "TOKENS"
   print tks

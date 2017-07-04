@@ -69,7 +69,7 @@ topLevel lst (_, C _ _ inps out _ _) = do
         fillFifos :: [CInput] -> [[Int]] -> String
         fillFifos inps tbs
           | length inps /= length tbs
-             = error "Testbench does not match number of inputs of main function (" ++ show (length inps) ++ ")"
+             = error $ "Testbench does not match number of inputs of main function (" ++ show (length inps) ++ ")"
           | not (and (map ((length (head tbs) ==) . length) tbs))
              = error "Testbenches have different number of inputs"
           | otherwise = unlines (go 0)

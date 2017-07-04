@@ -2,8 +2,8 @@
 
 SC_MODULE(testbench) {
 sc_fifo_in<sc_lv<33> > out;
-sc_fifo_out<sc_lv<32> > __i0;
-sc_fifo_out<sc_lv<32> > __i1;
+sc_fifo_out<sc_lv<33> > __i0;
+sc_fifo_out<sc_lv<33> > __i1;
 
 
 void proc();

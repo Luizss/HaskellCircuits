@@ -319,6 +319,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
 
           --debug $ "@@@ENTERING FUNCTION " ++ getName ltk
           debug $ "ENTERINGARGS: " ++ show argsI
+          _ <- mapM (typeCheckExpr' ty) argsI
           margs' <- mapM (typeCheckExpr' ty) argsI
           --debug $ "@@@GETTING OUT FUNCTION " ++ getName ltk
 
@@ -347,7 +348,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
                 Just (cs'',ty'') -> do
 
                   debug $ "HERE2 "++ show (cs,cs',cs'')
-                  debug $ "TY': " ++ show i ++ ": " ++ show (ty',ty'',i)
+                  debug $ "TY': " ++ show i ++ ": " ++ show (ty',ty'')
                   mr <- match (ty'' !! i) (last ty')
                   cont1 mr $ \r -> do
                     ok <- matchConstraint r (nub (cs ++ cs' ++ cs''))
@@ -377,7 +378,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
                 
             Just (cs',ty') -> do
 
-              debug "HERE4"
+              debug $ "HERE4 " ++ show ty' ++ " >>> " ++ show i
               mTy'' <- match (ty' !! i) (cTArrow ty)
               debug "E"
               cont1 mTy'' $ \ty'' -> do
@@ -394,10 +395,10 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
                 isIt <- isRecursiveType cft
                 case isIt of
                   False -> mok
-                  True -> debug ("constrainterr " ++ show (var,cons,cft))>> noRet
+                  True -> debug ("constrainterr " ++ show (var,cons,cft))>> mok
               ("Num",var)
                 | isNumType cft -> mok
-                | otherwise -> debug ("constrainterr " ++ show (var,cons,cft))>> noRet
+                | otherwise -> debug ("constrainterr " ++ show (var,cons,cft))>> mok
               _ -> mok
 
     isNumType :: CFType -> Bool
@@ -411,11 +412,11 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     isRecursiveType cft = case cft of
       CTApp (L _ (Upp name)) _ -> isTypeRecursive name
       CTAExpr (L _ (Upp name)) -> isTypeRecursive name
-      _ -> error "isRecursiveType error"
-      
+      x -> return False
+      --error $ "isRecursiveType error " ++ show x
     
     cTArrow :: [CFType] -> CFType
-    cTArrow [] = error "cTArrow"
+    cTArrow  [] = error "cTArrow"
     cTArrow [x] = x
     cTArrow xs  = CTArrow (getLoc' (head xs)) xs
 
@@ -423,9 +424,21 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     cTArrowInv (CTArrow _ as) = as
     cTArrowInv x = [x]
 
+    cTArrowInvLast :: CFType -> CFType
+    cTArrowInvLast = last . cTArrowInv
+
+    cTArrowInvHead :: CFType -> CFType
+    cTArrowInvHead (CTArrow _ as) = head as
+    cTArrowInvHead c = c
+
     cTArrowInv' :: [CFType] -> [CFType]
     cTArrowInv' [CTArrow _ as] = as
     cTArrowInv' xs = xs
+
+    arrowLast :: [CFType] -> Int -> CFType
+    arrowLast xs i = case xs !! i of
+      CTArrow _ as' -> last as'
+      x -> x
     
     isInput ltk = elem ltk vars
     tyvar = CTAExpr . L NoLoc . Low
@@ -445,14 +458,18 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
           cont1 mty $ \ty ->
             ret ([], [ty])
       | otherwise = do
-          debug $ "GGGGGG " ++ show (head ftype)
-          mm <- searchCFuncType (getName ltk) (head ftype)
+          debug $ "GGGGGG " ++ show (cTArrowInvHead (head ftype), ftype)
+          mm <- searchCFuncType (getName ltk) (cTArrowInvHead (head ftype))
           cont1 mm $ \(_,constraints,cfts) -> do
             ret (constraints,cfts)
 
     match x y = do
       debug $ "MATCH OPEN " ++ show (x , y)
-      m <- match' x y
+      m <- case (x,y) of
+        (CTArrow _ _,CTArrow _ _) -> match' x y
+        (CTArrow _ _,_) -> match' (cTArrowInvLast x) y
+        (_,CTArrow _ _) -> match' x (cTArrowInvLast y)
+        _ -> match' x y
       debug $ "MATCH CLOSE " ++ show m
       return m
       

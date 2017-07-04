@@ -6,8 +6,8 @@ SC_MODULE(top) {
 
 mainFunc m;
 testbench tb;
-sc_fifo<sc_lv<32> > __i0;
-sc_fifo<sc_lv<32> > __i1;
+sc_fifo<sc_lv<33> > __i0;
+sc_fifo<sc_lv<33> > __i1;
 sc_fifo<sc_lv<33> > out;
 
 

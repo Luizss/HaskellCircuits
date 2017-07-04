@@ -5,7 +5,7 @@ module Function where
 import Prelude hiding (log)
 import Control.Monad (forM, forM_)
 import Control.Monad.Trans (lift)
-import Data.List (elemIndex)
+import Data.List (elemIndex, intercalate)
 
 --------------------- Internal Imports
 
@@ -84,12 +84,14 @@ fromParsedFunctionToF_AddToState (TCFunc name varsNtypes guards typeExpr) = do
     makeFunctionId name fexs ft = do
       let ftypes = map getTypeFromFExpr fexs ++ [ft]
       id <- getFunctionId name ftypes
+      debug $ "Name: " ++ name ++ " [" ++ show id ++ "]"
       addFunctionId (name, id, ftypes)
       return id
 
     makeFunctionId' :: Name -> FType -> TM Id
     makeFunctionId' name ft = do
       id <- getFunctionId name [ft]
+      debug $ "Name: " ++ name ++ " [" ++ show id ++ "]"
       addFunctionId (name, id, [ft])
       return id
     
@@ -428,3 +430,43 @@ decideAcrossGuards = foldl decide' NonRecursive
 toFVar :: LToken -> FVar
 toFVar (L src (Low s)) = L src s
 
+showFuncs :: [TFunc] -> String
+showFuncs = intercalate "\n\n" . map showFunc
+
+showFunc :: TFunc -> String
+showFunc (name, _, f, _, _, _)
+  = name ++ " " ++ showF f
+
+showF :: F -> String
+showF SpecialF = "*special func*"
+showF (F inpsNTypes fgs fty)
+ = showVars inpsNTypes ++ " : " ++ showTy fty ++ " = " ++ showFGS fgs
+
+showTy :: FType -> String
+showTy t = case t of
+  BitVec _ i -> "Vec " ++ show i
+  Bit _      -> "Bit"
+  Function _ -> "Function"
+  Nat _ i    -> "Nat " ++ show i
+  Stream ft  -> "Stream " ++ showTy ft
+
+showVars = intercalate " " . map showVar
+showVar (L _ v, t) = "(" ++ v ++ " :: " ++ showTy t ++ ")"
+
+showFGS fgs = case fgs of
+  NoFGuards e -> showEx e
+  FGuards ces -> "\n" ++ unlines (map (\(c,e) -> "  | " ++ showEx c ++ " = " ++ showEx e) ces)
+
+showEx :: FExpr -> String
+showEx fexpr = case fexpr of
+  FApp (L _ name, id) fexprs ft -> name ++ "[" ++ show id ++"] " ++ intercalate " " (map showEx' fexprs) ++ " :: " ++ showTy ft
+  FAExpr (fvarcons, id, ft) -> showfvarcons fvarcons ++ "[" ++ show id ++ "] :: " ++ showTy ft
+
+showEx' x = "(" ++ showEx x ++ ")"
+
+showfvarcons fvc = case fvc of
+  FVar (L _ n) -> n
+  FCons (FBin (L _ b)) -> "0b" ++ b
+  FCons (FHex (L _ s)) -> "0x" ++ s
+  FCons (FDec (L _ i)) -> show i
+  FCons FForeverWait -> "_'_"

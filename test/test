@@ -1,6 +1,4 @@
-data G = G Int
-       | W
-main :: Int -> Int -> List Int
-main x y
- | equ x y = Cons 5 Nil
- | True = Cons (add x y) Nil
+main :: List Int -> List Int -> List Int
+main (Cons x r) l
+  | equ x 1 = r
+main x l = l

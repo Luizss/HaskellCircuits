@@ -177,8 +177,12 @@ preDefinedfunctionsTypes :: [(Name, [Constraint], [CFType])]
 preDefinedfunctionsTypes
   = [("True" ,[],[ty "Bool"])
     ,("False",[],[ty "Bool"])
-    ,("Nil"  ,[],[list "a"])
---    ,("Cons" ,[],[tyvar "a", list "a", list "a"])
+    ,("Nil",[],[list "a"])
+    ,("Cons",[],[tyvar "a",list "a",list "a"])
+    ,("__is__Nil"  ,[],[list "a", ty "Bool"])
+    ,("__is__Cons" ,[],[list "a", ty "Bool"])
+    ,("__get__Cons__0" ,[],[list "a", tyvar "a"])
+    ,("__get__Cons__1" ,[],[list "a", list "a"])
     ,("and"  ,[],[ty "Bool", ty "Bool", ty "Bool"])
     ,("or"   ,[],[ty "Bool", ty "Bool", ty "Bool"])
     ,("not"  ,[],[ty "Bool", ty "Bool"])
@@ -187,6 +191,7 @@ preDefinedfunctionsTypes
     ,("sub"  ,[("Num","a")],[tyvar "a", tyvar "a", tyvar "a"])
     ,("mul"  ,[("Num","a")],[tyvar "a", tyvar "a", tyvar "a"])
     ,("div"  ,[],[fixed "m" "n", fixed "m" "n", fixed "m" "n"])
+    ,("otherwise"  ,[],[ty "Bool"])
     ]
   where ty    = CTAExpr . L NoLoc . Upp
         tyvar = CTAExpr . L NoLoc . Low
@@ -210,6 +215,9 @@ specialFuncs
     ,("cat",NoLoc,SpecialF,2,(NonRecursive, NoRecursiveTypes, False),[])
     ,("cons",NoLoc,SpecialF,2
      ,(NonRecursive,OutputInputRecursive, False),[])
+    ,("otherwise",NoLoc
+     ,F [] (NoFGuards (FAExpr (FCons (FBin (L NoLoc "1")),0,Bit NoLoc))) (Bit NoLoc)
+     ,0,(NonRecursive, NoRecursiveTypes, False),[])
     ,("consR",NoLoc,SpecialF,2
      ,(NonRecursive,OutputInputRecursive, False),[])
     ,("now",NoLoc,SpecialF,2

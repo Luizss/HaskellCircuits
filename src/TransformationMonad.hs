@@ -12,7 +12,7 @@ import Control.Monad.State
 import Control.Monad.Trans (lift)
 
 import Prelude hiding (log)
-import Data.List (find)
+import Data.List (find, isPrefixOf, drop)
 
 --- Running TM machine (only thing useful is state)
 
@@ -278,12 +278,15 @@ changeType cft = case cft of
     -> ret $ CTApp (L s (Upp "Vec")) a
   CTApp (L s (Upp "Fixed")) a
     -> ret $ CTApp (L s (Upp "Vec")) a
-  CTApp (L s (Upp "List")) [a] -> do
-    ma' <- changeType a
-    cont1 ma' $ \a' -> do
-      let n = getNumberFromType a'
-          vec = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec (n+1))]
-      ret $ CTApp (L s (Upp "Stream")) [vec]
+  -- CTAExpr (L _ (Low x))
+  --   | isPrefixOf "_Nat_"   x -> (drop 5 x)
+  --   | isPrefixOf "_Plus1_" x -> (drop 7 x)
+  -- CTApp (L s (Upp "List")) [a] -> do
+  --   ma' <- changeType a
+  --   cont1 ma' $ \a' -> do
+  --     let n = getNumberFromType a'
+  --         vec = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec (n+1))]
+  --     ret $ CTApp (L s (Upp "Stream")) [vec]
   _ -> do
     tcs <- getTypeChanges
     debug $ "CHANGE TYPE: " ++ show cft
