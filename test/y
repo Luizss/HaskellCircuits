@@ -1,0 +1,24 @@
+main (bs : Stream (Vec 32)) (xs : Stream (Vec 32)) (a : Stream (Vec 32)) (n : Vec 32) : Vec 31 = sum (zipWith (reverse (bs : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)) (window (n : Vec 32) (xs : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)) : Vec 31
+
+sum (s : Stream (Vec 32)) : Vec 31 = sum_ (s : Stream (Vec 32)) (0 : Vec 31) : Vec 31
+
+sum_ (s : Stream (Vec 32)) (a : Vec 31) : Vec 31
+  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit ) : Bit = (a : Vec 31)
+  | (1 : Bit) = sum_ (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (add (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Vec 31) (a : Vec 31) : Vec 31) : Vec 31
+
+zipWith (s1 : Stream (Vec 32)) (s2 : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
+  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (s1 : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit) : Bit = (a : Stream (Vec 32))
+  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (s2 : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit) : Bit = (a : Stream (Vec 32))
+  | (1 : Bit) = zipWith (rest (1 : Nat 1) (s1 : Stream (Vec 32)) : Stream (Vec 32)) (rest (1 : Nat 1) (s2 : Stream (Vec 32)) : Stream (Vec 32)) (consR (cat (f (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s1 : Stream (Vec 32)) : Vec 32) : Vec 31) (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s2 : Stream (Vec 32)) : Vec 32) : Vec 31) : Vec 31) (1 : Bit) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
+
+f (x : Vec 31) (y : Vec 31) : Vec 31 = mul (x : Vec 31) (y : Vec 31) : Vec 31
+
+window (n : Vec 32) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32) = reverse (take (n : Vec 32) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
+
+take (n : Vec 32) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
+  | equ (n : Vec 32) (0 : Vec 32) : Bit = (a : Stream (Vec 32))
+  | (1 : Bit) = take (sub (n : Vec 32) (1 : Vec 32) : Vec 32) (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (consR (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
+
+reverse (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
+  | equ (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (0 : Vec 32) : Bit = (a : Stream (Vec 32))
+  | (1 : Bit) = reverse (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (cons (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)

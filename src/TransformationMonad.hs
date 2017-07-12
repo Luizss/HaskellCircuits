@@ -4,15 +4,15 @@ module TransformationMonad where
 
 --- Imports
 
-import ParserCore
-import LexerCore
+import Parser
+import Lexer
 import Aux
 import Types
 import Control.Monad.State
 import Control.Monad.Trans (lift)
 
 import Prelude hiding (log)
-import Data.List (find)
+import Data.List (find, isPrefixOf, drop)
 
 --- Running TM machine (only thing useful is state)
 
@@ -25,13 +25,13 @@ outTM tm = evalState tm initialTState
 --- Useful functions
 
 -- getting stage
-getStage :: TM Stage
+getStage :: TM TStage
 getStage = do
   state <- get
   return (actualStage state)
 
 -- setting stage
-newStage :: Stage -> TM ()
+newStage :: TStage -> TM ()
 newStage stg = do
   state <- get
   put (state { actualStage = stg })
@@ -90,6 +90,11 @@ cont maybes cont
   | and (map isJust maybes) = cont
   | otherwise = noRet
 
+cont_ :: [Maybe a] -> ([a] -> TMM b) -> TMM b
+cont_ maybes cont
+  | and (map isJust maybes) = cont (map just maybes)
+  | otherwise = noRet
+
 contIf :: Bool -> TMM b -> TMM b
 contIf bool cont
   | bool = cont
@@ -127,18 +132,6 @@ putSourceCode s = do
   state <- get
   put (state { sourceCode = s })
 
--- start function: put program that comes from parser
-putProgram :: Program -> TM ()
-putProgram p = do
-  state <- get
-  put (state { program = p })
-
--- getting the program
-getProgram :: TM Program
-getProgram = do
-  st <- get
-  return (program st)
-
 addFunc :: TFunc -> TM ()
 addFunc x = do
   state <- get
@@ -154,6 +147,32 @@ getFunctions = do
   st <- get
   return (tFuncs st)
 
+putFunctions :: [TFunc] -> TM ()
+putFunctions fs = do
+  st <- get
+  put (st { tFuncs = fs })
+
+removeFunction :: Name -> TM ()
+removeFunction name = do
+  fs <- getFunctions
+  let fs' = filter (\(n,_,_,_,_,_) -> n /= name) fs
+  putFunctions fs'
+
+isFunctionHighOrder :: Name -> TM Bool
+isFunctionHighOrder name = do
+  mf <- searchFunction name
+  return $ case mf of
+    Nothing -> False
+    Just (_,_,_,_,_,[]) -> False
+    Just _ -> True
+
+highOrderArgs :: Name -> TM [Int]
+highOrderArgs name = do
+  mf <- searchFunction name
+  return $ case mf of
+    Nothing -> []
+    Just (_,_,_,_,_,xs) -> xs
+
 getComponents :: TM [TComp]
 getComponents = do
   st <- get
@@ -167,12 +186,20 @@ putComponents comps = do
 searchFunction :: Name -> TMM TFunc
 searchFunction name = do
   fs <- getFunctions
-  return (find (\(n,_,_,_) -> n == name) fs)
+  return (find (\(n,_,_,_,_,_) -> n == name) fs)
 
 searchComponent :: Name -> TMM TComp
 searchComponent name = do
   cs <- getComponents
   return (find (\(n,_) -> n == name) cs)
+
+changeFunction :: Name -> FGuards -> TMM ()
+changeFunction name fgs = do
+  mf <- searchFunction name
+  removeFunction name
+  cont1 mf $ \(n, s, F vars _ ft, a, fc, ho) -> do
+    addFunc (n, s, F vars fgs ft, a, fc, ho)
+    ret ()
 
 {-changeMainName :: Name -> Name -> TM ()
 changeMainName = do
@@ -180,7 +207,166 @@ changeMainName = do
   putComponents $ map ifMainChange cs
   where ifMainChange ("main",main) = ("mainFunc",main)
         ifMainChange x = x-}
-        
+
+getTCore :: TM TCore
+getTCore = do
+  st <- get
+  return $ tCore st
+
+putTCore :: TCore -> TM ()
+putTCore tCore' = do
+  st <- get
+  put $ st { tCore = tCore' }
+
+addTCFunc :: TCFunc -> TM ()
+addTCFunc f = do
+  TCore fs <- getTCore
+  putTCore $ TCore (f : fs)
+
+getDataDecls :: TM [(L Name, [CConstr], IsRec, Used)]
+getDataDecls = do
+  st <- get
+  return (dataDecls st)
+
+putDataDecls :: [(L Name, [CConstr], IsRec, Used)] -> TM ()
+putDataDecls dds = do
+  st <- get
+  put $ st { dataDecls = dds }
+
+searchDataDecl :: Name -> TMM (L Name, [CConstr], IsRec, Used)
+searchDataDecl name = do
+  dds <- getDataDecls
+  return (find (\(L _ n,_,_,_) -> n == name) dds)
+  
+isTypeRecursive :: Name -> TM Bool
+isTypeRecursive name = do
+  dds <- getDataDecls
+  bools <- forM dds $ \(L _ n, _, isRec, _) -> do
+    if n == name
+      then return isRec
+      else return False
+  return $ or bools
+
+addData :: (L Name, [CConstr], IsRec, Used) -> TM ()
+addData x = do
+  st <- get
+  put (st { dataDecls = x : dataDecls st })
+
+setDataUsed :: Name -> TMM ()
+setDataUsed name = do
+  dds <- getDataDecls
+  mdd <- searchDataDecl name
+  cont1 mdd $ \(ln,ccs,isr,_) -> do
+    putDataDecls $ (ln,ccs,isr,True) : filter (\(L _ n,_,_,_) -> n /= name) dds
+    ret ()
+
+getTypeChanges :: TM [(CFType,CFType)]
+getTypeChanges = do
+  st <- get
+  return $ typeChanges st
+
+getNumberFromType :: CFType -> Int
+getNumberFromType cft = case cft of
+  CTApp (L _ (Upp "Vec")) [CTAExpr (L _ (Dec n))] -> n
+  CTApp (L _ (Upp "Stream")) [x] -> getNumberFromType x
+  CTAExpr (L _ (Upp "Bit")) -> 1
+  n -> error $ "getnumberfromtype " ++ show n
+
+changeType :: CFType -> TMM CFType
+changeType cft = case cft of
+  CTApp (L s (Upp "Int")) a
+    -> ret $ CTApp (L s (Upp "Vec")) a
+  CTApp (L s (Upp "Fixed")) a
+    -> ret $ CTApp (L s (Upp "Vec")) a
+  -- CTAExpr (L _ (Low x))
+  --   | isPrefixOf "_Nat_"   x -> (drop 5 x)
+  --   | isPrefixOf "_Plus1_" x -> (drop 7 x)
+  -- CTApp (L s (Upp "List")) [a] -> do
+  --   ma' <- changeType a
+  --   cont1 ma' $ \a' -> do
+  --     let n = getNumberFromType a'
+  --         vec = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec (n+1))]
+  --     ret $ CTApp (L s (Upp "Stream")) [vec]
+  _ -> do
+    tcs <- getTypeChanges
+    debug $ "CHANGE TYPE: " ++ show cft
+    case find ((== cft) . fst) tcs of
+      Nothing -> do
+        debug "NOTHING"
+        return $ Just cft
+      Just (_,s) -> do
+        debugs s
+        return $ Just s
+  where noLocUpp = L NoLoc . Upp
+        noLocDec = L NoLoc . Dec
+
+addTypeChange :: Name -> Int -> TM ()
+addTypeChange name n = do
+  st <- get
+  let noLocUpp = L NoLoc . Upp
+      noLocDec = L NoLoc . Dec
+      vec
+        | n == 1 = CTAExpr (noLocUpp "Bit")
+        | otherwise = CTApp (noLocUpp "Vec") [CTAExpr (noLocDec n)]
+      typeC = (CTAExpr (noLocUpp name), vec)
+  put $ st { typeChanges = typeC : typeChanges st }
+
+addTypeChangeStream :: Name -> Int -> TM ()
+addTypeChangeStream name n = do
+  st <- get
+  let noLocUpp = L NoLoc . Upp
+      noLocDec = L NoLoc . Dec
+      vec
+        | n == 1
+        = CTApp (noLocUpp "Stream") [CTAExpr (noLocUpp "Bit")]
+        | otherwise
+        = CTApp (noLocUpp "Stream")
+          [CTApp (noLocUpp "Vec") [CTAExpr (noLocDec n)]]
+      typeC = (CTAExpr (noLocUpp name), vec)
+  put $ st { typeChanges = typeC : typeChanges st }
+
+isThereTypeChange :: CFType -> TM Bool
+isThereTypeChange cft = do
+  tcs <- getTypeChanges
+  return $ case find ((== cft) . fst) tcs of
+    Nothing -> False
+    Just _  -> True
+
+{-changeType :: CFType -> TM CFType
+changeType cft = case cft of
+  CTAExpr (L _ (Upp _)) -> 
+  cft-}
+  
+addCFuncType :: (Name, [Constraint], [CFType]) -> TM ()
+addCFuncType x = do
+  st <- get
+  put (st { funcTypes = x : funcTypes st })
+
+getCFuncTypes :: TM [(Name, [Constraint], [CFType])]
+getCFuncTypes = do
+  st <- get
+  return (funcTypes st)
+
+searchCFuncType :: Name -> CFType
+                -> TMM (Name, [Constraint], [CFType])
+searchCFuncType "Cons" x = do
+  ret $ ("Cons",[]
+        ,[x,CTApp (noLocUpp "List") [x],CTApp (noLocUpp "List") [x]])
+  where noLocUpp = L NoLoc . Upp
+searchCFuncType name x = do
+  fts <- getCFuncTypes
+  return (find (\(n,_,_) -> n == name) fts)
+
+setCore :: Core -> TM ()
+setCore core' = do
+  st <- get
+  put (st { core = core' })
+
+getCore :: TM Core
+getCore = do
+  st <- get
+  return (core st)
+
 getInstances :: TM [TInst]
 getInstances = do
   st <- get
@@ -204,7 +390,7 @@ isInstanceAdded inst = do
 searchInstances :: CompName -> Name -> TM [TInst]
 searchInstances comp name = do
   insts <- getInstances
-  let f (c,NameId n _,_,_) = n == name && c == comp
+  let f (c,_,NameId n _,_,_) = n == name && c == comp
   return (filter f insts)
 
 getIdForInstance :: CompName -> Name -> TM Int
@@ -216,20 +402,20 @@ getIdForInstance comp name = do
   where
     -- forkid changes id only when its used X times
     -- X being the number of forks
-    getId (_, _, ForkI _ _  o, False) = 1
-    getId (_, NameId _ id, ForkI _ _  o, True) = id + 1
-    getId (_,NameId _ id, _ , _) = id + 1
+    getId (_, _, _, ForkI _ _  o, False) = 1
+    getId (_, _, NameId _ id, ForkI _ _  o, True) = id + 1
+    getId (_, _, NameId _ id, _ , _) = id + 1
 
 getInstancesFromComponent :: CompName -> TM [TInst]
 getInstancesFromComponent comp = do
   insts <- getInstances
-  let f (c,_,_,_) = c == comp
+  let f (c,_,_,_,_) = c == comp
   return (filter f insts)
 
 getUniqueInstance :: CompName -> NameId -> TMM TInst
 getUniqueInstance comp nameId = do
   insts <- getInstances
-  case find (\(comp',nameId',_,_) -> nameId' == nameId
+  case find (\(comp',_,nameId',_,_) -> nameId' == nameId
                                      && comp' == comp) insts of
     Nothing
       -> throw (TErr
@@ -250,7 +436,7 @@ modifyUniqueInstance comp nid f = do
                      NoLoc)
   cont1 maybeIns $ \_ -> do
     insts <- getInstances
-    let replace i@(_,nid',_,_)
+    let replace i@(_,_,nid',_,_)
           | nid == nid' = f i
           | otherwise   = i
     putInstances (map replace insts)
@@ -258,12 +444,12 @@ modifyUniqueInstance comp nid f = do
 
 setInstanceUsed :: CompName -> NameId -> TMM ()
 setInstanceUsed comp nid = do
-  modifyUniqueInstance comp nid (\(cn,nid',i,_) -> (cn,nid',i,True))
+  modifyUniqueInstance comp nid (\(cn,id,nid',i,_) -> (cn,id,nid',i,True))
 
 getNextInstance :: CompName -> Name -> TMM TInst
 getNextInstance comp name = do
   insts <- searchInstances comp name
-  let allUsed = and (map (\(_,_,_,u) -> u) insts)
+  let allUsed = and (map (\(_,_,_,_,u) -> u) insts)
   throwIf allUsed
     (TErr
      AllInstancesUsed
@@ -271,7 +457,7 @@ getNextInstance comp name = do
      ("All instances of " ++ name ++ " in " ++ comp)
       NoLoc)
   contIf (not allUsed) $ do
-    let whatMatters (_,NameId _ id,_,used) = (id,used)
+    let whatMatters (_,_,NameId _ id,_,used) = (id,used)
         ius = map whatMatters insts
         id = fst (foldl1 chooseId ius)
         chooseId (id1, True) (id2, True) = (id1,True)
@@ -281,16 +467,21 @@ getNextInstance comp name = do
           (if id1 < id2 then id1 else id2, False)
     getUniqueInstance comp (NameId name id)
 
-getConnections :: CompName -> TM [TConn]
+getConnections :: CompName -> TM [CConn]
 getConnections compname = do
   cs <- connections <$> get
   let isCompName (cname,_,_) = cname == compname 
   return (filter isCompName cs)
 
-addConnection :: TConn -> TM ()
+addConnection :: CConn -> TM ()
 addConnection conn = do
   st <- get
   put (st { connections =  conn : connections st })
+
+getLogicalConnections :: TM [Name]
+getLogicalConnections = do
+  st <- get
+  return $ logicalConnections st
 
 addLogicalConnection :: Name -> TM ()
 addLogicalConnection conn = do
@@ -301,6 +492,29 @@ doesLogicalConnectionExist :: Name -> TM Bool
 doesLogicalConnectionExist conn = do
   st <- get
   return (elem conn (logicalConnections st))
+
+getLogicalOutputs :: TM [(Name,Name,FType,Maybe Int)]
+getLogicalOutputs = do
+  st <- get
+  return $ logicalOutputs st
+  
+addLogicalOutput :: (Name,Name,FType,Maybe Int) -> TM ()
+addLogicalOutput x = do
+  st <- get
+  put (st { logicalOutputs = x : logicalOutputs st })
+
+doesLogicalOutputExist :: Name -> TM Bool
+doesLogicalOutputExist x = do
+  st <- get
+  if elem x (map fst4 (logicalOutputs st))
+    then debug x
+    else debug ("Nope " ++ x)
+  return (elem x (map fst4 (logicalOutputs st)))
+
+getLogicalOutput :: Name -> TM (Name, FType, Maybe Int)
+getLogicalOutput x = do
+  st <- get
+  return $ (\(a,b,f,c) -> (b,f,c)) $ just $ find ((==x) . fst4) (logicalOutputs st)
 
 addSystemCFile :: File -> TM ()
 addSystemCFile file = do
@@ -347,10 +561,28 @@ incrementForkedIndex comp v = do
   i <- getForkedIndex comp v
   putForkedIndex comp v (i + 1)
 
-addFuncType :: TFuncType -> TM ()
-addFuncType x = do
-  state <- get
-  put (state { tTypes =  x : tTypes state })
+getFunctionId :: Name -> [FType] -> TM Id
+getFunctionId name ftypes = do
+  fun <- searchFunctionByName name
+  case fun of
+    [] -> return 1
+    xs -> case find (\(_,_,ft) -> and (zipWith equalFType ft ftypes)) xs of
+      Nothing      -> return $ (+1) $ maximum $ map takeId xs
+      Just (_,i,_) -> return i
+  where takeId (_,id,_) = id
+
+searchFunctionByName :: Name -> TM [(Name,Id,[FType])]
+searchFunctionByName name = do
+  cs <- getFunctionIds
+  return (filter (\(n,_,_) -> n == name) cs)
+
+getFunctionIds :: TM [(Name, Id, [FType])]
+getFunctionIds = functionIds <$> get
+
+addFunctionId :: (Name, Id, [FType]) -> TM ()
+addFunctionId x = do
+  st <- get
+  put (st { functionIds =  x : functionIds st })
 
 --- Example of the use of TM
 
@@ -376,3 +608,55 @@ testF2 = do
     a' <- a
     b' <- b
     return $ a' + b'
+
+---------- typecheck
+
+getIt :: TM [([Constraint],[CFType])]
+getIt = do
+  st <- get
+  return (typeCheckState st)
+  
+getTypeCheckState :: TMM ([Constraint],[CFType])
+getTypeCheckState = do
+  st <- get
+  let tcs = typeCheckState st
+  case tcs of
+    []   -> noRet
+    x:xs -> ret x
+
+putTypeCheckState :: ([Constraint],[CFType]) -> TM ()
+putTypeCheckState ft = do
+  debug $ "STATEPUT: " ++ show ft
+  st <- get
+  let tcs = typeCheckState st
+  put ( st { typeCheckState = ft : tcs } )
+
+popTypeCheckState :: TM ()
+popTypeCheckState = do
+  debug "STATE POP"
+  st <- get
+  let tcs = typeCheckState st
+  case tcs of
+    [] -> error "yyyyy1"
+    x:xs -> put ( st { typeCheckState = xs } )
+
+modifyTypeCheckState
+  :: ([CFType] -> [CFType]) -> TM ()
+modifyTypeCheckState func = do
+  debug $ "STATE MODIFIED"
+  st <- get
+  let tcs = typeCheckState st
+  case tcs of
+    []   -> return ()
+    (cs,x):xs -> do
+      put ( st { typeCheckState = (cs,func x) : xs })
+
+{-
+isEmptyTypeCheckState :: TM Bool
+isEmptyTypeCheckState = do
+
+x <- getTypeCheckState
+  case x of
+    Nothing -> return True
+    Just x  -> return False
+-}

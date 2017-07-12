@@ -8,26 +8,27 @@ import Codec.Binary.UTF8.String (encodeChar)
 import Data.Word (Word8)
 import Data.Bits (shiftR, shiftL)
 import Control.Monad.State (StateT(..), evalStateT, get, put)
+import Data.Char (toLower)
 
 }
 
-$digit = 0-9
+$digit    = 0-9
 $alphaLow = [a-z]
 $alphaUpp = [A-Z]
-$alpha = [$alphaLow $alphaUpp]
-$eol   = [\n]
-$symbol = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\:]
+$alpha    = [$alphaLow $alphaUpp]
+$eol      = [\n]
+$symbol   = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\:]
+
+$hexDigit = [0-9a-fA-F]
+$binDigit = [0-1]
+$anyCharNumber = [$alpha $digit]
+
+@decimal  = $digit+
+@exponent = [eE] [\-\+]? @decimal
+@fpoint   = @decimal \. @decimal @exponent? | @decimal @exponent
 
 haskell :-
 
-<lexString> {
-
-  [[. \n]#\"]*  { funLoc (\s -> String (unifyMultilineString s)) }
-  \"            { changeState 0 }
-
-}
-
--- language does not support nested multiline comments
 <lexComment> {
 
   "-}"          { changeState 0 }
@@ -40,56 +41,29 @@ haskell :-
   $eol                             ;
   $white+                          ;
 
-  \"\"                             { consLoc (String "") }
-  \"                               { changeState lexString }
-  
   "--".*                           ;
   "{-"                             { changeState lexComment }
+  ":"                              { consLoc Colon }
+  "::"                             { consLoc TwoColons }
+  "->"                             { consLoc Arrow }
 
-  where                            { consLoc Where }
-
-  let                              { consLoc Let }
-  in                               { consLoc In }
-
-  if                               { consLoc If }
-  then                             { consLoc Then }
-  else                             { consLoc Else }
-
-  case                             { consLoc Case }
-  of                               { consLoc Of }
-
-  type                             { consLoc Type }
   data                             { consLoc Data }
-
   \(                               { consLoc LParen }
   \)                               { consLoc RParen }
 
-  \[                               { consLoc LBracket }
-  \]                               { consLoc RBracket }
-
-  \{                               { consLoc LBrace }
-  \}                               { consLoc RBrace }
   \;                               { consLoc Semic }
 
-  \:                               { consLoc Colon }
-  \,                               { consLoc Comma }
-  
-  [\λ\\]                           { consLoc Lambda }
-  "->"                             { consLoc Arrow }
-
   \=                               { consLoc Equal }
-  \|                               { consLoc Pipe }
-  ".."                             { consLoc TwoDots }
-  "::"                             { consLoc TwoColons }
+  \|                               { consLoc Pipe  }
 
-  "=="                             { consLoc TwoEqual }
-  "/="                             { consLoc Diff }
-  
+  0b $anyCharNumber+  { funLoc (\s -> Bin (checkBin s)) }
+  0x $anyCharNumber+  { funLoc (\s -> Hex (checkHex s)) }
+
   $symbol+                              { funLoc (\s -> Sym s) }
   [$alphaLow \_] [$alpha $digit \_ \']* { funLoc (\s -> Low s) }
   $alphaUpp [$alpha $digit \_ \']*      { funLoc (\s -> Upp s) }
-  $digit+                               { funLoc (\s -> Int (read s)) }
-  
+  -- [\-]? @fpoint                      { funLoc (\s -> Real (read s)) }
+  [\-]? @decimal                        { funLoc (\s -> Dec (read s)) }
 
 }
 
@@ -98,50 +72,26 @@ haskell :-
 
 --------------- Token type
 data Token
-  = Where
-
-  | Let
-  | In
-
-  | If
-  | Then
-  | Else
-
-  | Case
-  | Of
-
-  | Type
-  | Data
-
-  | LParen
+  = LParen
   | RParen
-
-  | LBracket
-  | RBracket
-  
-  | LBrace
-  | RBrace
-  | Semic
+  | Equal
 
   | Colon
-  | Comma
-  
-  | Lambda
-  | Arrow
-  | Equal
-  | Pipe
-  | TwoDots
   | TwoColons
-
-  | TwoEqual
-  | Diff
+  | Arrow
   
   | Low String
   | Upp String
   | Sym String
 
-  | Int Int
-  | String String
+  | Semic
+  | Pipe
+
+  | Bin String
+  | Hex String
+  | Dec Int
+
+  | Data
 
   | EOF
   deriving (Eq,Show)
@@ -166,10 +116,15 @@ data Buffer = Buf {
 type AlexState = Int
 data AlexInput = AI SrcLoc Buffer AlexState
 
-data LToken = L {
+data L a = L {
   getLoc :: SrcLoc,
-  getTok :: Token
+  getVal :: a
 } deriving Show
+
+type LToken = L Token
+
+instance Functor L where
+  fmap f (L s x) = L s (f x)
 
 -- If token is Nothing thenoutput can be skipped
 data AlexResult = AR (Maybe Token) SrcLoc AlexState deriving Show
@@ -264,6 +219,24 @@ changeStateAndOutput :: Int -> (String -> Token) -> Action
 changeStateAndOutput newState tf s l _ = AR (Just (tf s)) l newState
 
 --------------- Auxiliar functions
+
+checkHex :: String -> String
+checkHex s = check res num
+  where num = map toLower $ drop 2 s
+        res = and $ map isHex num
+        isHex x = elem x hexDigits
+        hexDigits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f']
+        check False _ = error "Invalid hexadecimal digit."
+        check True  x = x
+
+checkBin :: String -> String
+checkBin s = check res num
+  where num = map toLower $ drop 2 s
+        res = and $ map isBin num
+        isBin x = elem x binDigits
+        binDigits = ['0','1']
+        check False _ = error "Invalid binary digit."
+        check True  x = x
 
 -- Function is more permisive than ideal because it lets
 -- newlines in strings, but it doesnt break the language

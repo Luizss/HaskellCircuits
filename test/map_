@@ -1,0 +1,9 @@
+main :: List Int -> List Int
+main s = map f s Nil
+
+map :: (Int -> Int) -> List Int -> List Int -> List Int
+map f Nil a = a
+map f (Cons x r) a = map f r (Cons (f x) a)
+
+f :: Int -> Int
+f x = mul (mul x 2) x

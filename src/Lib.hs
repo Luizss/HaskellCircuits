@@ -1,71 +1,31 @@
 module Lib where
 
+---------------- External Imports
+
 import Control.Monad.Except
 import Data.List.Split
 import Control.Monad.State
 import System.Environment
 import System.Directory
 
-import LexerCore
-import LayoutCore (layout)
-import ParserCore
+---------------- Internal Imports
+
+import Lexer
+import Parser
+import Layout
 import TransformationMonad
 import Function
 import Types
 import Components
 import ToSystemC
+import Core
+import TypeSynth
 
 getTestInputs :: IO [String]
 getTestInputs = do
   contents <- readFile "test/test"
   let (first:spliteds) = "====" `splitOn` contents
   return (first : map tail spliteds)
-
--- test :: IO ()
--- test = do
---   inps <- getTestInputs
---   putStrLn "========================="
---   forM inps $ \inp -> do
---     let tks  = tokenize inp
---         tks' = layout tks
---         expr = parse' tks'
---         f = do
---           case expr of
---             Right e -> do putSourceCode inp; putProgram e
---             Left  _ -> return ()
---           interpret
---           checkForArityErrs
---           toComponents
---           toSystemC
---        {- g = case c of
---           Right e -> 
---           Left _ -> []-}
---     putStr inp              -- input
---     print (map getVal tks)  -- tokenize
---     print (map getVal tks') -- tokenize + layout
---     print expr              -- tokenize + layout + parse
---     putStrLn "LeN======"
---     print (length (filter (\(_,_,c,_)->c/=SpecialF) (tFuncs (runTM f))))
---     let st = runTM f
---     putStrLn "EXEC======"
---     print st
---     putStrLn "Err======"
---     showE st
---     forM_ (systemC st) $ \(x,y) -> do
---         putStrLn x
---         putStrLn y
---     if getErrs st == []
---       then makeSystemC (systemC st)
---       else return ()
---     {-putStrLn ""
---     print c
---     if g /= []
---       then 
---       else putStr "aa"
---     makeSystemC g-}
---   --  putStrLn "========================="
---   return ()
-
 
 userInterface :: IO ()
 userInterface = do
@@ -90,15 +50,27 @@ test' :: FileName -> String -> [[Int]] -> IO ()
 test' fileName text tbs = do
   let tks  = tokenize text
       tks' = layout tks
-      expr = parse' tks'
+      Right expr = parse' tks'
       transformation = do
-        case expr of
-          Right e -> do
-            putSourceCode text
-            putProgram e
-          Left  _ -> return ()
-        interpret
+        storeDataInState expr
+        storeCoreInState expr
+        putDataDefsInState
+        putFunctionTypesInState
+        c <- getCore
+        debug "!!!!!!!!!"
+        debugs c
+        x <- getCFuncTypes
+        debug "AAAAAAAAA"
+        debugs x
+        debugs "TYPECHECK"
+        typeCheck
+        debugs "TYPESYNTH"
+        typeSynth
+        tc <- getTCore
+        debugs tc
+        getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
+        applyHighOrder
         toComponents
         toSystemC tbs
       st = runTM transformation
@@ -108,6 +80,7 @@ test' fileName text tbs = do
       putStrLn x
       putStrLn y
     makeSystemC fileName (systemC st)
+    showE st
     putStrLn "Ok!"
   when (getErrs st /= []) $ do
     print tks
@@ -117,14 +90,25 @@ withText :: FileName -> String -> [[Int]] -> IO ()
 withText fileName text tbs = do
   let tks  = tokenize text
       tks' = layout tks
-      expr = parse' tks'
+      Right expr = parse' tks'
       transformation = do
-        case expr of
-          Right e -> do
-            putSourceCode text
-            putProgram e
-          Left  _ -> return ()
-        interpret
+        storeDataInState expr
+        storeCoreInState expr
+        putDataDefsInState
+        putFunctionTypesInState
+        c <- getCore
+        debug "!!!!!!!!!"
+        debugs c
+        x <- getCFuncTypes
+        debug "AAAAAAAAA"
+        debugs x
+        debugs "TYPECHECK"
+        typeCheck
+        debugs "TYPESYNTH"
+        typeSynth
+        tc <- getTCore
+        debugs tc
+        getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
         toComponents
         toSystemC tbs
@@ -150,20 +134,45 @@ makeSystemC dirName files = do
       forM_ files $ \(filename, content) ->
         writeFile (dir ++ filename) content
 
-a :: IO ()
-a = do
+a :: [[Int]] -> IO ()
+a tbs = do
   tx <- readFile "test/test"
   let tks = tokenize tx
       tks' = layout tks
-      expr = parse' tks'
+      Right expr = parse' tks'
       transformation = do
-        case expr of
-          Right e -> do
-            putSourceCode tx
-            putProgram e
-          Left  _ -> return ()
-        interpret
+        storeDataInState expr
+        storeCoreInState expr
+        putDataDefsInState
+        putFunctionTypesInState
+        c <- getCore
+        debug "!!!!!!!!!"
+        debugs c
+        x <- getCFuncTypes
+        debug "AAAAAAAAA"
+        debugs x
+        debugs "TYPECHECK"
+        typeCheck
+        debugs "TYPESYNTH"
+        typeSynth
+        tc<-getTCore
+        debugs tc
+        getParsedFunctions_TransformToF_AddToState
+        checkForArityErrs
+        hey<-getFunctions
+        debug "FUNCTION"
+        debug (showFuncs hey)
+        applyHighOrder
+        debug "FUNCTION HIGH ORDER"
+        heya<-getFunctions
+        debug (showFuncs heya)
+        debug "COMPONENTS"
         toComponents
+        comp <- getComponents
+        debugs comp
+        toSystemC tbs
+        debug "CORE"
+        ret ()
       st = runTM transformation
   putStrLn "TOKENS"
   print tks
@@ -171,15 +180,21 @@ a = do
   print tks'
   putStrLn "EXPR"
   print expr
-  putStrLn "FUNCTION"
-  print (tFuncs st)
-  putStrLn "COMPONENT"
-  print (components st)
-  when (getErrs st == []) $
-    putStrLn "NICE!"
-  when (getErrs st /= []) $ do
+  putStrLn "CORE"
+  showE st
+  putStrLn "SYST"
+  print $ systemC st
+  when (getErrs st == []) $ do
+    print st
+    forM_ (systemC st) $ \(x,y) -> do
+      putStrLn x
+      putStrLn y
+    makeSystemC "test/test" (systemC st)
     showE st
-  
+    putStrLn "Ok!"
+  when (getErrs st /= []) $ do
+    print tks
+    showE st
   
 getErrs = filter isErr . tLogs
   where isErr x = case x of

@@ -4,7 +4,7 @@ import Lexer
 
 -------------- Context 
 
-type Context    = Int -- indentation column number
+type Context = Int -- indentation column number
 
 -------------- Layout function
 
@@ -15,9 +15,10 @@ layout tokens = semicolonProcess (lay markedTokens [])
         -- wrong for strings. We need to fix that
         -- before layout
         fixedTokens = map decreaseStringCol tokens
-        decreaseStringCol (L (SrcLoc f l c) (String s))
+        {-decreaseStringCol (L (SrcLoc f l c) (String s))
           | s /= "" = L (SrcLoc f l (c-1)) (String s)
-        decreaseStringCol x = x
+        decreaseStringCol x = x-}
+        decreaseStringCol = id
         
 semicolonProcess :: [LToken] -> [LToken]
 semicolonProcess = destroyFirstSemic . destroyDuplicatedSemics
@@ -43,12 +44,14 @@ lay :: [Marked LToken] -> [Context] -> [LToken]
 lay [] [] = []
 lay [] (m:ms)
 
-  | m /= 0 = L NoLoc RBrace : lay [] ms
+  {-
+  | m /= 0 = L NoLoc RBrace : lay [] ms -}
 
   | m == 0 = error "No matching '}' for '{' found."
   
 lay (x:xs) ms
 
+  {-
   | tok == RBrace
     && hasContext
     && actual ms == 0 = getMarked x : lay xs (rest ms)  -- 7
@@ -59,15 +62,16 @@ lay (x:xs) ms
 
   | not marked -- adicionado por mim
     && hasContext
-    && tok == In = noLoc RBrace : getMarked x : lay xs (rest ms)
+    && tok == In = noLoc RBrace : getMarked x : lay xs (rest ms)-}
 
+  {-
   | not marked -- 1
     && hasContext
     && n == actual ms = noLoc Semic : getMarked x : lay xs ms 
 
   | not marked -- 2
     && hasContext
-    && n < actual ms = noLoc RBrace : lay (x:xs) (rest ms) 
+    && n < actual ms = noLoc RBrace : lay (x:xs) (rest ms) -}
 
   | not marked -- adicionado por mim
     && hasNoContext
@@ -75,6 +79,7 @@ lay (x:xs) ms
 
   | not marked = getMarked x : lay xs ms  -- 3
 
+  {-
   | marked -- 4
     && hasContext
     && n > actual ms = noLoc LBrace : getMarked x : lay xs (n:ms) 
@@ -86,9 +91,9 @@ lay (x:xs) ms
   | marked = noLoc LBrace : noLoc RBrace : lay ((markFalse' x):xs) ms  -- 6
 
   | hasContext -- 10
-    && actual ms /= 0 = noLoc RBrace : lay (x:xs) (rest ms) 
-    
-  | otherwise = getMarked x : lay xs ms -- 11
+    && actual ms /= 0 = noLoc RBrace : lay (x:xs) (rest ms)
+   
+  | otherwise = getMarked x : lay xs ms -- 11 -}
 
   where marked = fst x
         L loc tok = getMarked x
@@ -112,9 +117,9 @@ getMarked (_, x) = x
 
 -- function marks tokens after 'where','let' and 'of'
 markTokensAfterKeywords :: [LToken] -> [Marked LToken]
-markTokensAfterKeywords = go . map markFalse
-  where
-    go  [] = []
+markTokensAfterKeywords = {- go .-} map markFalse
+  where markFalse x = (False, x)
+    {-go  [] = []
     go [x] = [x]
     go (x1 : x2 : rest) =
       let x2' | isKeyword (getTok (getMarked x1))
@@ -128,7 +133,6 @@ markTokensAfterKeywords = go . map markFalse
       Let   -> True
       Of    -> True
       _     -> False
-          
-    markFalse x = (False, x)
-    
+
     markTrue' (_,x) = (True, x)
+    -}

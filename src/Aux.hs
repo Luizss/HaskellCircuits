@@ -1,8 +1,8 @@
 module Aux where
 
 import Types
-import LexerCore
-import ParserCore
+import Lexer
+import Parser
 
 just (Just x) = x
 just _ = error "From Justa"
@@ -33,3 +33,38 @@ mapFst f (a,c) = (f a,c)
 mapSec :: (a -> b) -> (c,a) -> (c,b)
 mapSec f (c,a) = (c, f a)
 
+getTypeFromFExpr :: FExpr -> FType
+getTypeFromFExpr (FApp _ _ t) = t
+getTypeFromFExpr (FAExpr (_, _, t)) = t
+
+fst3 (f,_,_) = f
+fst4 (f,_,_,_) = f
+
+equalFType :: FType -> FType -> Bool
+equalFType (BitVec _ i1) (BitVec _ i2) = i1 == i2
+equalFType (Bit _) (Bit _) = True
+equalFType (Nat _ i1) (Nat _ i2) = i1 == i2
+equalFType _ _ = False
+           
+isStreamFunc :: Name -> Bool
+isStreamFunc name = elem name ["cons","consR","rest","now"]
+
+mapIndex = mapIndex' 0
+mapIndex' _ f [] = []
+mapIndex' i f (x:xs) = f i x : mapIndex' (i+1) f xs
+
+indexes :: [Int] -> [a] -> [a]
+indexes is xs = map just
+                $ filter isJust
+                $ mapIndex f xs
+  where f i b
+          | elem i is = Just b
+          | otherwise = Nothing
+
+for l f = map f l
+
+both :: (a -> b) -> (a,a) -> (b,b)
+both f (a1,a2) = (f a1, f a2)
+
+isLowVar (CTAExpr (L _ (Low _))) = True
+isLowVar _ = False

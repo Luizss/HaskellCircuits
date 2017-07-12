@@ -1,0 +1,3 @@
+main (n : Vec 32) (k : Vec 32) (s : Stream (Vec 32)) : Stream (Vec 32)
+  | equ (n : Vec 32) (k : Vec 32) : Bit = (s : Stream (Vec 32))
+  | (1 : Bit) = main (n : Vec 32) (add (k : Vec 32) (1 : Vec 32) : Vec 32) (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)

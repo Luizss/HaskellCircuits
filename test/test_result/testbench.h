@@ -1,9 +1,9 @@
 #include "systemc.h"
 
 SC_MODULE(testbench) {
-sc_fifo_in<sc_lv<32> > out;
-sc_fifo_out<sc_lv<32> > x;
-sc_fifo_out<sc_lv<32> > y;
+sc_fifo_in<sc_lv<33> > out;
+sc_fifo_out<sc_lv<33> > __i0;
+sc_fifo_out<sc_lv<33> > __i1;
 
 
 void proc();
@@ -13,17 +13,8 @@ SC_THREAD(proc);
 }
 };
 
-void testbench::proc() {x.write(1);
-y.write(1);
-cout << out.read() << endl;
-x.write(2);
-y.write(2);
-cout << out.read() << endl;
-x.write(3);
-y.write(4);
-cout << out.read() << endl;
-x.write(4);
-y.write(5);
+void testbench::proc() {__i0.write(1);
+__i1.write(1);
 cout << out.read() << endl;
 
 
