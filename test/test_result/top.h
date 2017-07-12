@@ -8,7 +8,7 @@ mainFunc m;
 testbench tb;
 sc_fifo<sc_lv<33> > __i0;
 sc_fifo<sc_lv<33> > __i1;
-sc_fifo<sc_lv<33> > out;
+sc_fifo<sc_lv<32> > out;
 
 
 SC_CTOR(top) : m("m"), tb("tb") {

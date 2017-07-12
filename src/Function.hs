@@ -470,3 +470,99 @@ showfvarcons fvc = case fvc of
   FCons (FHex (L _ s)) -> "0x" ++ s
   FCons (FDec (L _ i)) -> show i
   FCons FForeverWait -> "_'_"
+
+rightToLeft :: TM ()
+rightToLeft = do
+  fs <- getFunctions
+  forM_ fs $ \(f@(name,l,def,a,(rc,tc,ice),ho)) -> case rc of
+    RightRecursive -> case def of
+      F _ (NoFGuards _) _ -> error "noconds"
+      F fvars (FGuards ces) fty -> do
+        let name'      = changeName name
+            endingExpr = findEndingExpr name ces
+            fvars'     = fvars ++ [(L NoLoc "__acc", fty)]
+        ces' <- forM ces $ \(c,e) -> do
+          case isRecursive name e of
+            False -> return (c, accExpr fty)
+            True  -> return (c, leftRecExpr name e)
+        removeFunction name
+        addFunc (name, l
+                ,F fvars (NoFGuards (initialCallExpr
+                                      (changeName name)
+                                      fvars
+                                      fty
+                                      endingExpr)) fty
+                ,a, (NonRecursive, tc, False), ho)
+        addFunc (name', NoLoc, F fvars' (FGuards ces') fty
+                ,a+1, (LeftRecursive, tc, ice), ho)
+    _ -> ok
+
+initialCallExpr :: Name -> [(FVar,FType)] -> FType -> FExpr -> FExpr
+initialCallExpr name fvars fty eexpr
+  = FApp
+    (L NoLoc name,1)
+    (map fvarToExpr fvars ++ [eexpr])
+    fty
+  where fvarToExpr :: (FVar,FType) -> FExpr
+        fvarToExpr (fv,t) = FAExpr (FVar fv,1,t)
+
+changeName :: Name -> Name
+changeName = (++ "__left")
+                     
+leftRecExpr :: Name -> FExpr -> FExpr
+leftRecExpr name e = extendBWithA b a
+  where a = replaceConsR (replaceAcc e)
+        b = changeName' (getB e)
+
+        extendBWithA :: FExpr -> FExpr -> FExpr
+        extendBWithA b a = case b of
+          FApp lnameid args ty -> FApp lnameid (args ++ [a]) ty
+          _ -> error "extendBWithA"
+
+        replaceConsR :: FExpr -> FExpr
+        replaceConsR fex = case fex of
+          FApp (L s "cons",id) args ty
+            -> FApp (L s "consR",id) args ty
+          x -> x
+
+        replaceAcc :: FExpr -> FExpr
+        replaceAcc fex = case fex of
+          FApp (L s n, id) args ty
+            | n == name -> FAExpr (FVar (L NoLoc "__acc"), 1, ty)
+            | otherwise -> FApp (L s n, id) (map replaceAcc args) ty
+          FAExpr _ -> fex
+
+        getB :: FExpr -> FExpr
+        getB = onlyOne . getB'
+          where onlyOne [x] = x
+                onlyOne  xs = error "onlyOne error"
+          
+        getB' :: FExpr -> [FExpr]
+        getB' fex = case fex of
+          FApp (L _ n, id) args ty
+            | n == name -> [fex]
+            | otherwise -> concat (map getB' args)
+          FAExpr _ -> []
+
+        changeName' :: FExpr -> FExpr
+        changeName' fex = case fex of
+          FApp (L s name,id) args ty
+            -> FApp (L s (changeName name),id) args ty
+          _ -> error "changename'"
+
+isRecursive :: Name -> FExpr -> Bool
+isRecursive name fexpr = case classifyFExpr name fexpr of
+  LeftRecursive  -> True
+  RightRecursive -> True
+  _ -> False
+
+accExpr :: FType -> FExpr
+accExpr ty = FAExpr (FVar (L NoLoc "__acc"), 1, ty)
+
+findEndingExpr :: Name -> [(FExpr,FExpr)] -> FExpr
+findEndingExpr name =
+  snd . headErr . filter (not . isRecursive name . snd)
+  where
+    headErr [] = error "head err"
+    headErr xs = head xs
+

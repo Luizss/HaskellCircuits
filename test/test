@@ -1,4 +1,19 @@
-main :: List Int -> List Int -> List Int
-main (Cons x r) l
-  | equ x 1 = r
-main x l = l
+main :: List Int -> List Int -> Int
+main xs ys = sum (zipWith xs ys)
+
+zipWith :: List Int -> List Int -> List Int
+zipWith Nil ys = Nil
+zipWith xs Nil = Nil
+zipWith (Cons x xs) (Cons y ys) = Cons (g x y) (zipWith xs ys)
+
+g :: Int -> Int -> Int
+g x y = sub x y
+
+sum :: List Int -> Int
+sum Nil = 0
+sum (Cons x xs) = add x (sum xs)
+
+fac :: Int -> Int
+fac n
+ | equ n 0 = 1
+ | otherwise = mul n (fac (sub n 1))

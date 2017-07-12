@@ -360,10 +360,8 @@ searchCFuncType "__is__Cons" l = do
   where bool = CTAExpr (L NoLoc (Upp "Bool"))
 searchCFuncType "__get__Cons__0" l@(CTApp (L _ (Upp "List")) [x]) = do
   ret $ ("__get__Cons__0",[],[l,x])
-  where bool = CTAExpr (L NoLoc (Upp "Bool"))
 searchCFuncType "__get__Cons__1" l = do
   ret $ ("__get__Cons__1",[],[l,l])
-  where bool = CTAExpr (L NoLoc (Upp "Bool"))
 searchCFuncType name x = do
   fts <- getCFuncTypes
   return (find (\(n,_,_) -> n == name) fts)

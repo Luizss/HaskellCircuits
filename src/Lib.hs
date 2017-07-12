@@ -102,6 +102,7 @@ withText fileName text tbs = do
         x <- getCFuncTypes
         debug "AAAAAAAAA"
         debugs x
+        x <- getCFuncTypes
         debugs "TYPECHECK"
         typeCheck
         debugs "TYPESYNTH"
@@ -112,6 +113,7 @@ withText fileName text tbs = do
         checkForArityErrs
         toComponents
         toSystemC tbs
+        return ()
       st = runTM transformation
   when (getErrs st == []) $
     makeSystemC fileName (systemC st)
@@ -159,13 +161,17 @@ a tbs = do
         debugs tc
         getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
-        hey<-getFunctions
-        debug "FUNCTION"
-        debug (showFuncs hey)
+        --hey<-getFunctions
+        --debug "FUNCTION"
+        --debug (showFuncs hey)
         applyHighOrder
         debug "FUNCTION HIGH ORDER"
         heya<-getFunctions
         debug (showFuncs heya)
+        debug "\nFUNCTION RIGHT TO LEFT"
+        rightToLeft
+        heyb<-getFunctions
+        debug (showFuncs heyb)
         debug "COMPONENTS"
         toComponents
         comp <- getComponents
@@ -191,10 +197,12 @@ a tbs = do
       putStrLn y
     makeSystemC "test/test" (systemC st)
     showE st
+    print expr
     putStrLn "Ok!"
   when (getErrs st /= []) $ do
     print tks
     showE st
+    print expr
   
 getErrs = filter isErr . tLogs
   where isErr x = case x of
