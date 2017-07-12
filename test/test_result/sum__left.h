@@ -2,10 +2,10 @@
 #define SUM__LEFT_H_
 
 #include "systemc.h"
-#include "sli_1_32_14_.h"
+#include "sli_1_32_24_.h"
 #include "add1_.h"
-#include "sli_0_0_13_.h"
-#include "sli_0_0_12_.h"
+#include "sli_0_0_23_.h"
+#include "sli_0_0_22_.h"
 #include "not_1_.h"
 
 
@@ -18,10 +18,10 @@ sc_fifo_out<sc_lv<32> > out;
 
 sc_fifo<sc_lv<32> > __fifo__2;
 sc_fifo<sc_lv<1> > __fifo__1;
-sli_1_32_14_ sli_1_32_1;
+sli_1_32_24_ sli_1_32_1;
 add1_ add1;
-sli_0_0_13_ sli_0_0_2;
-sli_0_0_12_ sli_0_0_1;
+sli_0_0_23_ sli_0_0_2;
+sli_0_0_22_ sli_0_0_1;
 not_1_ not_1;
 
 sc_lv<32> __acc__aux;

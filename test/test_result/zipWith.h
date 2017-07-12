@@ -2,7 +2,7 @@
 #define ZIPWITH_H_
 
 #include "systemc.h"
-#include "const_stream_dec01_.h"
+#include "const_stream_dec05_.h"
 #include "zipWith__left.h"
 
 
@@ -14,7 +14,7 @@ sc_fifo_out<sc_lv<33> > out;
 
 sc_fifo<sc_lv<33> > const_stream_dec01_out__zipWith__left1___acc;
 
-const_stream_dec01_ const_stream_dec01;
+const_stream_dec05_ const_stream_dec01;
 zipWith__left zipWith__left1;
 
 

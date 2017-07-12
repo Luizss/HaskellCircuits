@@ -32,9 +32,9 @@ userInterface = do
   args <- getArgs
   when (length args < 1) $
     error "At least filename must be suplied."
-  let filePath : tbs' = args
+  let filePath : comm : tbs' = args
       tbs = map read tbs' :: [[Int]]
-  withFile filePath tbs
+  a comm filePath tbs
 
 withFile :: FileName -> [[Int]] -> IO ()
 withFile filePath tbs = do
@@ -72,7 +72,7 @@ test' fileName text tbs = do
         checkForArityErrs
         applyHighOrder
         toComponents
-        toSystemC tbs
+        --toSystemC tbs
       st = runTM transformation
   when (getErrs st == []) $ do
     print st
@@ -112,7 +112,7 @@ withText fileName text tbs = do
         getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
         toComponents
-        toSystemC tbs
+        --toSystemC comm tbs
         return ()
       st = runTM transformation
   when (getErrs st == []) $
@@ -136,9 +136,9 @@ makeSystemC dirName files = do
       forM_ files $ \(filename, content) ->
         writeFile (dir ++ filename) content
 
-a :: [[Int]] -> IO ()
-a tbs = do
-  tx <- readFile "test/test"
+a :: String -> FileName -> [[Int]] -> IO ()
+a comm filename tbs = do
+  tx <- readFile filename
   let tks = tokenize tx
       tks' = layout tks
       Right expr = parse' tks'
@@ -148,61 +148,58 @@ a tbs = do
         putDataDefsInState
         putFunctionTypesInState
         c <- getCore
-        debug "!!!!!!!!!"
-        debugs c
+        --debug "!!!!!!!!!"
+        --debugs c
         x <- getCFuncTypes
-        debug "AAAAAAAAA"
-        debugs x
-        debugs "TYPECHECK"
+        --debug "AAAAAAAAA"
+        --debugs x
+        --debugs "TYPECHECK"
         typeCheck
-        debugs "TYPESYNTH"
+        --debugs "TYPESYNTH"
         typeSynth
-        tc<-getTCore
-        debugs tc
+        tc <- getTCore
+        --debugs tc
         getParsedFunctions_TransformToF_AddToState
         checkForArityErrs
         --hey<-getFunctions
         --debug "FUNCTION"
         --debug (showFuncs hey)
         applyHighOrder
-        debug "FUNCTION HIGH ORDER"
-        heya<-getFunctions
-        debug (showFuncs heya)
-        debug "\nFUNCTION RIGHT TO LEFT"
+        --debug "FUNCTION HIGH ORDER"
+        heya <- getFunctions
+        --debug (showFuncs heya)
+        --debug "\nFUNCTION RIGHT TO LEFT"
         rightToLeft
-        heyb<-getFunctions
-        debug (showFuncs heyb)
-        debug "COMPONENTS"
+        --heyb<-getFunctions
+        --debug (showFuncs heyb)
+        --debug "COMPONENTS"
         toComponents
-        comp <- getComponents
-        debugs comp
-        toSystemC tbs
-        debug "CORE"
+        --comp <- getComponents
+        --debugs comp
+        toSystemC comm tbs
+        --debug "CORE"
         ret ()
       st = runTM transformation
-  putStrLn "TOKENS"
-  print tks
-  putStrLn "LAYOUT TOKENS"
-  print tks'
-  putStrLn "EXPR"
-  print expr
-  putStrLn "CORE"
-  showE st
-  putStrLn "SYST"
-  print $ systemC st
+  --putStrLn "TOKENS"
+  --print tks
+  --putStrLn "LAYOUT TOKENS"
+  --print tks'
+  --putStrLn "EXPR"
+  --print expr
+  --putStrLn "CORE"
+  --showE st
+  --putStrLn "SYST"
+  --print $ systemC st
   when (getErrs st == []) $ do
-    print st
-    forM_ (systemC st) $ \(x,y) -> do
-      putStrLn x
-      putStrLn y
-    makeSystemC "test/test" (systemC st)
-    showE st
-    print expr
-    putStrLn "Ok!"
+    --print st
+    makeSystemC filename (systemC st)
+    --showE st
+    --print expr
+    putStrLn "Ok! No errors."
   when (getErrs st /= []) $ do
-    print tks
+    --print tks
     showE st
-    print expr
+    --print expr
   
 getErrs = filter isErr . tLogs
   where isErr x = case x of
@@ -213,5 +210,5 @@ showE :: TState -> IO ()
 showE state = do
   forM_ (reverse (tLogs state)) $ \log -> case log of
     TLogErr terr _ -> putStrLn $ show terr
-    TLogDebug msg _ -> putStrLn msg
+    --TLogDebug msg _ -> putStrLn msg
     _ -> return ()

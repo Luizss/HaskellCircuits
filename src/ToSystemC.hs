@@ -15,8 +15,8 @@ import Aux
 
 ------------
 
-topLevel :: [[Int]] -> TComp -> TM ()
-topLevel lst (_, C _ _ inps out _ _) = do
+topLevel :: String -> [[Int]] -> TComp -> TM ()
+topLevel comm lst (_, C _ _ inps out _ _) = do
   addSystemCFile ("main.cpp", mainContent)
   addSystemCFile ("top.h", topLevelContent)
   addSystemCFile ("testbench.h",testbenchContent)
@@ -70,31 +70,46 @@ topLevel lst (_, C _ _ inps out _ _) = do
         fillFifos inps tbs
           | length inps /= length tbs
              = error $ "Testbench does not match number of inputs of main function (" ++ show (length inps) ++ ")"
-          | not (and (map ((length (head tbs) ==) . length) tbs))
-             = error "Testbenches have different number of inputs"
-          | otherwise = unlines (go 0)
-          where go n
-                  | n == length (last tbs) = []
-                  | otherwise =
-                      let vals = map (!! n) tbs
-                          xs = zip inps vals
-                      in map fill xs ++ [seeOut] ++ go (n+1)
-                seeOut = "cout << out.read() << endl;"
-                fill ((i,_),v) = i ++ ".write(" ++ show v ++ ");"
+          | otherwise = unlines $ (map f (zip inps tbs)) ++ seeOut
+          where f ((inp,_),tbs)
+                  = unlines $ map (\v -> inp ++ ".write(0b" ++ catIf (toBin 32 v) ++ ");") tbs
+
+                seeOut
+                  | comm == "list" = map (\(i,_) -> i ++ ".write(0b" ++ toBin 33 0 ++ ");") inps
+                                     ++  ["while(true){"
+                                         ,"cout << out.read() << endl;"
+                                         ,"}"]
+                  | otherwise = ["while(true){"
+                                ,"cout << out.read() << endl;"
+                                ,"}"]
+
+                catIf x
+                  | comm == "list" = x ++ "1"
+                  | otherwise = x
+                
+                toBin n = putZeros . dropWhile (=='0') . toBin'
+                  where
+                    putZeros s
+                      | length s < n = replicate (n - length s) '0' ++ s
+                      | otherwise    = s
+                    toBin' 0 = "0"
+                    toBin' n | n `mod` 2 == 1 = toBin' (n `div` 2) ++ "1"
+                             | n `mod` 2 == 0 = toBin' (n `div` 2) ++ "0"
+
                 
 -- faz o test bench e o top level
 -- com base nos inputs e outputs da main
 
 ---------------
 
-toSystemC :: [[Int]] -> TMM ()
-toSystemC tbs = do
+toSystemC :: String -> [[Int]] -> TMM ()
+toSystemC comm tbs = do
   comps <- getComponents
   debug $ "comps " ++ show (length comps)
   debugs comps
   maybeMain <- searchComponent "main"
   cont1 maybeMain $ \main -> do
-    topLevel tbs main
+    topLevel comm tbs main
     mapM componentToSystemC comps
     ret ()
 

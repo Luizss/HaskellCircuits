@@ -132,8 +132,8 @@ fromParsedFunctionToF_AddToState (TCFunc name varsNtypes guards typeExpr) = do
       TCAExpr (L s (Upp v), t) -> do
         mft <- fromParsedTypeExprToFunctionType t
         cont1 mft $ \ft -> do
-        id <- makeFunctionId' v ft
-        ret $ FAExpr (FVar (L s v), id, ft)
+          id <- makeFunctionId' v ft
+          ret $ FAExpr (FVar (L s v), id, ft)
               
       TCAExpr (L s (Bin i), t) -> do
         mft <- fromParsedTypeExprToFunctionType t
