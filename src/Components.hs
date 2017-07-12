@@ -49,7 +49,7 @@ toC name
 synth :: TFunc -> TMM C
 synth tfunc@(name,_,_,_,clss@(rc,_,_),_) = case rc of
   LeftRecursive           -> synthLeftRecursion tfunc clss
-  RightRecursive          -> synthRightRecursion tfunc
+  RightRecursive          -> cannotSynthErr
   MultipleRecursive       -> cannotSynthErr
   NonTerminatingRecursion -> cannotSynthErr
   NonRecursive            -> synthNonRecursiveFunction tfunc
@@ -178,11 +178,6 @@ synthLeftRecursionWithNormalTypes tfunc@(name,_,f@(F _ _ returnType),_,_,_) = do
                 conns
                 proced
         ret c
-
-synthRightRecursion :: TFunc -> TMM C
-synthRightRecursion (_,_,f,_,_,_) = do
-  debug "righttt"
-  ret $ C f [] [] ("aaa",Bit NoLoc) [] []
 
 procedure :: TFunc -> TMM CProc
 procedure tfunc@(name,_,_,_,(classification,_,_),_) = case classification of

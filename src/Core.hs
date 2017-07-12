@@ -284,18 +284,18 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
       CGuards ces -> do
         let bool = [CTAExpr (noLocUpp "Bool")]
         mces' <- forM ces $ \(c,e) -> do
-          ---debug "************"
-          ---debug $ "COND: " ++ show c
-          ---debug "************"
+          debug "************"
+          debug $ "COND: " ++ show c
+          debug "************"
           mc' <- typeCheckExpr bool c
-          ---debug "************"
-          ---debug $ "EXPR: " ++ show e
-          ---debug "************"
+          debug "************"
+          debug $ "EXPR: " ++ show e
+          debug "************"
           me' <- typeCheckExpr ftype e
-          ---debug "&&&&&&&&&&"
-          ---debugs "RESULTS"
-          ---debugs (mc', me')
-          ---debug "&&&&&&&&&&"
+          debug "&&&&&&&&&&"
+          debugs "RESULTS"
+          debugs (mc', me')
+          debug "&&&&&&&&&&"
           cont2 mc' me' $ \c' e' -> ret (c',e')
         cont_ mces' $ ret . TCGuards
 
@@ -317,11 +317,11 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
           
           let argsI = zip args [0..]
 
-          --debug $ "@@@ENTERING FUNCTION " ++ getName ltk
+          debug $ "@@@ENTERING FUNCTION " ++ getName ltk
           debug $ "ENTERINGARGS: " ++ show argsI
           _ <- mapM (typeCheckExpr' ty) argsI
           margs' <- mapM (typeCheckExpr' ty) argsI
-          --debug $ "@@@GETTING OUT FUNCTION " ++ getName ltk
+          debug $ "@@@GETTING OUT FUNCTION " ++ getName ltk
 
           debug "A"
           cont_ margs' $ \args' -> do
@@ -339,7 +339,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
 
                 Nothing -> do
 
-                  debug $ "HERE1 " ++ show (cs,cs')
+                  debug $ "HERE1 " ++ show (ft,ty')
                   mr <- match (last ft) (last ty')
                   cont1 mr $ \r -> do
                     ok <- matchConstraint r (nub (cs ++ cs'))
@@ -431,6 +431,10 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     cTArrowInvHead (CTArrow _ as) = head as
     cTArrowInvHead c = c
 
+    fromListTy c = case c of
+      CTApp (L _ (Upp "List")) [x] -> x
+      x -> x
+
     cTArrowInv' :: [CFType] -> [CFType]
     cTArrowInv' [CTArrow _ as] = as
     cTArrowInv' xs = xs
@@ -457,12 +461,21 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
           let mty = snd <$> find ((==ltk) . fst) varsWithTypes
           cont1 mty $ \ty ->
             ret ([], [ty])
+      | ltk == L NoLoc (Upp "Cons") = do
+          debug $ "KKKKKK " ++ show (cTArrowInvHead (head ftype), ftype)
+          mm <- searchCFuncType (getName ltk) (fromListTy (cTArrowInvHead (head ftype)))
+          cont1 mm $ \(_,constraints,cfts) -> do
+            ret (constraints,cfts)
       | otherwise = do
           debug $ "GGGGGG " ++ show (cTArrowInvHead (head ftype), ftype)
           mm <- searchCFuncType (getName ltk) (cTArrowInvHead (head ftype))
           cont1 mm $ \(_,constraints,cfts) -> do
             ret (constraints,cfts)
 
+    {-match
+      (CTApp (L _ (Upp "List")) [CTApp (L _ (Upp "Int")) _])
+      (CTApp (L _ (Upp "Int")) x)
+      = ret $ CTApp (L NoLoc (Upp "Int")) x-}
     match x y = do
       debug $ "MATCH OPEN " ++ show (x , y)
       m <- case (x,y) of

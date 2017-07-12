@@ -1,0 +1,10 @@
+main :: List Int -> List Int -> List Int
+main xs ys = zipWith xs ys
+
+zipWith :: List Int -> List Int -> List Int
+zipWith Nil ys = Nil
+zipWith xs Nil = Nil
+zipWith (Cons x xs) (Cons y ys) = Cons (g x y) (zipWith xs ys)
+
+g :: Int -> Int -> Int
+g x y = mul x y

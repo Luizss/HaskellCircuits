@@ -78,7 +78,7 @@ substListByList_ = do
        substExpr expr = case expr of
          
          TCApp (L s (Upp "Cons")) [a1,a2] ty
-           -> TCApp (L s (Low "consR"))
+           -> TCApp (L s (Low "cons"))
               [TCApp (noLocLow "cat")
                 [substExpr a1
                 ,TCAExpr (noLocBin "1", CTAExpr (noLocUpp "Bit"))]
@@ -404,7 +404,7 @@ calcVecNumber constrs name = do
 
 toTypeFromName str
   | isPrefixOf "Int_" str = CTApp (noLocUpp "Int") [CTAExpr (noLocDec (read (drop 4 str)))]
-  | otherwise = CTAExpr (noLocLow str)
+  | otherwise = CTAExpr (noLocUpp str)
   
 changeType' :: CFType -> TMM CFType
 changeType' cft = case cft of

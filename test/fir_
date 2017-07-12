@@ -1,0 +1,38 @@
+main :: List Int -> List Int -> List Int -> List Int
+main bs xs as = map bs xs as
+
+map :: List Int -> List Int -> List Int -> List Int
+map bs xs Nil = Nil
+map bs xs (Cons x r) = Cons (y bs xs x) (map bs xs r)
+
+y :: List Int -> List Int -> Int -> Int
+y bs xs n = sum (zipWith (reverse bs) (window n xs))
+
+window :: Int -> List Int -> List Int
+window n s = reverse (take s n)
+
+take :: List Int -> Int -> List Int
+take Nil n = Nil
+take (Cons x xs) n
+  | equ n 0 = Nil
+  | otherwise = Cons x (take xs (sub n 1))
+
+reverse :: List Int -> List Int
+reverse s = reverse_ s Nil
+
+reverse_ :: List Int -> List Int -> List Int
+reverse_ Nil a = a
+reverse_ (Cons x xs) a = reverse_ xs (Cons x a)
+
+zipWith :: List Int -> List Int -> List Int
+zipWith Nil ys = Nil
+zipWith xs Nil = Nil
+zipWith (Cons x xs) (Cons y ys) = Cons (g x y) (zipWith xs ys)
+
+g :: Int -> Int -> Int
+g x y = mul x y
+
+sum :: List Int -> Int
+sum Nil = 0
+sum (Cons x xs) = add x (sum xs)
+
