@@ -1,7 +1,7 @@
-main (n : Vec 32) : Vec 32 = fac (n : Vec 32) (1 : Vec 32) : Vec 32
+main :: Int -> Int
+main n = fac n
 
-fac (n : Vec 32) (a : Vec 32) : Vec 32
-  | equ (n : Vec 32) (0 : Vec 32) : Bit
-      = (a : Vec 32)
-  | add (1 : Bit) (0 : Bit) : Bit
-      = fac (sub (n : Vec 32) (1 : Vec 32) : Vec 32) (mul (n : Vec 32) (a : Vec 32) : Vec 32) : Vec 32
+fac :: Int -> Int
+fac n
+ | equ n 0 = 1
+ | otherwise = mul n (fac (sub n 1))

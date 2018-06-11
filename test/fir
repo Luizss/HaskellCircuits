@@ -1,32 +1,38 @@
-main (bs : Stream (Vec 32)) (xs : Stream (Vec 32)) (a : Stream (Vec 32)) (c : Stream (Vec 32)) : Stream (Vec 32) = map (bs : Stream (Vec 32)) (xs : Stream (Vec 32)) (a : Stream (Vec 32)) (c : Stream (Vec 32)) : Stream (Vec 32)
+main :: List Int -> List Int -> List Int -> List Int
+main bs xs as = map bs xs as
 
-map (bs : Stream (Vec 32)) (xs : Stream (Vec 32)) (a : Stream (Vec 32)) (c : Stream (Vec 32)) : Stream (Vec 32)
- | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (c : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit) : Bit = (a : Stream (Vec 32))
- | (1 : Bit) = map (bs : Stream (Vec 32)) (xs : Stream (Vec 32)) (consR (cat (y (bs : Stream (Vec 32)) (xs : Stream (Vec 32)) (a : Stream (Vec 32)) (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (c : Stream (Vec 32)) : Vec 32) : Vec 31) : Vec 31) (1 : Bit) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) (rest (1 : Nat 1) (c : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
+map :: List Int -> List Int -> List Int -> List Int
+map bs xs Nil = Nil
+map bs xs (Cons x r) = Cons (y bs xs x) (map bs xs r)
 
-y (bs : Stream (Vec 32)) (xs : Stream (Vec 32)) (a : Stream (Vec 32)) (n : Vec 31) : Vec 31 = sum (zipWith (reverse (bs : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)) (window (n : Vec 31) (xs : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)) : Vec 31
+y :: List Int -> List Int -> Int -> Int
+y bs xs n = sum (zipWith (reverse bs) (window n xs))
 
-sum (s : Stream (Vec 32)) : Vec 31 = sum_ (s : Stream (Vec 32)) (0 : Vec 31) : Vec 31
+window :: Int -> List Int -> List Int
+window n s = reverse (take s n)
 
-sum_ (s : Stream (Vec 32)) (a : Vec 31) : Vec 31
-  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit ) : Bit = (a : Vec 31)
-  | (1 : Bit) = sum_ (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (add (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Vec 31) (a : Vec 31) : Vec 31) : Vec 31
+take :: List Int -> Int -> List Int
+take Nil n = Nil
+take (Cons x xs) n
+  | equ n 0 = Nil
+  | otherwise = Cons x (take xs (sub n 1))
 
-zipWith (s1 : Stream (Vec 32)) (s2 : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
-  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (s1 : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit) : Bit = (a : Stream (Vec 32))
-  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (s2 : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit) : Bit = (a : Stream (Vec 32))
-  | (1 : Bit) = zipWith (rest (1 : Nat 1) (s1 : Stream (Vec 32)) : Stream (Vec 32)) (rest (1 : Nat 1) (s2 : Stream (Vec 32)) : Stream (Vec 32)) (consR (cat (f (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s1 : Stream (Vec 32)) : Vec 32) : Vec 31) (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s2 : Stream (Vec 32)) : Vec 32) : Vec 31) : Vec 31) (1 : Bit) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
+reverse :: List Int -> List Int
+reverse s = reverse_ s Nil
 
-f (x : Vec 31) (y : Vec 31) : Vec 31 = mul (x : Vec 31) (y : Vec 31) : Vec 31
+reverse_ :: List Int -> List Int -> List Int
+reverse_ Nil a = a
+reverse_ (Cons x xs) a = reverse_ xs (Cons x a)
 
-window (n : Vec 31) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32) = reverse (take (n : Vec 31) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
+zipWith :: List Int -> List Int -> List Int
+zipWith Nil ys = Nil
+zipWith xs Nil = Nil
+zipWith (Cons x xs) (Cons y ys) = Cons (g x y) (zipWith xs ys)
 
-take (n : Vec 31) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
-  | equ (n : Vec 31) (0 : Vec 31) : Bit = (a : Stream (Vec 32))
-  | (1 : Bit) = take (sub (n : Vec 31) (1 : Vec 31) : Vec 31) (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (consR (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
+g :: Int -> Int -> Int
+g x y = mul x y
 
-reverse (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
-  | equ (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (0 : Vec 32) : Bit = (a : Stream (Vec 32))
-  | (1 : Bit) = reverse (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (cons (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
-
+sum :: List Int -> Int
+sum Nil = 0
+sum (Cons x xs) = add x (sum xs)
 

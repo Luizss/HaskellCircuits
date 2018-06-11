@@ -1,9 +1,0 @@
-main :: List Int -> List Int
-main s = reverse s
-
-reverse :: List Int -> List Int
-reverse s = reverse_ s Nil
-
-reverse_ :: List Int -> List Int -> List Int
-reverse_ Nil a = a
-reverse_ (Cons x xs) a = reverse_ xs (Cons x a)

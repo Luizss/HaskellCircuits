@@ -1,43 +1,136 @@
 # HaskellCircuits
-Transforming haskell to hardware
 
-## Idéia
+Author: Luiz Gustavo Soares de Sá
 
-![Alt text](./img/CORE.png?raw=true "Data flow")
+Prototype project showing how to transform Haskell functions into hardware descriptions in a process called synthesis. The project is a "proof of concept" and therefore does not synthesize all the Haskell language. This compiler is backed by a theory on how to transform functions into hardware and is the implementation of the most important concepts of the theory.
 
-### Explicação
+-----
 
-A etapa 1 é composta por simplicação das funções, retirada de escopos locais, type checking e retirada de polimorfismo. Após esta etapa chega-se na linguagem CORE (B), que é mais fácil de ser analisada e manipulada. A partir do CORE, todos as transformações posteriores são chamadas de síntese. A primeira síntese (2) tem a função de transformar tipos ADT's de alto nível em tipos padrões de baixo nível mais relacionados as entradas e saídas de hardwares. O resultado, a linguagem CORE C ainda é  chamada de CORE por ter o mesmo formato da linguagem CORE B. A partir daí a linguagem CORE (C) é analisada e manipulada (3) para gerar um tipo de dado que representa o hardware, formado por componentes. Por fim, a etapa 4 transforma esses componentes em código SystemC.
+## Getting Started
 
-## Versões do CORE
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
-As versões do sistema serão baseadas nas versões e nas funcionalidades implementadas pela linguagem CORE. A etapa 1 e a linguagem A serão implementadas posteriormente enquanto a linguagem CORE (B ou C) será o ponto de entrada do sistema nas versões iniciais. A versão do CORE só aumenta quando todo o processo 3 e 4 forem implementados para todas as funcionalidades da versão do CORE.
+### Prerequisites
 
-### CORE 0.0 (versão atual)
+* `stack`
+* `systemC`
 
-CORE com tipos baixo nível (ou seja, representa a linguagem CORE C). Suporta aplicação de funções, tipos de baixo nível atemporais (não recursivos), funções primitivas built-in (como adição, por exemplo). Não suporta condições e recursão.
-Ao fim da implementação dos processos 3 e 4 será possível gerar código para sistemas combinacionais de funções.
+### Installing
 
-### CORE 1.0
+The project can be compiled using `stack`. The command below will generate the executable.
 
-Adição de condições.
+```
+cd HaskellCircuits && stack build
+```
+### How to use the tool
 
-### CORE 2.0
+To generate a SystemC executable from a source file the user must provide the file path to the source code followed by testbench information.
 
-Adição de recursão ainda sem tipos temporais (recursivos).
+```
+./HaskellCircuits <source_code_file_path> (list|nolist) <testbench_input>
+```
+UT 
+Use `list` if your function has type list or use `nolist` for any other type. `<testbench_input>` is a Haskell list representing all the  inputs given to the hardware in the testbench. For example, if a function `factorial` is being synthesized a possible testbench would be `./HaskellCircuits factorial nolist '[2,5,8,9,10]'` applying factorial to the inputs 2,5,8,9 and 10 in order.
 
-### CORE 3.0
+Any more complex type of testbench can be tested by modifying the `testbench.h` SystemC file generated in every compilation.
 
-Adição de tipos temporais (recursivos) ainda de baixo nível.
+### Compiling the SystemC result
 
-### CORE 4.0
+In order to compile the result the user must have the SystemC libraries installed.
 
-Implementação da etapa 2 de síntese de tipos. CORE vira CORE B (tipos agora são de alto nível). 
+Firstly move to the result directory named whatever the name of the input file followed by `_result`. The compilation command may vary from computer to computer but the commands below may work (for 32 bits and then for 64 bits linux and replacing `$SYSTEMC_HOME` by the path to the SystemC libraries). 
 
-### HaskellCircuits 1.0
+```
+g++ -I. -I$SYSTEMC_HOME/include -L. -L$SYSTEMC_HOME/lib-linux -Wl,-rpath=$SYSTEMC_HOME/lib-linux -o main *.cpp -lsystemc -lm
+```
 
-Implementação da linguagem Haskell e suas transformaçes até o CORE.
+```
+g++ -I. -I$SYSTEMC_HOME/include -L. -L$SYSTEMC_HOME/lib-linux64 -Wl,-rpath=$SYSTEMC_HOME/lib-linux64 -o main *.cpp -lsystemc -lm
+```
 
-### HaskellCircuits 5.0
+### Running the testbench
 
-Otimizações e melhoramentos??????
+To run the testbench just run the SystemC executable.
+
+```
+./main
+```
+
+Testbench results will be printed in the screen in binary form. In other to test more complex testbenches it's possible to change the `testbench.h` SystemC file (but this requires a little bit of SystemC knowledge) and compile the result again.
+
+----
+
+## Tests
+
+In the `test` directory there are code examples and their respective results (for example, the file `map` and its result `map_result`).
+
+----
+
+## Brief explanation of the technique
+
+
+             Haskell
+                +
+                |
+                |
+            +---v---+
+            |Parsing|
+            +-------+
+                |
+                |
+       +--------v-----------+
+       |Code Simplification |
+       +--------------------+
+                |
+                |
+     +----------v------------+
+     |Type Inference/Checking|
+     +-----------------------+
+                |
+                |
+         +------v-------+
+         |Type Synthesis|
+         +--------------+
+                |
+                |
+      +---------v----------+
+      |Functional Synthesis|
+      +--------------------+
+                |
+                |
+        +-------v-------+
+        |Code Generation|
+        +---------------+
+                |
+                |
+                v
+             SystemC
+
+`Parsing` and `Code Simplification` are similar to what a software compiler would do. Synthesis starts with `Type Synthesis`, or the transformation from Algebraic Data Types to Vectors and Streams of Bits. Now that every function operates with bit structured types the `Functional Synthesis` analyses the kind of recursion (if the function is recursive) and extract the necessary information (basically, states and state transitions) to synthesize it. Function application is generally synthesized with buffered connections. Hardware-like modules are the result from the functional synthesis step. `Code Generation` basically takes each module and translates its behaviour to SystemC modules. A paper detailing the method will be published soon.
+
+----
+
+## Unsupported 
+
+* Polymorphic Definitions
+* Higher-Order Declarations
+* Infinite lists
+* Where, Let
+* Currying
+* Irregular recursive functions and data types (meaning any type of recursion other than simple)
+
+----
+
+## Known Bugs
+
+* Filter test function
+* Use list definition not synthesizing the right way
+* Drop test function
+
+----
+
+## Built With
+
+* [Haskell](https://www.haskell.org/) - The web framework used
+* [Happy](https://www.haskell.org/happy/) - Parser Generator
+* [Alex](https://www.haskell.org/alex/) - A lexical analyser generator for Haskell

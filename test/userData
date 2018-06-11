@@ -1,0 +1,8 @@
+data UserData = UserData Int Int
+
+main :: UserData -> Int
+main l = bla l
+
+bla :: UserData -> Int
+bla (UserData x y z) = y
+

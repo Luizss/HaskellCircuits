@@ -1,5 +1,0 @@
-main (s : Stream (Vec 32)) (l : Stream (Vec 32)) : Stream (Vec 32)
-  | equ (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (0 : Vec 32) : Bit = (l : Stream (Vec 32))
-  | (1 : Bit) = main (mrest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (g (mrest (1 : Nat 1) (l : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
-
-g (s : Stream (Vec 32)) : Stream (Vec 32) = (s : Stream (Vec 32))

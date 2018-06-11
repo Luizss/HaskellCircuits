@@ -1,9 +1,9 @@
 main :: List Int -> List Int
-main s = map g s
+main s = map s
 
-map :: (Int -> Int) -> List Int -> List Int
-map f Nil = Nil
-map f (Cons x xs) = Cons (f x) (map f xs)
+map :: List Int -> List Int
+map Nil = Nil
+map (Cons x xs) = Cons (g x) (map xs)
 
 g :: Int -> Int
-g x = mul x 2
+g x = mul 2 x

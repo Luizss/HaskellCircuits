@@ -1,0 +1,651 @@
+
+==================== FINAL INTERFACE ====================
+2018-06-09 19:12:19.948579 UTC
+
+interface HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo:Lib 8002
+  interface hash: c8e9cfdadabc0675964a2006df4b569c
+  ABI hash: 992e27f62b63fc12ac8a6268cb1f8f7e
+  export-list hash: 508953b4d7641d33c21fc942a580c391
+  orphan hash: d2bc22b84e26e585b873aa52120a7866
+  flag hash: 91cd76246f60d900fce8e309e594df82
+  sig of: Nothing
+  used TH splices: False
+  where
+exports:
+  Lib.a
+  Lib.getErrs
+  Lib.getTestInputs
+  Lib.makeSystemC
+  Lib.showE
+  Lib.test
+  Lib.test'
+  Lib.userInterface
+  Lib.withFile
+  Lib.withText
+module dependencies: Aux Components Core Function Layout Lexer
+                     Parser ToSystemC TransformationMonad TypeSynth Types
+package dependencies: array-0.5.1.1@array-0.5.1.1 base-4.9.1.0
+                      containers-0.5.7.1@containers-0.5.7.1
+                      deepseq-1.4.2.0@deepseq-1.4.2.0 directory-1.3.0.0@directory-1.3.0.0
+                      filepath-1.4.1.1@filepath-1.4.1.1 ghc-prim-0.5.0.0
+                      integer-gmp-1.0.0.1 mtl-2.2.1@mtl-2.2.1-BLKBelFsPB3BoFeSWSOYj6
+                      split-0.2.3.1@split-0.2.3.1-FWyXC6nhV0H3AfM8IzrEFk
+                      time-1.6.0.1@time-1.6.0.1 transformers-0.5.2.0@transformers-0.5.2.0
+                      unix-2.7.2.1@unix-2.7.2.1
+                      utf8-string-1.0.1.1@utf8-string-1.0.1.1-1DpjxLeTvGg7ttZZojxJR5
+orphans: HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo:Parser
+         base-4.9.1.0:GHC.Base base-4.9.1.0:GHC.Float
+         time-1.6.0.1@time-1.6.0.1:Data.Time.Calendar.Gregorian
+         time-1.6.0.1@time-1.6.0.1:Data.Time.Format.Parse
+         time-1.6.0.1@time-1.6.0.1:Data.Time.LocalTime.LocalTime
+         transformers-0.5.2.0@transformers-0.5.2.0:Control.Monad.Trans.Error
+family instance modules: base-4.9.1.0:Control.Applicative
+                         base-4.9.1.0:Data.Complex base-4.9.1.0:Data.Either
+                         base-4.9.1.0:Data.Functor.Const base-4.9.1.0:Data.Functor.Identity
+                         base-4.9.1.0:Data.List.NonEmpty base-4.9.1.0:Data.Monoid
+                         base-4.9.1.0:Data.Semigroup base-4.9.1.0:Data.Type.Equality
+                         base-4.9.1.0:Data.Version base-4.9.1.0:Data.Void
+                         base-4.9.1.0:GHC.Exts base-4.9.1.0:GHC.Generics
+                         base-4.9.1.0:GHC.IO.Exception base-4.9.1.0:GHC.TypeLits
+                         containers-0.5.7.1@containers-0.5.7.1:Data.Map.Base
+                         containers-0.5.7.1@containers-0.5.7.1:Data.Set.Base
+import  -/  Components 257a0cfffc068c97f9e15323cdf63c39
+  exports: 6f607770d5ef399b4670f10bc6255744
+  toComponents 61267c95c160debd103a23e4749f8c0b
+import  -/  Core 03c045ec4b103f009edcb2fde995889a
+  exports: 2b088c47911ca173a5aab6906552164b
+  putDataDefsInState 10de569ccd5d38c9bc129df4f376f847
+  putFunctionTypesInState d6d4f313dd25a39f636417d8e8576314
+  storeCoreInState 6a673880711557149bd39798c16f4714
+  storeDataInState 2a091b7b3baa646f4e9d1c1bacffb91e
+  typeCheck fd519ea8d03bd683e20575baf6b1e3b7
+import  -/  Function cf5aa69dc264892ea8552a54f271a6dc
+  exports: 2a7725d24c93907834b7e162f2be9a8f
+  applyHighOrder c0591e21ccb055e30e93c02c433516ac
+  checkForArityErrs 7cd0e1f4c21b3c543c49ab42f33fba5a
+  getParsedFunctions_TransformToF_AddToState 9357e02dd1d2309c6b3cf28dcc6750ce
+  rightToLeft 7066d35713657ab9c641e4aefe55333f
+import  -/  Layout 99b9681511140ab1dbb069829cceb35f
+  exports: 15953c18c1b2f42d7300e815088887fa
+  layout 3cb06cd6f9be2f9deea4c342cf555171
+import  -/  Lexer c6174f684585218aa184faedf4ab7f58
+  exports: c0fea5fa50c83f412bfcd8243e0a6172
+  FileName b0f4cfad5acaad4e8f83268e2b10a218
+  tokenize 4839af7e89c32874a5ca68529408bef1
+import  -/  Parser f25442964b616089abfc3d7b05acabc3
+  exports: 518f87c40b39394a3af3d07ea4f63fc3
+  parse' 2a225cdba4ebdbe3732a287bf5ef0fa0
+import  -/  ToSystemC 1b99009a89807cc2d802fba543f21942
+  exports: f5c882500f60c061935f8c19725064c8
+  toSystemC d2edf77556a7b7c03c203fa5ca1a3632
+import  -/  TransformationMonad 9a41a082a5198ad8166e58e36aa95114
+  exports: a2f2911707e7fb33be1f875278a27f62
+  debug f46f4739191d885fb6b73c306966ed95
+  debugs 49755239830dc452d4e4b0a31d3ed2f3
+  getCFuncTypes 28b4d6291cb6cc95dbafbde5708df41d
+  getCore 21daede51fb79e659b4e46f69a8ed81a
+  getFunctions eab9116df7e74b5aa756b4bf445934d5
+  getTCore b41dd4b0a6125d315ab2917092260814
+  ret 8f8ddfb5f423bc7b265fdcea5121253c
+  runTM caced3e1ce89eb6bb511c117c867723f
+import  -/  TypeSynth eaa03931523a88c1980e2835fe030c92
+  exports: b728fa3beb534829403e7c16eaf01926
+  typeSynth 09a92cd57442597623ee97651d1e8b0d
+import  -/  Types 757470cca10fe0c859acdd7db069deaa
+  exports: 34058aae7a6fb4ed664b025b184c161d
+  SystemC 48f8effc3e08d9f589b1a22258ba55a4
+  TLogErr fd0f01e1822a72ecbac42047171fa772
+  TState 40f95c047818067e4f0b74424938b4b0
+  systemC c8d0d69bbb8387440fca529d4c8ec5cc
+  tLogs b7762507a9a72864efc27d6bae262bb0
+import  -/  base-4.9.1.0:Data.Either 20b09ef8d0a5b74fdec011c40c1587f5
+import  -/  base-4.9.1.0:Data.Foldable 3e0b6967a1da89945d0e2d47266337a2
+import  -/  base-4.9.1.0:GHC.Base c4231c43c07e46080a26bf94094c7aa1
+import  -/  base-4.9.1.0:GHC.Err 3bba35a16538d33d424682ce66876cdd
+import  -/  base-4.9.1.0:GHC.List ab8c4e523e6c479c549d3bcd5fc4a439
+import  -/  base-4.9.1.0:GHC.Show a027f5ac24879eaba752f44aa90fe511
+import  -/  base-4.9.1.0:Prelude 22dd289b8469a8fa8dc81cab7b237771
+import  -/  base-4.9.1.0:System.Environment 08cb808e8e6a7821e6f8cfa76a977431
+import  -/  base-4.9.1.0:System.IO e4a64a8e3dce8616da54f0ee7104f7db
+import  -/  base-4.9.1.0:Text.Read 75c59863e882ebaec4532e9465e2ee9b
+import  -/  directory-1.3.0.0@directory-1.3.0.0:System.Directory 8ff5ebd6a93811413df021d2be39a158
+import  -/  ghc-prim-0.5.0.0:GHC.Classes 0bdf3d057a415ec1b84a7b1994efbe47
+import  -/  ghc-prim-0.5.0.0:GHC.Types 89f8de4f08018c9177c98d979eae0e45
+import  -/  mtl-2.2.1@mtl-2.2.1-BLKBelFsPB3BoFeSWSOYj6:Control.Monad.Except 3bb0e2598193c1ba00c9723945e93004
+import  -/  mtl-2.2.1@mtl-2.2.1-BLKBelFsPB3BoFeSWSOYj6:Control.Monad.State 749dca8ca0e6625b32091d445bd92b01
+import  -/  split-0.2.3.1@split-0.2.3.1-FWyXC6nhV0H3AfM8IzrEFk:Data.List.Split c60198a427bfd51d9fb4562c059ec1d2
+import  -/  split-0.2.3.1@split-0.2.3.1-FWyXC6nhV0H3AfM8IzrEFk:Data.List.Split.Internals 25dced234ed01c9c803d678763a4d772
+d3b11ce73d608a4b6a5a57b236018ee4
+  $s$fShow(,)_$s$fShow(,)_$cshowList ::
+    [([GHC.Types.Char], [GHC.Types.Char])] -> GHC.Show.ShowS
+  {- Arity: 2, Strictness: <S,1*U><L,U>,
+     Unfolding: InlineRule (2, True, False)
+                (\ (eta :: [([GHC.Types.Char], [GHC.Types.Char])])
+                   (eta1 :: GHC.Base.String) ->
+                 GHC.Show.showList__
+                   @ ([GHC.Types.Char], [GHC.Types.Char])
+                   (GHC.Show.$fShow(,)_$cshowsPrec
+                      @ [GHC.Types.Char]
+                      @ [GHC.Types.Char]
+                      GHC.Show.$fShow[]_$s$fShow[]1
+                      GHC.Show.$fShow[]_$s$fShow[]1
+                      GHC.Show.shows22)
+                   eta
+                   eta1) -}
+fb7250f116f6db955f136b831c7dc5ef
+  $s$fShow[]3 :: [Lexer.L Lexer.Token] -> GHC.Base.String
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (x :: [Lexer.L Lexer.Token]) ->
+                 GHC.Show.showList__
+                   @ (Lexer.L Lexer.Token)
+                   Lib.$s$fShow[]4
+                   x
+                   (GHC.Types.[] @ GHC.Types.Char)) -}
+65ea0e993c9963f970800c43aa02aaa1
+  $s$fShow[]4 :: Lexer.L Lexer.Token -> GHC.Show.ShowS
+  {- Arity: 1,
+     Unfolding: (\ (w2 :: Lexer.L Lexer.Token) ->
+                 case w2 of ww2 { Lexer.L ww3 ww4 ->
+                 Lexer.$w$cshowsPrec1
+                   @ Lexer.Token
+                   Lexer.$fShowToken
+                   0#
+                   ww3
+                   ww4 }) -}
+5cc033dd9878f3d776e0612a1ac1734b
+  $trModule :: GHC.Types.Module
+  {- HasNoCafRefs, Strictness: m,
+     Unfolding: (GHC.Types.Module Lib.$trModule2 Lib.$trModule1) -}
+9d5238ad1631df1a4f2fc59fb8b6e864
+  $trModule1 :: GHC.Types.TrName
+  {- HasNoCafRefs, Strictness: m1,
+     Unfolding: (GHC.Types.TrNameS "Lib"#) -}
+a72721da8429293db79e7b5cb0d3fc54
+  $trModule2 :: GHC.Types.TrName
+  {- HasNoCafRefs, Strictness: m1,
+     Unfolding: (GHC.Types.TrNameS
+                   "HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo"#) -}
+025925eaa02784aab0a5d7c3302375d5
+  $wshowE ::
+    [Types.TLog]
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 2, Strictness: <S,1*U><S,U>, Inline: [0],
+     Unfolding: (\ (ww :: [Types.TLog])
+                   (w :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 Lib.showE2
+                   (GHC.List.reverse1 @ Types.TLog ww (GHC.Types.[] @ Types.TLog))
+                   w) -}
+29be2c3b352eae8a95ab28cb37eb904d
+  $wtest ::
+    Lexer.FileName
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 2, Strictness: <L,U><S,U>, Inline: [0],
+     Unfolding: (\ (w :: Lexer.FileName)
+                   (w1 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 case GHC.IO.Handle.FD.openFile1
+                        w
+                        GHC.IO.IOMode.ReadMode
+                        w1 of ds1 { (#,#) ipv ipv1 ->
+                 case GHC.IO.Handle.Text.hGetContents1
+                        ipv1
+                        ipv of ds2 { (#,#) ipv2 ipv3 ->
+                 Lib.$wtest' w ipv3 ipv2 } }) -}
+a1c09f6309fe7aa02ea68905f8799a6f
+  $wtest' ::
+    Lexer.FileName
+    -> GHC.Base.String
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 3, Strictness: <L,1*U><L,U><S,U>, Inline: [0] -}
+fea3dcd65407c39831353de95ccb4834
+  $wwithFile ::
+    Lexer.FileName
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 2, Strictness: <L,U><S,U>, Inline: [0],
+     Unfolding: (\ (w :: Lexer.FileName)
+                   (w1 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 case GHC.IO.Handle.FD.openFile1
+                        w
+                        GHC.IO.IOMode.ReadMode
+                        w1 of ds1 { (#,#) ipv ipv1 ->
+                 case GHC.IO.Handle.Text.hGetContents1
+                        ipv1
+                        ipv of ds2 { (#,#) ipv2 ipv3 ->
+                 Lib.$wwithText w ipv3 ipv2 } }) -}
+ea4f6b97a890c6e117aaf93da40ff900
+  $wwithText ::
+    Lexer.FileName
+    -> GHC.Base.String
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 3, Strictness: <L,1*U><L,U><S,U>, Inline: [0] -}
+48f7b962a2dfaa84326f134f6f689561
+  a ::
+    GHC.Base.String
+    -> Lexer.FileName -> [[GHC.Types.Int]] -> GHC.Types.IO ()
+  {- Arity: 4, Strictness: <L,U><L,U><L,U><S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.a1
+                  `cast`
+                (<GHC.Base.String>_R
+                 ->_R <Lexer.FileName>_R
+                 ->_R <[[GHC.Types.Int]]>_R
+                 ->_R Sym (GHC.Types.N:IO[0] <()>_R)) -}
+d586e97859fbf36be1028ecdffa09907
+  a1 ::
+    GHC.Base.String
+    -> Lexer.FileName
+    -> [[GHC.Types.Int]]
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 4, Strictness: <L,U><L,U><L,U><S,U> -}
+83d945d63931d86db32dc2927145b402
+  getErrs :: Types.TState -> [Types.TLog]
+  {- Arity: 1, HasNoCafRefs,
+     Strictness: <S(LLLLLLLSLLLLLLLLLL),1*U(A,A,A,A,A,A,A,1*U,A,A,A,A,A,A,A,A,A,A)>,
+     Unfolding: InlineRule (1, True, False)
+                (\ (x :: Types.TState) ->
+                 case x of wild { Types.TState ds1 ds2 ds3 ds4 ds5 ds6 ds7 ds8 ds9 ds10 ds11 ds12 ds13 ds14 ds15 ds16 ds17 ds18 ->
+                 GHC.Base.build
+                   @ Types.TLog
+                   (\ @ b (c :: Types.TLog -> b -> b)[OneShot] (n :: b)[OneShot] ->
+                    GHC.Base.foldr
+                      @ Types.TLog
+                      @ b
+                      (GHC.List.filterFB @ Types.TLog @ b c Lib.getErrs_isErr)
+                      n
+                      ds8) }) -}
+dc304b42b2cd3c843ade84932b680cc5
+  getErrs_isErr :: Types.TLog -> GHC.Types.Bool
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ (x :: Types.TLog) ->
+                 case x of wild {
+                   DEFAULT -> GHC.Types.False
+                   Types.TLogErr ds ds1 -> GHC.Types.True }) -}
+6ad18b9a569e839c232a9499c91634c2
+  getTestInputs :: GHC.Types.IO [GHC.Base.String]
+  {- Arity: 1, Strictness: <S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.getTestInputs1
+                  `cast`
+                (Sym (GHC.Types.N:IO[0] <[GHC.Base.String]>_R)) -}
+431703644fc4131b890b0097db08a759
+  getTestInputs1 ::
+    GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, [GHC.Base.String] #)
+  {- Arity: 1, Strictness: <S,U>,
+     Unfolding: (\ (s :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 case GHC.IO.Handle.FD.openFile1
+                        Lib.getTestInputs5
+                        GHC.IO.IOMode.ReadMode
+                        s of ds1 { (#,#) ipv ipv1 ->
+                 case GHC.IO.Handle.Text.hGetContents1
+                        ipv1
+                        ipv of ds2 { (#,#) ipv2 ipv3 ->
+                 (# ipv2,
+                    let {
+                      ds :: ([GHC.Types.Char], [[GHC.Types.Char]])
+                      = case Lib.getTestInputs3 ipv3 of wild {
+                          [] -> Lib.getTestInputs2 : first spliteds -> (first, spliteds) }
+                    } in
+                    GHC.Types.:
+                      @ [GHC.Types.Char]
+                      (case ds of ds3 { (,) first spliteds -> first })
+                      (case ds of ds3 { (,) first spliteds ->
+                       GHC.Base.map
+                         @ [GHC.Types.Char]
+                         @ [GHC.Types.Char]
+                         (GHC.List.tail @ GHC.Types.Char)
+                         spliteds }) #) } }) -}
+ab2f8672bf26c5e963d3742597cb669d
+  getTestInputs2 :: ([GHC.Types.Char], [[GHC.Types.Char]])
+  {- Strictness: x -}
+3639d14de560f1c0ff6ae8eb16f814e2
+  getTestInputs3 :: [GHC.Types.Char] -> [[GHC.Types.Char]]
+  {- Unfolding: (Data.List.Split.Internals.splitOn
+                   @ GHC.Types.Char
+                   GHC.Classes.$fEqChar
+                   Lib.getTestInputs4) -}
+aacbf93534e4abd03e5847b65ab528ff
+  getTestInputs4 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "===="#) -}
+2d2b8b58a0f8c02346a0896de68668a6
+  getTestInputs5 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "test/test"#) -}
+c5c7bf643aa7c4a89673ab3edb0a11c1
+  makeSystemC :: Lexer.FileName -> Types.SystemC -> GHC.Types.IO ()
+  {- Arity: 3, Strictness: <L,1*U><L,1*U><S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.makeSystemC1
+                  `cast`
+                (<Lexer.FileName>_R
+                 ->_R <Types.SystemC>_R
+                 ->_R Sym (GHC.Types.N:IO[0] <()>_R)) -}
+75dff6976df83b3dce7720c9060bd3c9
+  makeSystemC1 ::
+    Lexer.FileName
+    -> Types.SystemC
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 3, Strictness: <L,1*U><L,1*U><S,U>,
+     Unfolding: (\ (dirName :: Lexer.FileName)
+                   (files :: Types.SystemC)
+                   (eta :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 let {
+                   dir :: [GHC.Types.Char]
+                   = GHC.CString.unpackAppendCString#
+                       "./"#
+                       (GHC.Base.++ @ GHC.Types.Char dirName Lib.makeSystemC3)
+                 } in
+                 case (System.IO.Error.catchIOError
+                         @ GHC.Types.Bool
+                         (\ (s :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                          case System.Posix.Files.getFileStatus1
+                                 dir
+                                 s of ds10 { (#,#) ipv ipv1 ->
+                          (# ipv, System.Posix.Files.Common.isDirectory ipv1 #) })
+                           `cast`
+                         (Sym (GHC.Types.N:IO[0] <GHC.Types.Bool>_R))
+                         System.Directory.doesDirectoryExist1
+                           `cast`
+                         (<GHC.IO.Exception.IOError>_R
+                          ->_R Sym (GHC.Types.N:IO[0] <GHC.Types.Bool>_R)))
+                        `cast`
+                      (GHC.Types.N:IO[0] <GHC.Types.Bool>_R)
+                        eta of ds1 { (#,#) ipv ipv1 ->
+                 case ipv1 of wild {
+                   GHC.Types.False
+                   -> case System.Posix.Directory.createDirectory1
+                             dir
+                             System.Directory.createDirectory2
+                               `cast`
+                             (Sym (System.Posix.Types.N:CMode[0]))
+                             ipv of ds2 { (#,#) ipv2 ipv3 ->
+                      letrec {
+                        go1 :: [Types.File]
+                               -> GHC.Prim.State# GHC.Prim.RealWorld
+                               -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+                          {- Arity: 2, Strictness: <S,1*U><S,U> -}
+                        = \ (ds :: [Types.File])
+                            (eta1 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                          case ds of wild1 {
+                            [] -> (# eta1, GHC.Tuple.() #)
+                            : y ys
+                            -> case y of wild2 { (,) filename content ->
+                               case System.IO.writeFile1
+                                      (GHC.Base.++ @ GHC.Types.Char dir filename)
+                                      content
+                                      eta1 of ds3 { (#,#) ipv4 ipv5 ->
+                               go1 ys ipv4 } } }
+                      } in
+                      go1 files ipv2 }
+                   GHC.Types.True
+                   -> case System.Directory.removeDirectoryRecursive1
+                             dir
+                             ipv of ds2 { (#,#) ipv2 ipv3 ->
+                      case System.Posix.Directory.createDirectory1
+                             dir
+                             System.Directory.createDirectory2
+                               `cast`
+                             (Sym (System.Posix.Types.N:CMode[0]))
+                             ipv2 of ds3 { (#,#) ipv4 ipv5 ->
+                      letrec {
+                        go1 :: [Types.File]
+                               -> GHC.Prim.State# GHC.Prim.RealWorld
+                               -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+                          {- Arity: 2, Strictness: <S,1*U><S,U> -}
+                        = \ (ds :: [Types.File])
+                            (eta1 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                          case ds of wild1 {
+                            [] -> (# eta1, GHC.Tuple.() #)
+                            : y ys
+                            -> case y of wild2 { (,) filename content ->
+                               case System.IO.writeFile1
+                                      (GHC.Base.++ @ GHC.Types.Char dir filename)
+                                      content
+                                      eta1 of ds4 { (#,#) ipv6 ipv7 ->
+                               go1 ys ipv6 } } }
+                      } in
+                      case go1 files ipv4 of ds4 { (#,#) ipv6 ipv7 ->
+                      GHC.IO.Handle.Text.hPutStr2
+                        GHC.IO.Handle.FD.stdout
+                        Lib.makeSystemC2
+                        GHC.Types.True
+                        ipv6 } } } } }) -}
+fe542d0e101bf90dab5104c24612c0eb
+  makeSystemC2 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "Ok!"#) -}
+dac6cc07f439f5926b6e7b1a3b5c443c
+  makeSystemC3 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "_result/"#) -}
+c7a3f8c6da7af032a8e1040075843329
+  showE :: Types.TState -> GHC.Types.IO ()
+  {- Arity: 2,
+     Strictness: <S(LLLLLLLSLLLLLLLLLL),1*U(A,A,A,A,A,A,A,1*U,A,A,A,A,A,A,A,A,A,A)><S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.showE1
+                  `cast`
+                (<Types.TState>_R ->_R Sym (GHC.Types.N:IO[0] <()>_R)) -}
+e780f2bc3461185177cbf041d7852c63
+  showE1 ::
+    Types.TState
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 2,
+     Strictness: <S(LLLLLLLSLLLLLLLLLL),1*U(A,A,A,A,A,A,A,1*U,A,A,A,A,A,A,A,A,A,A)><S,U>,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (2, True, False)
+                (\ (w :: Types.TState)
+                   (w1 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 case w of ww { Types.TState ww1 ww2 ww3 ww4 ww5 ww6 ww7 ww8 ww9 ww10 ww11 ww12 ww13 ww14 ww15 ww16 ww17 ww18 ->
+                 Lib.$wshowE ww8 w1 }) -}
+54905311aff347c22a6122c3d9e3ef6c
+  showE2 ::
+    [Types.TLog]
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 2, Strictness: <S,1*U><S,U> -}
+112029d1e9b7be4b9f5d387759e30e27
+  test :: Lexer.FileName -> [[GHC.Types.Int]] -> GHC.Types.IO ()
+  {- Arity: 3, Strictness: <L,U><L,A><S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.test1
+                  `cast`
+                (<Lexer.FileName>_R
+                 ->_R <[[GHC.Types.Int]]>_R
+                 ->_R Sym (GHC.Types.N:IO[0] <()>_R)) -}
+81d1bddf27c1268e18a16665c6097fcf
+  test' ::
+    Lexer.FileName
+    -> GHC.Base.String -> [[GHC.Types.Int]] -> GHC.Types.IO ()
+  {- Arity: 4, Strictness: <L,1*U><L,U><L,A><S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.test'1
+                  `cast`
+                (<Lexer.FileName>_R
+                 ->_R <GHC.Base.String>_R
+                 ->_R <[[GHC.Types.Int]]>_R
+                 ->_R Sym (GHC.Types.N:IO[0] <()>_R)) -}
+62a1e438adba0ac144959cb619ea21fc
+  test'1 ::
+    Lexer.FileName
+    -> GHC.Base.String
+    -> [[GHC.Types.Int]]
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 4, Strictness: <L,1*U><L,U><L,A><S,U>, Inline: INLINE[0],
+     Unfolding: InlineRule (4, True, True)
+                (\ (w :: Lexer.FileName)
+                   (w1 :: GHC.Base.String)
+                   (w2 :: [[GHC.Types.Int]])
+                   (w3 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 Lib.$wtest' w w1 w3) -}
+7423b1ff1f791b960ecdffb53174e326
+  test1 ::
+    Lexer.FileName
+    -> [[GHC.Types.Int]]
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 3, Strictness: <L,U><L,A><S,U>, Inline: INLINE[0],
+     Unfolding: InlineRule (3, True, True)
+                (\ (w :: Lexer.FileName)
+                   (w1 :: [[GHC.Types.Int]])
+                   (w2 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 Lib.$wtest w w2) -}
+c03cc2e425d611401abcc59487e7cfbe
+  userInterface :: GHC.Types.IO ()
+  {- Arity: 1, Strictness: <S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.userInterface1 `cast` (Sym (GHC.Types.N:IO[0] <()>_R)) -}
+bb17217fac507bfba79cf2bfecbe448c
+  userInterface1 ::
+    GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 1, Strictness: <S,U>,
+     Unfolding: (\ (s :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 case System.Environment.getArgs1 s of ds1 { (#,#) ipv ipv1 ->
+                 case GHC.List.$wlenAcc
+                        @ [GHC.Types.Char]
+                        ipv1
+                        0# of ww2 { DEFAULT ->
+                 case GHC.Prim.tagToEnum#
+                        @ GHC.Types.Bool
+                        (GHC.Prim.<# ww2 1#) of wild {
+                   GHC.Types.False
+                   -> let {
+                        ds :: (GHC.Base.String, GHC.Base.String, [GHC.Base.String])
+                        = case ipv1 of wild1 {
+                            [] -> Lib.userInterface5 GHC.Prim.void#
+                            : filePath ds2
+                            -> case ds2 of wild2 {
+                                 [] -> Lib.userInterface5 GHC.Prim.void#
+                                 : comm tbs' -> (filePath, comm, tbs') } }
+                      } in
+                      Lib.a1
+                        (case ds of ds2 { (,,) filePath comm tbs' -> comm })
+                        (case ds of ds2 { (,,) filePath comm tbs' -> filePath })
+                        (case ds of ds2 { (,,) filePath comm tbs' ->
+                         GHC.Base.map
+                           @ [GHC.Types.Char]
+                           @ [GHC.Types.Int]
+                           Lib.userInterface3
+                           tbs' })
+                        ipv
+                   GHC.Types.True
+                   -> case Lib.userInterface2
+                      ret_ty (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+                      of {} } } }) -}
+0da2cff0734158967f2146bf13671bbc
+  userInterface2 :: GHC.Types.IO ()
+  {- Strictness: x -}
+4dc0461319a6ac47839f007257b18cf1
+  userInterface3 :: GHC.Base.String -> [GHC.Types.Int]
+  {- Arity: 1,
+     Unfolding: (\ (s :: GHC.Base.String) ->
+                 case Text.Read.readEither6
+                        @ [GHC.Types.Int]
+                        (Text.ParserCombinators.ReadP.run
+                           @ [GHC.Types.Int]
+                           Lib.userInterface4
+                           s) of wild {
+                   []
+                   -> GHC.Err.errorWithoutStackTrace
+                        @ 'GHC.Types.PtrRepLifted
+                        @ [GHC.Types.Int]
+                        Text.Read.readEither4
+                   : x ds
+                   -> case ds of wild1 {
+                        [] -> x
+                        : ipv ipv1
+                        -> GHC.Err.errorWithoutStackTrace
+                             @ 'GHC.Types.PtrRepLifted
+                             @ [GHC.Types.Int]
+                             Text.Read.readEither2 } }) -}
+b11bf9b09892d315d4265498fdf5a663
+  userInterface4 :: Text.ParserCombinators.ReadP.P [GHC.Types.Int]
+  {- Unfolding: (GHC.Read.list1
+                   @ GHC.Types.Int
+                   GHC.Read.$fReadInt2
+                     `cast`
+                   (Trans
+                        (<Text.ParserCombinators.ReadPrec.Prec>_R
+                         ->_R Sym (Text.ParserCombinators.ReadP.N:ReadP[0]
+                                       <GHC.Types.Int>_R))
+                        (Sym (Text.ParserCombinators.ReadPrec.N:ReadPrec[0]
+                                  <GHC.Types.Int>_R)))
+                   Text.ParserCombinators.ReadPrec.minPrec
+                   @ [GHC.Types.Int]
+                   (Text.Read.readEither5 @ [GHC.Types.Int])) -}
+c4cc61927521e43363cacf67b536191a
+  userInterface5 ::
+    GHC.Prim.Void#
+    -> (GHC.Base.String, GHC.Base.String, [GHC.Base.String])
+  {- Arity: 1, Strictness: <B,A>x -}
+cbc8b4a0a906b3bac24bb2a377ed8b49
+  withFile :: Lexer.FileName -> [[GHC.Types.Int]] -> GHC.Types.IO ()
+  {- Arity: 3, Strictness: <L,U><L,A><S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.withFile1
+                  `cast`
+                (<Lexer.FileName>_R
+                 ->_R <[[GHC.Types.Int]]>_R
+                 ->_R Sym (GHC.Types.N:IO[0] <()>_R)) -}
+8a7d562ec3db460ec34adf18078f1e47
+  withFile1 ::
+    Lexer.FileName
+    -> [[GHC.Types.Int]]
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 3, Strictness: <L,U><L,A><S,U>, Inline: INLINE[0],
+     Unfolding: InlineRule (3, True, True)
+                (\ (w :: Lexer.FileName)
+                   (w1 :: [[GHC.Types.Int]])
+                   (w2 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 Lib.$wwithFile w w2) -}
+6b255908062d3b786f3bad2b7972d65d
+  withText ::
+    Lexer.FileName
+    -> GHC.Base.String -> [[GHC.Types.Int]] -> GHC.Types.IO ()
+  {- Arity: 4, Strictness: <L,1*U><L,U><L,A><S,U>,
+     Unfolding: InlineRule (0, True, True)
+                Lib.withText1
+                  `cast`
+                (<Lexer.FileName>_R
+                 ->_R <GHC.Base.String>_R
+                 ->_R <[[GHC.Types.Int]]>_R
+                 ->_R Sym (GHC.Types.N:IO[0] <()>_R)) -}
+5eb6e336fc68f4921f13a062172c836e
+  withText1 ::
+    Lexer.FileName
+    -> GHC.Base.String
+    -> [[GHC.Types.Int]]
+    -> GHC.Prim.State# GHC.Prim.RealWorld
+    -> (# GHC.Prim.State# GHC.Prim.RealWorld, () #)
+  {- Arity: 4, Strictness: <L,1*U><L,U><L,A><S,U>, Inline: INLINE[0],
+     Unfolding: InlineRule (4, True, True)
+                (\ (w :: Lexer.FileName)
+                   (w1 :: GHC.Base.String)
+                   (w2 :: [[GHC.Types.Int]])
+                   (w3 :: GHC.Prim.State# GHC.Prim.RealWorld)[OneShot] ->
+                 Lib.$wwithText w w1 w3) -}
+"SPEC/Lib $fShow(,)_$cshowList @ [Char] @ [Char]" [ALWAYS] forall ($dShow1 :: GHC.Show.Show
+                                                                                [GHC.Types.Char])
+                                                                  ($dShow :: GHC.Show.Show
+                                                                               [GHC.Types.Char])
+  GHC.Show.$fShow(,)_$cshowList @ [GHC.Types.Char]
+                                @ [GHC.Types.Char]
+                                $dShow
+                                $dShow1
+  = Lib.$s$fShow(,)_$s$fShow(,)_$cshowList
+vectorised variables:
+vectorised tycons:
+vectorised reused tycons:
+parallel variables:
+parallel tycons:
+trusted: none
+require own pkg trusted: False
+

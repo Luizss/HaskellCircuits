@@ -1,0 +1,8 @@
+data UserBool = UserTrue | UserFalse
+
+userNot :: UserBool -> UserBool
+userNot UserTrue = UserFalse
+userNot UserFalse = UserTrue
+
+main :: UserBool -> UserBool
+main x = userNot x

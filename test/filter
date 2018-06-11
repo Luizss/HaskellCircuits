@@ -1,6 +1,11 @@
-main (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
-  | equ (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (0 : Vec 32) : Bit = (a : Stream (Vec 32))
-  | f (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Bit = main (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (consR (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
-  | (1 : Bit) = main (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
+main :: List Int -> List Int
+main s = filter s
 
-f (x : Vec 32) : Bit = not (equ (x : Vec 32) (5 : Vec 32) : Bit) : Bit
+filter :: List Int -> List Int
+filter Nil = Nil
+filter (Cons x xs)
+  | g x = Cons x (filter xs)
+  | otherwise = filter xs
+
+g :: Int -> Bool
+g x = equ 2 x

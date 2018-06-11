@@ -1,0 +1,12 @@
+data UserList = UserNil | UserCons Int UserList
+
+map :: UserList -> UserList
+map f UserNil = UserNil
+map (UserCons x xs) = UserCons (g x) (map xs)
+
+g :: Int -> Int
+g x = mul x 3
+
+main :: UserList -> UserList
+main x = map x
+

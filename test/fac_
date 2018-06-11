@@ -1,6 +1,0 @@
-main :: Int -> Int
-main n = fac n
-
-fac n
- | equ n 0 = 1
- | otherwise = mul (fac (sub n 1))

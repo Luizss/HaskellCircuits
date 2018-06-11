@@ -1,3 +1,0 @@
-main (s : Stream Bit) (l : Stream Bit) : Stream Bit
-  | now (1 : Nat 1) (s : Stream Bit) : Bit = (s : Stream Bit)
-  | now (1 : Nat 2) (l : Stream Bit) : Bit = (l : Stream Bit)

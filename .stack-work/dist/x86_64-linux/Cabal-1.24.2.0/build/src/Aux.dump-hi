@@ -1,0 +1,377 @@
+
+==================== FINAL INTERFACE ====================
+2018-06-09 19:11:52.619013 UTC
+
+interface HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo:Aux 8002
+  interface hash: f674d96d4324f312f263b1dd298c9df9
+  ABI hash: 19066227c591c3746fddc67fa02fb706
+  export-list hash: 3c8f8ea3f0430e062a77584d5651b09f
+  orphan hash: 693e9af84d3dfcc71e640e005bdc5e2e
+  flag hash: 91cd76246f60d900fce8e309e594df82
+  sig of: Nothing
+  used TH splices: False
+  where
+exports:
+  Aux.both
+  Aux.count
+  Aux.equalFType
+  Aux.for
+  Aux.fst3
+  Aux.fst4
+  Aux.getTypeFromFExpr
+  Aux.indexes
+  Aux.isJust
+  Aux.isLowVar
+  Aux.isNothing
+  Aux.isStreamFunc
+  Aux.just
+  Aux.mapFst
+  Aux.mapIndex
+  Aux.mapIndex'
+  Aux.mapSec
+  Aux.may
+  Aux.mok
+  Aux.ok
+module dependencies: Lexer Parser Types
+package dependencies: array-0.5.1.1@array-0.5.1.1 base-4.9.1.0
+                      containers-0.5.7.1@containers-0.5.7.1
+                      deepseq-1.4.2.0@deepseq-1.4.2.0 ghc-prim-0.5.0.0
+                      integer-gmp-1.0.0.1 mtl-2.2.1@mtl-2.2.1-BLKBelFsPB3BoFeSWSOYj6
+                      transformers-0.5.2.0@transformers-0.5.2.0
+                      utf8-string-1.0.1.1@utf8-string-1.0.1.1-1DpjxLeTvGg7ttZZojxJR5
+orphans: HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo:Parser
+         base-4.9.1.0:GHC.Base base-4.9.1.0:GHC.Float
+         transformers-0.5.2.0@transformers-0.5.2.0:Control.Monad.Trans.Error
+family instance modules: base-4.9.1.0:Control.Applicative
+                         base-4.9.1.0:Data.Complex base-4.9.1.0:Data.Either
+                         base-4.9.1.0:Data.Functor.Const base-4.9.1.0:Data.Functor.Identity
+                         base-4.9.1.0:Data.List.NonEmpty base-4.9.1.0:Data.Monoid
+                         base-4.9.1.0:Data.Semigroup base-4.9.1.0:Data.Type.Equality
+                         base-4.9.1.0:Data.Version base-4.9.1.0:Data.Void
+                         base-4.9.1.0:GHC.Exts base-4.9.1.0:GHC.Generics
+                         base-4.9.1.0:GHC.IO.Exception base-4.9.1.0:GHC.TypeLits
+                         containers-0.5.7.1@containers-0.5.7.1:Data.Map.Base
+                         containers-0.5.7.1@containers-0.5.7.1:Data.Set.Base
+import  -/  Lexer c6174f684585218aa184faedf4ab7f58
+  exports: c0fea5fa50c83f412bfcd8243e0a6172
+  L aeabd488767cc0257d48246b31a3c8eb
+  Low a60819b3a41da7c3fbdecdba34a169db
+import  -/  Parser f25442964b616089abfc3d7b05acabc3
+  exports: 518f87c40b39394a3af3d07ea4f63fc3
+import  -/  Types 757470cca10fe0c859acdd7db069deaa
+  exports: 34058aae7a6fb4ed664b025b184c161d
+  Bit 0aab82c6cc5be9036a05f222d64d8c22
+  BitVec cfe16d092987a9210a1b4afcbc43986a
+  CTAExpr d3b8dc074bbd299cf33cd3d29a5ca0ab
+  FAExpr 512df26fee6a81644cd4726cfe62a72c
+  FApp 31927d58a79337ad29c0d95bea7ec9d3
+  FExpr 6b3f2b074af6414441f2b2fb429b4efe
+  FType 8b9bd064502b5d5eb590940bf149b133
+  Name 4bbc3da5ef1d02db55291a2a33a7c002
+  Nat d9bb63a66ef2c7ee29fdfa61f0058ffd
+  TM f4ba4f96d9f8dffc5235169391939992
+import  -/  base-4.9.1.0:Data.Foldable 3e0b6967a1da89945d0e2d47266337a2
+import  -/  base-4.9.1.0:GHC.Base c4231c43c07e46080a26bf94094c7aa1
+import  -/  base-4.9.1.0:GHC.Err 3bba35a16538d33d424682ce66876cdd
+import  -/  base-4.9.1.0:GHC.List ab8c4e523e6c479c549d3bcd5fc4a439
+import  -/  base-4.9.1.0:GHC.Num 00bfaa7b2f9d6084913c0697a8a49ec8
+import  -/  base-4.9.1.0:Prelude 22dd289b8469a8fa8dc81cab7b237771
+import  -/  ghc-prim-0.5.0.0:GHC.Classes 0bdf3d057a415ec1b84a7b1994efbe47
+1bd28e0e8eff51ce747223e875056ba3
+  $trModule :: GHC.Types.Module
+  {- HasNoCafRefs, Strictness: m,
+     Unfolding: (GHC.Types.Module Aux.$trModule2 Aux.$trModule1) -}
+d7156d8e6e9e88156058e82be9cb6d6d
+  $trModule1 :: GHC.Types.TrName
+  {- HasNoCafRefs, Strictness: m1,
+     Unfolding: (GHC.Types.TrNameS "Aux"#) -}
+3f33edb51edd6e9fed49965583ce14d9
+  $trModule2 :: GHC.Types.TrName
+  {- HasNoCafRefs, Strictness: m1,
+     Unfolding: (GHC.Types.TrNameS
+                   "HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo"#) -}
+7a10f2d786d853355b0698bf46217973
+  $wcount :: GHC.Classes.Eq a => a -> [a] -> GHC.Prim.Int#
+  {- Arity: 3, HasNoCafRefs,
+     Strictness: <L,U(C(C1(U)),A)><L,U><S,1*U>, Inline: [0],
+     Unfolding: (\ @ a (w :: GHC.Classes.Eq a) (w1 :: a) (w2 :: [a]) ->
+                 letrec {
+                   $wgo :: [a] -> GHC.Prim.Int# -> GHC.Prim.Int#
+                     {- Arity: 2, Strictness: <S,1*U><L,U>, Inline: [0] -}
+                   = \ (w3 :: [a]) (ww :: GHC.Prim.Int#) ->
+                     case w3 of wild {
+                       [] -> ww
+                       : y ys
+                       -> case GHC.Classes.== @ a w y w1 of wild1 {
+                            GHC.Types.False -> $wgo ys ww
+                            GHC.Types.True -> $wgo ys (GHC.Prim.+# ww 1#) } }
+                 } in
+                 $wgo w2 0#) -}
+c5190165eceb2be382c42c00d04b3bf2
+  both :: (a -> b) -> (a, a) -> (b, b)
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,C(U)><S,1*U(U,U)>m,
+     Unfolding: InlineRule (2, True, False)
+                (\ @ a @ b (f :: a -> b) (ds :: (a, a)) ->
+                 case ds of wild { (,) a1 a2 -> (f a1, f a2) }) -}
+022506b17b3b38c54197d2a838d4e972
+  count :: GHC.Classes.Eq a => a -> [a] -> GHC.Types.Int
+  {- Arity: 3, HasNoCafRefs,
+     Strictness: <L,U(C(C1(U)),A)><L,U><S,1*U>m, Inline: INLINE[0],
+     Unfolding: InlineRule (3, True, False)
+                (\ @ a (w :: GHC.Classes.Eq a) (w1 :: a) (w2 :: [a]) ->
+                 case Aux.$wcount @ a w w1 w2 of ww { DEFAULT ->
+                 GHC.Types.I# ww }) -}
+01ca2ee250f718cfd35afe845f680ceb
+  equalFType :: Types.FType -> Types.FType -> GHC.Types.Bool
+  {- Arity: 2, HasNoCafRefs, Strictness: <S,1*U><L,1*U>,
+     Unfolding: (\ (ds :: Types.FType) (ds1 :: Types.FType) ->
+                 case ds of wild {
+                   DEFAULT -> GHC.Types.False
+                   Types.BitVec ds2 i1
+                   -> case ds1 of wild1 {
+                        DEFAULT -> GHC.Types.False
+                        Types.BitVec ds3 i2 -> GHC.Classes.eqInt i1 i2 }
+                   Types.Bit ds2
+                   -> case ds1 of wild1 {
+                        DEFAULT -> GHC.Types.False Types.Bit ds3 -> GHC.Types.True }
+                   Types.Nat ds2 i1
+                   -> case ds1 of wild1 {
+                        DEFAULT -> GHC.Types.False
+                        Types.Nat ds3 i2 -> GHC.Classes.eqInt i1 i2 } }) -}
+107006115f446d6f8efc30b27b249087
+  for :: [a] -> (a -> b) -> [b]
+  {- Arity: 2, HasNoCafRefs, Strictness: <S,1*U><L,C(U)>,
+     Unfolding: InlineRule (2, True, False)
+                (\ @ b @ a (l :: [a]) (f :: a -> b) ->
+                 GHC.Base.build
+                   @ b
+                   (\ @ b1 (c :: b -> b1 -> b1)[OneShot] (n :: b1)[OneShot] ->
+                    GHC.Base.foldr @ a @ b1 (GHC.Base.mapFB @ b @ b1 @ a c f) n l)) -}
+889f0cb37a42f7bd54f94410cfb4696c
+  fst3 :: (t2, t1, t) -> t2
+  {- Arity: 1, HasNoCafRefs, Strictness: <S(SLL),1*U(1*U,A,A)>,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ t @ t1 @ t2 (ds :: (t2, t1, t)) ->
+                 case ds of wild { (,,) f ds1 ds2 -> f }) -}
+a1b571205bcf4f57645d5beb4b1759d2
+  fst4 :: (t3, t2, t1, t) -> t3
+  {- Arity: 1, HasNoCafRefs, Strictness: <S(SLLL),1*U(1*U,A,A,A)>,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ t @ t1 @ t2 @ t3 (ds :: (t3, t2, t1, t)) ->
+                 case ds of wild { (,,,) f ds1 ds2 ds3 -> f }) -}
+5677aadc19bc365d669bc7748ea5f26b
+  getTypeFromFExpr :: Types.FExpr -> Types.FType
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ (ds :: Types.FExpr) ->
+                 case ds of wild {
+                   Types.FApp ds1 ds2 t -> t
+                   Types.FAExpr ds1 -> case ds1 of wild1 { (,,) ds2 ds3 t -> t } }) -}
+557eec62a8ef9ded499422371ad7debc
+  indexes :: [GHC.Types.Int] -> [a] -> [a]
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,U><S,1*U>,
+     Unfolding: (\ @ a (is :: [GHC.Types.Int]) (xs :: [a]) ->
+                 Aux.indexes3
+                   @ a
+                   (Aux.indexes2
+                      @ (GHC.Base.Maybe a)
+                      @ a
+                      Aux.indexes1
+                      (\ (i :: GHC.Types.Int) (b :: a)[OneShot] ->
+                       case GHC.List.elem
+                              @ GHC.Types.Int
+                              GHC.Classes.$fEqInt
+                              i
+                              is of wild {
+                         GHC.Types.False -> GHC.Base.Nothing @ a
+                         GHC.Types.True -> GHC.Base.Just @ a b })
+                      xs)) -}
+e766146c72e784f7779559ab03bf2f78
+  indexes1 :: GHC.Types.Int
+  {- HasNoCafRefs, Strictness: m, Unfolding: (GHC.Types.I# 0#) -}
+b8b1e688e75c3eadc5c3ae0126b93213
+  indexes2 ::
+    GHC.Types.Int -> (GHC.Types.Int -> t1 -> t) -> [t1] -> [t]
+  {- Arity: 3, HasNoCafRefs,
+     Strictness: <L,U(U)><L,C(C1(U))><S,1*U> -}
+1966ca7b3e8da7dacad4781e1224c2c1
+  indexes3 :: [GHC.Base.Maybe a] -> [a]
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U> -}
+dc83b0ac557f6b9eb3da2ec2084dbef4
+  isJust :: GHC.Base.Maybe a -> GHC.Types.Bool
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ a (ds :: GHC.Base.Maybe a) ->
+                 case ds of wild {
+                   GHC.Base.Nothing -> GHC.Types.False
+                   GHC.Base.Just ds1 -> GHC.Types.True }) -}
+22a1405f107f55e2a9bee3b442519923
+  isLowVar :: Types.CFType -> GHC.Types.Bool
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ (ds :: Types.CFType) ->
+                 case ds of wild {
+                   DEFAULT -> GHC.Types.False
+                   Types.CTAExpr ds1
+                   -> case ds1 of wild1 { Lexer.L ds2 ds3 ->
+                      case ds3 of wild2 {
+                        DEFAULT -> GHC.Types.False
+                        Lexer.Low ds4 -> GHC.Types.True } } }) -}
+65b3e7e824b8d868e2930da83696a3a8
+  isNothing :: GHC.Base.Maybe a -> GHC.Types.Bool
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ a (ds :: GHC.Base.Maybe a) ->
+                 case ds of wild {
+                   GHC.Base.Nothing -> GHC.Types.True
+                   GHC.Base.Just ipv -> GHC.Types.False }) -}
+7bb331bc9f627c8a041278fff486bde7
+  isStreamFunc :: Types.Name -> GHC.Types.Bool
+  {- Arity: 1, Strictness: <L,U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ (name :: Types.Name) ->
+                 GHC.List.elem
+                   @ Types.Name
+                   GHC.Classes.$fEq[]_$s$fEq[]1
+                   name
+                   Aux.isStreamFunc1) -}
+bf7826d0e4723967c6e6a2e4577411bf
+  isStreamFunc1 :: [Types.Name]
+  {- Strictness: m2,
+     Unfolding: (GHC.Types.:
+                   @ Types.Name
+                   Aux.isStreamFunc8
+                   Aux.isStreamFunc2) -}
+933068f3e51ae6142c63745673d3c8ff
+  isStreamFunc2 :: [Types.Name]
+  {- Strictness: m2,
+     Unfolding: (GHC.Types.:
+                   @ Types.Name
+                   Aux.isStreamFunc7
+                   Aux.isStreamFunc3) -}
+979c04721b222d75796107add7bf29bf
+  isStreamFunc3 :: [Types.Name]
+  {- Strictness: m2,
+     Unfolding: (GHC.Types.:
+                   @ Types.Name
+                   Aux.isStreamFunc6
+                   Aux.isStreamFunc4) -}
+5410f75aef521388051665ccb08396e6
+  isStreamFunc4 :: [Types.Name]
+  {- Strictness: m2,
+     Unfolding: (GHC.Types.:
+                   @ Types.Name
+                   Aux.isStreamFunc5
+                   (GHC.Types.[] @ Types.Name)) -}
+4869d9e5bd4af9b65fb69f4de5642ecd
+  isStreamFunc5 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "now"#) -}
+bca839a423c8cbb27270c16760684a40
+  isStreamFunc6 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "rest"#) -}
+11e94dbfe71ce3da48647e2ab24b67e9
+  isStreamFunc7 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "consR"#) -}
+e53005e2774d66e813771960045613d6
+  isStreamFunc8 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "cons"#) -}
+8567f0152f7fceaf161de552d8c51a58
+  just :: GHC.Base.Maybe t -> t
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ t (ds :: GHC.Base.Maybe t) ->
+                 case ds of wild {
+                   GHC.Base.Nothing -> Aux.just1 @ t GHC.Base.Just x -> x }) -}
+2c45692426486a5e5f34dc33d4459cd5
+  just1 :: t
+  {- Strictness: x -}
+3cf9c0c4eb79f0357c79af366e585395
+  mapFst :: (a -> b) -> (a, c) -> (b, c)
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,1*C1(U)><S,1*U(U,U)>m,
+     Unfolding: InlineRule (2, True, False)
+                (\ @ a @ b @ c (f :: a -> b) (ds :: (a, c)) ->
+                 case ds of wild { (,) a1 c1 -> (f a1, c1) }) -}
+d660e1b39cc20b3fbf945ac7ee7940ae
+  mapIndex :: (GHC.Types.Int -> t1 -> t) -> [t1] -> [t]
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,C(C1(U))><S,1*U>,
+     Unfolding: InlineRule (2, True, False)
+                (\ @ t @ t1 (eta :: GHC.Types.Int -> t1 -> t) (eta1 :: [t1]) ->
+                 Aux.indexes2 @ t @ t1 Aux.indexes1 eta eta1) -}
+a245a03bca5e162260dc3de9db614f65
+  mapIndex' :: GHC.Num.Num t2 => t2 -> (t2 -> t1 -> t) -> [t1] -> [t]
+  {- Arity: 4, HasNoCafRefs,
+     Strictness: <L,U(C(C1(U)),A,A,A,A,A,1*C1(U))><L,U><L,C(C1(U))><S,1*U>,
+     Unfolding: (\ @ t
+                   @ t1
+                   @ t2
+                   ($dNum :: GHC.Num.Num t2)
+                   (eta :: t2)
+                   (eta1 :: t2 -> t1 -> t)
+                   (eta2 :: [t1]) ->
+                 let {
+                   lvl10 :: t2 = GHC.Num.fromInteger @ t2 $dNum Aux.mapIndex'1
+                 } in
+                 letrec {
+                   mapIndex'2 :: t2 -> (t2 -> t1 -> t) -> [t1] -> [t]
+                     {- Arity: 3, Strictness: <L,U><L,C(C1(U))><S,1*U> -}
+                   = \ (ds :: t2) (f :: t2 -> t1 -> t) (ds1 :: [t1]) ->
+                     case ds1 of wild {
+                       [] -> GHC.Types.[] @ t
+                       : x xs
+                       -> GHC.Types.:
+                            @ t
+                            (f ds x)
+                            (mapIndex'2 (GHC.Num.+ @ t2 $dNum ds lvl10) f xs) }
+                 } in
+                 mapIndex'2 eta eta1 eta2) -}
+ba8197b91f89f6aba7c67a3e1e1f5ac9
+  mapIndex'1 :: GHC.Integer.Type.Integer
+  {- HasNoCafRefs, Unfolding: (1) -}
+29416d3d6accad7918dbccf0b58a8ca3
+  mapSec :: (a -> b) -> (c, a) -> (c, b)
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,1*C1(U)><S,1*U(U,U)>m,
+     Unfolding: InlineRule (2, True, False)
+                (\ @ a @ b @ c (f :: a -> b) (ds :: (c, a)) ->
+                 case ds of wild { (,) c1 a1 -> (c1, f a1) }) -}
+06fd456aa683c3ce5a0cba12fec1b93e
+  may :: GHC.Base.Maybe a -> Types.TM (GHC.Base.Maybe a)
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,U><L,U>m,
+     Unfolding: InlineRule (0, True, True)
+                (\ @ a -> GHC.Tuple.(,) @ (GHC.Base.Maybe a) @ Types.TState)
+                  `cast`
+                (forall (a :: <*>_N).
+                 <GHC.Base.Maybe a>_R
+                 ->_R Trans
+                          (<Types.TState>_R
+                           ->_R Sym (Data.Functor.Identity.N:Identity[0]
+                                         <(GHC.Base.Maybe a, Types.TState)>_R))
+                          (Sym (Control.Monad.Trans.State.Lazy.N:StateT[0]
+                                    <Types.TState>_N
+                                    <Data.Functor.Identity.Identity>_R
+                                    <GHC.Base.Maybe a>_N))) -}
+0adafff0b584d92b2b919079497c3e70
+  mok :: GHC.Base.Monad m => m (GHC.Base.Maybe ())
+  {- Arity: 1, HasNoCafRefs,
+     Strictness: <S(LLLC(S)L),1*U(A,A,A,1*C1(U),A)>,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ (m :: * -> *) ($dMonad :: GHC.Base.Monad m) ->
+                 GHC.Base.return @ m $dMonad @ (GHC.Base.Maybe ()) Aux.mok1) -}
+6d3c12d1bf087df3747b8779f43782f1
+  mok1 :: GHC.Base.Maybe ()
+  {- HasNoCafRefs, Strictness: m2,
+     Unfolding: (GHC.Base.Just @ () GHC.Tuple.()) -}
+8b975d9be36db7c5fc6bef7069b4d150
+  ok :: GHC.Base.Monad m => m ()
+  {- Arity: 1, HasNoCafRefs,
+     Strictness: <S(LLLC(S)L),1*U(A,A,A,1*C1(U),A)>,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ (m :: * -> *) ($dMonad :: GHC.Base.Monad m) ->
+                 GHC.Base.return @ m $dMonad @ () GHC.Tuple.()) -}
+vectorised variables:
+vectorised tycons:
+vectorised reused tycons:
+parallel variables:
+parallel tycons:
+trusted: none
+require own pkg trusted: False
+

@@ -1,0 +1,129 @@
+
+==================== FINAL INTERFACE ====================
+2018-06-09 19:11:52.511802 UTC
+
+interface HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo:Layout 8002
+  interface hash: 552c5b8e30ce53912e5e1c5aafac0c0d
+  ABI hash: 99b9681511140ab1dbb069829cceb35f
+  export-list hash: 15953c18c1b2f42d7300e815088887fa
+  orphan hash: 693e9af84d3dfcc71e640e005bdc5e2e
+  flag hash: 91cd76246f60d900fce8e309e594df82
+  sig of: Nothing
+  used TH splices: False
+  where
+exports:
+  Layout.getMarked
+  Layout.lay
+  Layout.layout
+  Layout.markTokensAfterKeywords
+  Layout.semicolonProcess
+  Layout.Context
+  Layout.Marked
+module dependencies: Lexer
+package dependencies: array-0.5.1.1@array-0.5.1.1 base-4.9.1.0
+                      ghc-prim-0.5.0.0 integer-gmp-1.0.0.1
+                      mtl-2.2.1@mtl-2.2.1-BLKBelFsPB3BoFeSWSOYj6
+                      transformers-0.5.2.0@transformers-0.5.2.0
+                      utf8-string-1.0.1.1@utf8-string-1.0.1.1-1DpjxLeTvGg7ttZZojxJR5
+orphans: base-4.9.1.0:GHC.Base base-4.9.1.0:GHC.Float
+         transformers-0.5.2.0@transformers-0.5.2.0:Control.Monad.Trans.Error
+family instance modules: base-4.9.1.0:Control.Applicative
+                         base-4.9.1.0:Data.Either base-4.9.1.0:Data.Functor.Const
+                         base-4.9.1.0:Data.Functor.Identity base-4.9.1.0:Data.List.NonEmpty
+                         base-4.9.1.0:Data.Monoid base-4.9.1.0:Data.Semigroup
+                         base-4.9.1.0:Data.Type.Equality base-4.9.1.0:Data.Version
+                         base-4.9.1.0:Data.Void base-4.9.1.0:GHC.Exts
+                         base-4.9.1.0:GHC.Generics base-4.9.1.0:GHC.IO.Exception
+                         base-4.9.1.0:GHC.TypeLits
+import  -/  Lexer c6174f684585218aa184faedf4ab7f58
+  exports: c0fea5fa50c83f412bfcd8243e0a6172
+  L aeabd488767cc0257d48246b31a3c8eb
+  LToken fd141e29e5214152a04ab8dbc6cb5857
+  NoLoc 1192b825a1bbdd5c089dbb8aeba295bc
+  Semic 61bfbbffbc1d55394c6702f30f0c3a47
+  SrcLoc 510a640ddf88b20ff6b6951a0336b818
+import  -/  base-4.9.1.0:Data.Tuple 7dc4bbb45d2e69c991ffac438beeca11
+import  -/  base-4.9.1.0:GHC.Base c4231c43c07e46080a26bf94094c7aa1
+import  -/  base-4.9.1.0:GHC.Err 3bba35a16538d33d424682ce66876cdd
+import  -/  base-4.9.1.0:GHC.List ab8c4e523e6c479c549d3bcd5fc4a439
+import  -/  base-4.9.1.0:Prelude 22dd289b8469a8fa8dc81cab7b237771
+import  -/  ghc-prim-0.5.0.0:GHC.Classes 0bdf3d057a415ec1b84a7b1994efbe47
+0ae5c798638be28ac1ec288c152e3d20
+  $trModule :: GHC.Types.Module
+  {- HasNoCafRefs, Strictness: m,
+     Unfolding: (GHC.Types.Module
+                   Layout.$trModule2
+                   Layout.$trModule1) -}
+102cda4ce0efe9c1e8e2c1b8ccdef617
+  $trModule1 :: GHC.Types.TrName
+  {- HasNoCafRefs, Strictness: m1,
+     Unfolding: (GHC.Types.TrNameS "Layout"#) -}
+d9f722f32abe20ee4c54128b95053079
+  $trModule2 :: GHC.Types.TrName
+  {- HasNoCafRefs, Strictness: m1,
+     Unfolding: (GHC.Types.TrNameS
+                   "HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo"#) -}
+946404d282ec80831fdc987db7fcada4
+  type Context = GHC.Types.Int
+cd2efdc17987404a00023318cdd58dc6
+  type Marked a = (GHC.Types.Bool, a)
+1ac2992443e57331d87604870bfc1b00
+  getMarked :: Layout.Marked a -> a
+  {- Arity: 1, HasNoCafRefs, Strictness: <S(LS),1*U(A,1*U)>,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ a (ds :: (GHC.Types.Bool, a)) ->
+                 case ds of wild { (,) ds1 x -> x }) -}
+558aa669118524a4754348dc473fd60c
+  lay ::
+    [Layout.Marked Lexer.LToken] -> [Layout.Context] -> [Lexer.LToken]
+  {- Arity: 2, Strictness: <S,1*U><S,U> -}
+3cb06cd6f9be2f9deea4c342cf555171
+  layout :: [Lexer.LToken] -> [Lexer.LToken]
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (tokens :: [Lexer.LToken]) ->
+                 case Layout.layout_destroyDuplicatedSemics
+                        (Layout.lay
+                           (GHC.Base.map
+                              @ (Lexer.L Lexer.Token)
+                              @ (GHC.Types.Bool, Lexer.LToken)
+                              Layout.layout1
+                              tokens)
+                           (GHC.Types.[] @ Layout.Context)) of wild {
+                   [] -> GHC.List.scanl2 @ (Lexer.L Lexer.Token) : ds1 xs -> xs }) -}
+1aee82a5f77b2e673cf28431f412222d
+  layout1 :: Lexer.L Lexer.Token -> (GHC.Types.Bool, Lexer.LToken)
+  {- Arity: 1, HasNoCafRefs,
+     Unfolding: (\ (x :: Lexer.L Lexer.Token) ->
+                 (GHC.Types.False, x)) -}
+418cb39efe2594852c1e31416a8dc7ea
+  layout_destroyDuplicatedSemics ::
+    [Lexer.L Lexer.Token] -> [Lexer.L Lexer.Token]
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U> -}
+1670d056cd2001a2fd076164685b3220
+  markTokensAfterKeywords ::
+    [Lexer.LToken] -> [Layout.Marked Lexer.LToken]
+  {- Arity: 1, HasNoCafRefs,
+     Unfolding: (GHC.Base.map
+                   @ Lexer.LToken
+                   @ (GHC.Types.Bool, Lexer.LToken)
+                   (Layout.markTokensAfterKeywords_markFalse @ Lexer.LToken)) -}
+fc8a0b2fc987e23f2acf0aa435e275a1
+  markTokensAfterKeywords_markFalse :: t -> (GHC.Types.Bool, t)
+  {- Arity: 1, HasNoCafRefs, Strictness: <L,U>m,
+     Unfolding: InlineRule (1, True, False)
+                (\ @ t (x :: t) -> (GHC.Types.False, x)) -}
+ce092843069b811abff47386b5929773
+  semicolonProcess :: [Lexer.LToken] -> [Lexer.LToken]
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ (x :: [Lexer.L Lexer.Token]) ->
+                 case Layout.layout_destroyDuplicatedSemics x of wild {
+                   [] -> GHC.List.scanl2 @ (Lexer.L Lexer.Token) : ds1 xs -> xs }) -}
+vectorised variables:
+vectorised tycons:
+vectorised reused tycons:
+parallel variables:
+parallel tycons:
+trusted: none
+require own pkg trusted: False
+

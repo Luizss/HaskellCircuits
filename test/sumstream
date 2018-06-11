@@ -1,7 +1,0 @@
-main (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
-  | equ (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (0 : Vec 32) : Bit = (a : Stream (Vec 32))
-  | (1 : Bit) = main (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (consR (cat (sum (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (0 : Vec 31) : Vec 31) (1 : Bit) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
-
-sum (s : Stream (Vec 32)) (a : Vec 31) : Vec 31
-  | equ (sli (0 : Nat 0) (0 : Nat 0) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Bit) (0 : Bit) : Bit = (a : Vec 31)
-  | (1 : Bit) = sum (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (add (sli (1 : Nat 1) (31 : Nat 31) (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) : Vec 31) (a : Vec 31) : Vec 31) : Vec 31

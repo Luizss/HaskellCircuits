@@ -1,3 +1,8 @@
-main (n : Vec 32) (k : Vec 32) (s : Stream (Vec 32)) (a : Stream (Vec 32)) : Stream (Vec 32)
-  | equ (n : Vec 32) (k : Vec 32) : Bit = (a : Stream (Vec 32))
-  | (1 : Bit) = main (n : Vec 32) (add (k : Vec 32) (1 : Vec 32) : Vec 32) (rest (1 : Nat 1) (s : Stream (Vec 32)) : Stream (Vec 32)) (consR (now (1 : Nat 1) (s : Stream (Vec 32)) : Vec 32) (a : Stream (Vec 32)) : Stream (Vec 32)) : Stream (Vec 32)
+main :: List Int -> List Int
+main s = take s 3
+
+take :: List Int -> Int -> List Int
+take Nil n = Nil
+take (Cons x xs) n
+  | equ n 0 = Nil
+  | otherwise = Cons x (take xs (sub n 1))

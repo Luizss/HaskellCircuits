@@ -1,0 +1,1197 @@
+
+==================== FINAL INTERFACE ====================
+2018-06-09 19:11:58.712315 UTC
+
+interface HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo:Function 8002
+  interface hash: 0024db3e82c10ff88b9a2169eafa4d58
+  ABI hash: cf5aa69dc264892ea8552a54f271a6dc
+  export-list hash: 2a7725d24c93907834b7e162f2be9a8f
+  orphan hash: 1545dbceb0fefa9d38098129b4d0b5a7
+  flag hash: 91cd76246f60d900fce8e309e594df82
+  sig of: Nothing
+  used TH splices: False
+  where
+exports:
+  Function.accExpr
+  Function.addNewFunction
+  Function.applyHighOrder
+  Function.changeName
+  Function.checkForArityErrs
+  Function.classifyFExpr
+  Function.classifyFExpr'
+  Function.classifyRecursion
+  Function.classifyTypes
+  Function.decide
+  Function.decideAcrossGuards
+  Function.findEndingExpr
+  Function.fromParsedFunctionToF_AddToState
+  Function.fromParsedTypeExprToFunctionType
+  Function.getParsedFunctions_TransformToF_AddToState
+  Function.initialCallExpr
+  Function.isConsExpr
+  Function.isHighOrder
+  Function.isRecursive
+  Function.leftRecExpr
+  Function.newBody
+  Function.restOfName
+  Function.rightToLeft
+  Function.showEx
+  Function.showEx'
+  Function.showF
+  Function.showFGS
+  Function.showFunc
+  Function.showFuncs
+  Function.showTy
+  Function.showVar
+  Function.showVars
+  Function.showfvarcons
+  Function.takeOut
+  Function.toFVar
+  Function.toName
+module dependencies: Aux Lexer Parser TransformationMonad Types
+package dependencies: array-0.5.1.1@array-0.5.1.1 base-4.9.1.0
+                      containers-0.5.7.1@containers-0.5.7.1
+                      deepseq-1.4.2.0@deepseq-1.4.2.0 ghc-prim-0.5.0.0
+                      integer-gmp-1.0.0.1 mtl-2.2.1@mtl-2.2.1-BLKBelFsPB3BoFeSWSOYj6
+                      transformers-0.5.2.0@transformers-0.5.2.0
+                      utf8-string-1.0.1.1@utf8-string-1.0.1.1-1DpjxLeTvGg7ttZZojxJR5
+orphans: HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo:Parser
+         base-4.9.1.0:GHC.Base base-4.9.1.0:GHC.Float
+         transformers-0.5.2.0@transformers-0.5.2.0:Control.Monad.Trans.Error
+family instance modules: base-4.9.1.0:Control.Applicative
+                         base-4.9.1.0:Data.Complex base-4.9.1.0:Data.Either
+                         base-4.9.1.0:Data.Functor.Const base-4.9.1.0:Data.Functor.Identity
+                         base-4.9.1.0:Data.List.NonEmpty base-4.9.1.0:Data.Monoid
+                         base-4.9.1.0:Data.Semigroup base-4.9.1.0:Data.Type.Equality
+                         base-4.9.1.0:Data.Version base-4.9.1.0:Data.Void
+                         base-4.9.1.0:GHC.Exts base-4.9.1.0:GHC.Generics
+                         base-4.9.1.0:GHC.IO.Exception base-4.9.1.0:GHC.TypeLits
+                         containers-0.5.7.1@containers-0.5.7.1:Data.Map.Base
+                         containers-0.5.7.1@containers-0.5.7.1:Data.Set.Base
+import  -/  Aux 19066227c591c3746fddc67fa02fb706
+  exports: 3c8f8ea3f0430e062a77584d5651b09f
+  getTypeFromFExpr 5677aadc19bc365d669bc7748ea5f26b
+  indexes 557eec62a8ef9ded499422371ad7debc
+  isJust dc83b0ac557f6b9eb3da2ec2084dbef4
+  just 8567f0152f7fceaf161de552d8c51a58
+  mapIndex d660e1b39cc20b3fbf945ac7ee7940ae
+  mok 0adafff0b584d92b2b919079497c3e70
+  ok 8b975d9be36db7c5fc6bef7069b4d150
+import  -/  Lexer c6174f684585218aa184faedf4ab7f58
+  exports: c0fea5fa50c83f412bfcd8243e0a6172
+  Bin 1f25e29df2873757e51103aa7c29951d
+  Dec 8b0f2277218f753a903427d84acf225f
+  Hex 48ae9fca0c791aa2ab7be7a483770cf8
+  L aeabd488767cc0257d48246b31a3c8eb
+  LToken fd141e29e5214152a04ab8dbc6cb5857
+  Low a60819b3a41da7c3fbdecdba34a169db
+  NoLoc 1192b825a1bbdd5c089dbb8aeba295bc
+  Upp 894a86340c775c101c75dc2b77ce46e2
+  getLoc 09a79ed036326baf711de38c66d809b8
+  getVal 569eb0fca1fc7d6ce36599b9fd57c1ac
+import  -/  TransformationMonad 9a41a082a5198ad8166e58e36aa95114
+  exports: a2f2911707e7fb33be1f875278a27f62
+  addFunc 7c89b1e0557c5b793ef5d3b7569e7d6e
+  addFunctionId 87fb2b85841f28c35a38b2bcaa9bf420
+  changeFunction 115fca06dc9a5b723dbbf7b95f4a727c
+  cont 15ef40196d547ee7c1c037a71afb7acd
+  cont1 863999094999483849ffafa9f0237d73
+  cont2 4c4faac896508b22afecd9aa4fb01dbf
+  cont_ eeaa22547872c98097fe900855fef26c
+  debug f46f4739191d885fb6b73c306966ed95
+  getFunctionId 220455cf2c5d998ea83fc389efd68096
+  getFunctions eab9116df7e74b5aa756b4bf445934d5
+  getTCore b41dd4b0a6125d315ab2917092260814
+  highOrderArgs 36772d9d8702d0afd4c58c74f8f412bf
+  isFunctionHighOrder 1587384c8c618f627528d5d863e2f740
+  log 263d7269c9089743379b011b944aba91
+  newStage 087fdfc0cc39df143a765b026c2c84ce
+  noRet f27a766fc8906feee50ef508c6ef3ff0
+  removeFunction fdd7f8c6acb7427a6e5d5bbe70b6fda6
+  ret 8f8ddfb5f423bc7b265fdcea5121253c
+  searchFunction 97f22c4d4851b9009b389285b009c4ea
+  throw fd22a7ad31f6177a0a7c3d0b74f70074
+import  -/  Types 757470cca10fe0c859acdd7db069deaa
+  exports: 34058aae7a6fb4ed664b025b184c161d
+  ArityMismatch 1f0667679410727fcc16f08d89717fac
+  Bit 0aab82c6cc5be9036a05f222d64d8c22
+  BitVec cfe16d092987a9210a1b4afcbc43986a
+  CFType 8104f895f8b3e96ad3976476ae2f7330
+  CTAExpr d3b8dc074bbd299cf33cd3d29a5ca0ab
+  CTApp 350ec496e570c115280dc3989c163e27
+  CTArrow caaffa29e74dbde0c396f789ac81cc28
+  ExpressionConstructionErr 92c6b987e53d8555c1f580d2bab5c5f5
+  F 6aafaa3aa6b911b99b58a60ba71b52cc
+  F 74171069deaec79bbacaae4de0c8605f
+  FAExpr 512df26fee6a81644cd4726cfe62a72c
+  FApp 31927d58a79337ad29c0d95bea7ec9d3
+  FBin 975f77e4c3e62d783cb5649621fda325
+  FCons 9a59f1e31b122e7491bfb72f6b8064c6
+  FDec a2084987e9febf473fb853fd698e7ce1
+  FExpr 6b3f2b074af6414441f2b2fb429b4efe
+  FForeverWait 937312539964504697af04e29f3464c8
+  FGuards 256ad52464aa852117cddb575acad30c
+  FGuards f0164379fcbf1ee84d79a6d7cd973f63
+  FHex 629ee593c6950aa8a26c32ab09dc76ee
+  FType 8b9bd064502b5d5eb590940bf149b133
+  FVar 61c910a3a9c761fed7d98347c9fc1f14
+  FVar 543a0b0b31fe829517cebef23ecba95b
+  Function 8c15fe43113bd8cb9b78479e8403e76b
+  FunctionNotDeclared 0fdce895dc70a43f81fb72d858df9285
+  Id 2682eaa34ecb623f5ad090b662e6527a
+  InputRecursive c67a5b969d7122bef793b243284ad7d0
+  IsConsExpr 22e43b7fcd96b6213ef9409f37d3c228
+  LeftRecursive cb7d5b3d74ce98c17bffdd7c092effa6
+  MultipleRecursive ba5bc9158ad5288396968a894ac1d22b
+  Name 4bbc3da5ef1d02db55291a2a33a7c002
+  Nat d9bb63a66ef2c7ee29fdfa61f0058ffd
+  NoFGuards 311316fbe0dfcf42c229127ac6708d94
+  NoRecursiveTypes 70a518ba8e52f34aa71f0b6ee5bb2373
+  NonRecursive ea38b8dc27a958fd59b8d0873f04e9be
+  NonTerminatingRecursion ec20021f90abfd08b1c28a588e6ff21e
+  OutputInputRecursive ee5f83e27cf9b1f082dca1ec3a2637e0
+  OutputRecursive 71e74f84232675d3a40b247b66797710
+  RecursionClassification 1143e098c46af005c167ea9f06bfd94b
+  RightRecursive 1da58bc6b6f43729b4c06445873b9909
+  SpecialF ca0416c91bb1880a877775b5e6a0e24a
+  Stream 7ba2ceb5dafc7e4c7a3c3232086b9552
+  TCAExpr bf65e3832d1491991d50ea07dd13fdc9
+  TCApp d56da741ba2c53a35ea56cd630b24940
+  TCExpr bc264b66c5f5c83a739a7acdd40704ca
+  TCFunc 236ace8089fb950d30f904265d640bff
+  TCFunc 12aff70e921393996a769ff39cd06cc8
+  TCGuards 35b9a802ae2adc96712065e8c8d0f0ae
+  TCNoGuards dcd13d5a2f1accf45989980da2998bf5
+  TCore fe7322336a92ee2429b6cab0045090f5
+  TErr bd3b322a3f06039eedd1569007f14c0c
+  TFunc 3c2f7afcecfe357ec2bf84c74b0ec723
+  TInterpretationStage 76da4fdf2df33007ff5ad116468dfe20
+  TM f4ba4f96d9f8dffc5235169391939992
+  TMM a7c38748359d680c785978249d7123ff
+  TypeClassification 234f2b6a6efd5e7b44adff20ac6e2db2
+  TypeNotPermitted 6442a0432d10f8c72fe65efff0d06c55
+import  -/  base-4.9.1.0:Control.Monad a6784c5dab0d75c63dabec5a37843f98
+import  -/  base-4.9.1.0:Data.Foldable 3e0b6967a1da89945d0e2d47266337a2
+import  -/  base-4.9.1.0:Data.List 07ae2acca6538aa0800bd0a993ac6ac1
+import  -/  base-4.9.1.0:Data.OldList 27987919d8da2f92e3f472ca81f730f8
+import  -/  base-4.9.1.0:Data.Traversable 556020d7cf3c4a34a774600512918a37
+import  -/  base-4.9.1.0:Data.Tuple 7dc4bbb45d2e69c991ffac438beeca11
+import  -/  base-4.9.1.0:GHC.Base c4231c43c07e46080a26bf94094c7aa1
+import  -/  base-4.9.1.0:GHC.Err 3bba35a16538d33d424682ce66876cdd
+import  -/  base-4.9.1.0:GHC.List ab8c4e523e6c479c549d3bcd5fc4a439
+import  -/  base-4.9.1.0:GHC.Num 00bfaa7b2f9d6084913c0697a8a49ec8
+import  -/  base-4.9.1.0:GHC.Show a027f5ac24879eaba752f44aa90fe511
+import  -/  base-4.9.1.0:Prelude 22dd289b8469a8fa8dc81cab7b237771
+import  -/  ghc-prim-0.5.0.0:GHC.Classes 0bdf3d057a415ec1b84a7b1994efbe47
+import  -/  mtl-2.2.1@mtl-2.2.1-BLKBelFsPB3BoFeSWSOYj6:Control.Monad.Trans d69bc2e104a90fb918d853b240f7af2e
+83e4b46d7e221c847e549dfda598a28d
+  $s$fEqL :: GHC.Classes.Eq (Lexer.L [GHC.Types.Char])
+  {- HasNoCafRefs, Strictness: m, Inline: [ALWAYS] CONLIKE,
+     Unfolding: DFun:.
+                  @ (Lexer.L [GHC.Types.Char])
+                  Function.$s$fEqL1
+                  Function.$s$fEqL_$s$fEqL_$c/= -}
+7fad6be7010ea7c147666d8d3fd99785
+  $s$fEqL1 ::
+    Lexer.L [GHC.Types.Char]
+    -> Lexer.L [GHC.Types.Char] -> GHC.Types.Bool
+  {- Arity: 2, HasNoCafRefs,
+     Strictness: <S(LS),1*U(A,1*U)><S(LS),1*U(A,1*U)>,
+     Unfolding: InlineRule (2, True, False)
+                (\ (ds :: Lexer.L [GHC.Types.Char])
+                   (ds1 :: Lexer.L [GHC.Types.Char]) ->
+                 case ds of wild { Lexer.L ds2 x ->
+                 case ds1 of wild1 { Lexer.L ds3 y -> GHC.Base.eqString x y } }) -}
+965bfd5f5df880ea8cb10266dc6fa350
+  $s$fEqL_$s$fEqL_$c/= ::
+    Lexer.L [GHC.Types.Char]
+    -> Lexer.L [GHC.Types.Char] -> GHC.Types.Bool
+  {- Arity: 2, HasNoCafRefs,
+     Strictness: <S(LS),1*U(A,1*U)><S(LS),1*U(A,1*U)>,
+     Inline: INLINE (sat-args=2),
+     Unfolding: InlineRule (2, False, False)
+                (\ (x :: Lexer.L [GHC.Types.Char])
+                   (y :: Lexer.L [GHC.Types.Char]) ->
+                 GHC.Classes.not (Function.$s$fEqL1 x y)) -}
+5460a1f9e833e51944880c59506d5775
+  $trModule :: GHC.Types.Module
+  {- HasNoCafRefs, Strictness: m,
+     Unfolding: (GHC.Types.Module
+                   Function.$trModule2
+                   Function.$trModule1) -}
+9c705f0f6121f7269bb00a153da25a4b
+  $trModule1 :: GHC.Types.TrName
+  {- HasNoCafRefs, Strictness: m1,
+     Unfolding: (GHC.Types.TrNameS "Function"#) -}
+c6fd8644b2b69a665e088dcb703e891a
+  $trModule2 :: GHC.Types.TrName
+  {- HasNoCafRefs, Strictness: m1,
+     Unfolding: (GHC.Types.TrNameS
+                   "HaskellCircuits-0.1.0.0-3mIW93ol3alH6nhlDJ7Hzo"#) -}
+1fced5f010eecdc763294b0628938b5b
+  $wfromParsedFunctionToF_AddToState ::
+    Lexer.LToken
+    -> [(Lexer.LToken, Types.CFType)]
+    -> Types.TCGuards
+    -> Types.CFType
+    -> Types.TMM ()
+  {- Arity: 4, Strictness: <L,U(1*U,1*U)><L,U><L,U><L,U>,
+     Inline: [0] -}
+4dd67e8c96c1b7929e20cb1fbae5cabf
+  $wgo :: [Types.TFunc] -> Types.TState -> (# (), Types.TState #)
+  {- Arity: 2,
+     Strictness: <S,1*U><L,U(U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U)>,
+     Inline: [0] -}
+0fa7de70f5c6cd21b4b79dc675b5e02e
+  $wgo1 :: [Types.TFunc] -> Types.TState -> (# (), Types.TState #)
+  {- Arity: 2,
+     Strictness: <S,1*U><L,U(U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U)>,
+     Inline: [0] -}
+eff0177f888eef3c79acec018ab1647a
+  $wgo2 :: [Types.TCFunc] -> Types.TState -> (# (), Types.TState #)
+  {- Arity: 2, Strictness: <S,1*U><L,U>, Inline: [0] -}
+0f4c8f26773cd16ff1c98824cb7437d3
+  $wgo3 :: [Types.TFunc] -> Types.TState -> (# (), Types.TState #)
+  {- Arity: 2, Strictness: <S,1*U><L,U>, Inline: [0] -}
+6cdd02cc69384abf1092aac419e668be
+  $wlvl :: Types.FExpr -> Types.FExpr -> [GHC.Types.Char]
+  {- Arity: 2, Strictness: <L,1*U><L,1*U>, Inline: [0],
+     Unfolding: (\ (ww :: Types.FExpr) (ww1 :: Types.FExpr) ->
+                 GHC.CString.unpackAppendCString#
+                   "  | "#
+                   (GHC.Base.++
+                      @ GHC.Types.Char
+                      (Function.showEx ww)
+                      (GHC.CString.unpackAppendCString#
+                         " = "#
+                         (Function.showEx ww1)))) -}
+4f44ce41f741f9fe3efe37a9324a3770
+  $wnewBody ::
+    Types.Name
+    -> Types.Name
+    -> [Types.Name]
+    -> [Types.Name]
+    -> [GHC.Types.Int]
+    -> Types.FGuards
+    -> Types.TM Types.FGuards
+  {- Arity: 6, Strictness: <L,U><L,U><L,U><L,U><L,U><S,1*U>,
+     Inline: [0] -}
+fcea69f8a9ed218a99fffe66f7d677f5
+  $wshowFunc :: Types.Name -> Types.F -> GHC.Base.String
+  {- Arity: 2, Strictness: <S,1*U><L,1*U>, Inline: [0],
+     Unfolding: (\ (ww :: Types.Name) (ww1 :: Types.F) ->
+                 GHC.Base.++
+                   @ GHC.Types.Char
+                   ww
+                   (GHC.CString.unpackAppendCString# " "# (Function.showF ww1))) -}
+0381a737e1336f9d24f73fb1179b0027
+  $wshowVar :: [GHC.Types.Char] -> Types.FType -> [GHC.Types.Char]
+  {- Arity: 2, Strictness: <L,1*U><L,1*U>, Inline: [0],
+     Unfolding: (\ (ww :: [GHC.Types.Char]) (ww1 :: Types.FType) ->
+                 GHC.CString.unpackAppendCString#
+                   "("#
+                   (GHC.Base.++
+                      @ GHC.Types.Char
+                      ww
+                      (GHC.CString.unpackAppendCString#
+                         " :: "#
+                         (GHC.Base.++
+                            @ GHC.Types.Char
+                            (Function.showTy ww1)
+                            Function.showEx'1)))) -}
+2987326d5c3483ca74dd8c09a3f05fdf
+  accExpr :: Types.FType -> Types.FExpr
+  {- Arity: 1, Strictness: <L,U>m2,
+     Unfolding: InlineRule (1, True, False)
+                (\ (ty :: Types.FType) ->
+                 Types.FAExpr (Function.accExpr2, Function.accExpr1, ty)) -}
+effed44e442f725b1245b7d0b8e4ffc0
+  accExpr1 :: GHC.Types.Int
+  {- HasNoCafRefs, Strictness: m, Unfolding: (GHC.Types.I# 1#) -}
+ac170510475f0916313b3634e4d3a70b
+  accExpr2 :: Types.FVarCons
+  {- Strictness: m1, Unfolding: (Types.FVar Function.accExpr3) -}
+fb20c778db80bf3d63ee3bbfdec4d019
+  accExpr3 :: Lexer.L [GHC.Types.Char]
+  {- Strictness: m,
+     Unfolding: (Lexer.L
+                   @ [GHC.Types.Char]
+                   Lexer.NoLoc
+                   Function.accExpr4) -}
+82c0c1130e3506ac5e4ac2b9e65a9286
+  accExpr4 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "__acc"#) -}
+dba9f5e2eaee118e72c12fdcf1c4fe2e
+  addNewFunction ::
+    Types.Name -> [Types.Name] -> [GHC.Types.Int] -> Types.TMM ()
+  {- Arity: 3, Strictness: <L,U><L,U><L,U>,
+     Unfolding: (\ (fname :: Types.Name)
+                   (substs :: [Types.Name])
+                   (as :: [GHC.Types.Int]) ->
+                 let {
+                   newFname :: [GHC.Types.Char]
+                   = GHC.Base.++
+                       @ GHC.Types.Char
+                       fname
+                       (Function.addNewFunction_go substs as)
+                 } in
+                 let {
+                   lvl47 :: (Types.Name, Lexer.SrcLoc, Types.F, Types.Arity,
+                             Types.FunctionClassification, Types.HighOrder)
+                            -> GHC.Types.Bool
+                     {- Arity: 1 -}
+                   = \ (ds18 :: (Types.Name, Lexer.SrcLoc, Types.F, Types.Arity,
+                                 Types.FunctionClassification, Types.HighOrder)) ->
+                     case ds18 of wild1 { (,,,,,) n ds19 ds20 ds21 ds22 ds23 ->
+                     GHC.Classes.$fEq[]_$s$c/=1 n fname }
+                 } in
+                 (\ (s1 :: Types.TState) ->
+                  case TransformationMonad.$wsearchFunction
+                         fname
+                         s1 of ww { (#,#) ww1 ww2 ->
+                  case ww1 of wild {
+                    GHC.Base.Nothing
+                    -> (TransformationMonad.cont4 @ () ww2)
+                         `cast`
+                       (Sym (Data.Functor.Identity.N:Identity[0]
+                                 <(GHC.Base.Maybe (), Types.TState)>_R))
+                    GHC.Base.Just ds1
+                    -> case ds1 of wild1 { (,,,,,) ds loc5 ds2 a fc ds3 ->
+                       case ds2 of wild2 {
+                         Types.F vars fgs ft
+                         -> (Function.addNewFunction3,
+                             case ((Function.$wnewBody
+                                      fname
+                                      newFname
+                                      (GHC.Base.map
+                                         @ (Lexer.L Types.Name, Types.FType)
+                                         @ [GHC.Types.Char]
+                                         Function.addNewFunction2
+                                         (Aux.indexes @ (Types.FVar, Types.FType) as vars))
+                                      substs
+                                      as
+                                      fgs)
+                                     `cast`
+                                   (Control.Monad.Trans.State.Lazy.N:StateT[0]
+                                        <Types.TState>_N
+                                        <Data.Functor.Identity.Identity>_R
+                                        <Types.FGuards>_N)
+                                     ww2)
+                                    `cast`
+                                  (Data.Functor.Identity.N:Identity[0]
+                                       <(Types.FGuards, Types.TState)>_R) of wild3 { (,) a1 s' ->
+                             case s' of wild4 { Types.TState ds4 ds5 ds6 ds7 ds8 ds9 ds10 ds11 ds12 ds13 ds14 ds15 ds16 ds17 ds18 ds19 ds20 ds21 ->
+                             Types.TState
+                               ds4
+                               ds5
+                               ds6
+                               ds7
+                               ds8
+                               ds9
+                               ds10
+                               ds11
+                               (GHC.List.filter
+                                  @ (Types.Name, Lexer.SrcLoc, Types.F, Types.Arity,
+                                     Types.FunctionClassification, Types.HighOrder)
+                                  lvl47
+                                  (GHC.Types.:
+                                     @ Types.TFunc
+                                     (newFname, loc5,
+                                      Types.F
+                                        (Function.takeOut @ (Types.FVar, Types.FType) as vars)
+                                        a1
+                                        ft,
+                                      a, fc, GHC.Types.[] @ GHC.Types.Int)
+                                     ds12))
+                               ds13
+                               ds14
+                               ds15
+                               ds16
+                               ds17
+                               ds18
+                               ds19
+                               ds20
+                               ds21 } })
+                              `cast`
+                            (Sym (Data.Functor.Identity.N:Identity[0]
+                                      <(GHC.Base.Maybe (), Types.TState)>_R))
+                         Types.SpecialF
+                         -> case Function.addNewFunction1
+                            ret_ty (Data.Functor.Identity.Identity
+                                      (GHC.Base.Maybe (), Types.TState))
+                            of {} } } } })
+                   `cast`
+                 (Sym (Control.Monad.Trans.State.Lazy.N:StateT[0]
+                           <Types.TState>_N
+                           <Data.Functor.Identity.Identity>_R
+                           <GHC.Base.Maybe ()>_N))) -}
+44d1fbb52a049435e1f8ea2aaa5e459d
+  addNewFunction1 :: Types.TMM ()
+  {- Strictness: x -}
+7752f4ea47f54cc4e640364d82d420ee
+  addNewFunction2 :: (Lexer.L Types.Name, Types.FType) -> Types.Name
+  {- Arity: 1, HasNoCafRefs,
+     Strictness: <S(S(LS)L),1*U(1*U(A,1*U),A)>,
+     Unfolding: InlineRule (1, True, False)
+                (\ (x :: (Lexer.L Types.Name, Types.FType)) ->
+                 case x of wild { (,) x1 ds1 ->
+                 case x1 of wild1 { Lexer.L ds2 ds3 -> ds3 } }) -}
+1943fc7a694c4a8d413fb3889a4690f6
+  addNewFunction3 :: GHC.Base.Maybe ()
+  {- HasNoCafRefs, Unfolding: (GHC.Base.Just @ () GHC.Tuple.()) -}
+6bdb426c8a51427f283396d44cdd02f8
+  addNewFunction_go ::
+    [[GHC.Types.Char]] -> [GHC.Types.Int] -> [GHC.Types.Char]
+  {- Arity: 2, HasNoCafRefs, Strictness: <S,1*U><L,1*U> -}
+c0591e21ccb055e30e93c02c433516ac
+  applyHighOrder :: Types.TM ()
+  {- Arity: 1,
+     Strictness: <S(LLLLLLLLSLLLLLLLLL),1*U(U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U)>m,
+     Unfolding: InlineRule (0, True, True)
+                Function.applyHighOrder1
+                  `cast`
+                (Sym (Control.Monad.Trans.State.Lazy.N:StateT[0]
+                          <Types.TState>_N <Data.Functor.Identity.Identity>_R <()>_N)) -}
+fba3e7f0410c5a2b251858312c90c8e5
+  applyHighOrder1 ::
+    Types.TState -> Data.Functor.Identity.Identity ((), Types.TState)
+  {- Arity: 1,
+     Strictness: <S(LLLLLLLLSLLLLLLLLL),1*U(U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U)>m,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (1, True, False)
+                (\ (w :: Types.TState) ->
+                 case w of ww { Types.TState ww1 ww2 ww3 ww4 ww5 ww6 ww7 ww8 ww9 ww10 ww11 ww12 ww13 ww14 ww15 ww16 ww17 ww18 ->
+                 case Function.$wgo
+                        ww9
+                        (Types.TState
+                           ww1
+                           ww2
+                           ww3
+                           ww4
+                           ww5
+                           ww6
+                           ww7
+                           ww8
+                           ww9
+                           ww10
+                           ww11
+                           ww12
+                           ww13
+                           ww14
+                           ww15
+                           ww16
+                           ww17
+                           ww18) of ww19 { (#,#) ww20 ww21 ->
+                 (ww20, ww21)
+                   `cast`
+                 (Sym (Data.Functor.Identity.N:Identity[0]
+                           <((), Types.TState)>_R)) } }) -}
+a5116825e87182cfc9c5b3449e75feed
+  changeName :: Types.Name -> Types.Name
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: InlineRule (1, True, False)
+                (\ (ds :: [GHC.Types.Char]) ->
+                 GHC.Base.augment
+                   @ GHC.Types.Char
+                   (\ @ b
+                      (c :: GHC.Types.Char -> b -> b)[OneShot]
+                      (n :: b)[OneShot] ->
+                    GHC.Base.foldr @ GHC.Types.Char @ b c n ds)
+                   Function.changeName1) -}
+dbe66bc3f3b783e5b776dc2fabb93267
+  changeName1 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "__left"#) -}
+7cd0e1f4c21b3c543c49ab42f33fba5a
+  checkForArityErrs :: Types.TM ()
+  {- Arity: 1,
+     Strictness: <S(LLLLLLLLSLLLLLLLLL),1*U(U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U)>m,
+     Unfolding: InlineRule (0, True, True)
+                Function.checkForArityErrs1
+                  `cast`
+                (Sym (Control.Monad.Trans.State.Lazy.N:StateT[0]
+                          <Types.TState>_N <Data.Functor.Identity.Identity>_R <()>_N)) -}
+ab4d64415efb4249491250bf33c7586f
+  checkForArityErrs1 ::
+    Types.TState -> Data.Functor.Identity.Identity ((), Types.TState)
+  {- Arity: 1,
+     Strictness: <S(LLLLLLLLSLLLLLLLLL),1*U(U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U)>m,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (1, True, False)
+                (\ (w :: Types.TState) ->
+                 case w of ww { Types.TState ww1 ww2 ww3 ww4 ww5 ww6 ww7 ww8 ww9 ww10 ww11 ww12 ww13 ww14 ww15 ww16 ww17 ww18 ->
+                 case Function.$wgo1
+                        ww9
+                        (Types.TState
+                           ww1
+                           ww2
+                           ww3
+                           ww4
+                           ww5
+                           ww6
+                           ww7
+                           (GHC.Types.:
+                              @ Types.TLog
+                              (Types.TLog Function.checkForArityErrs_msg ww5)
+                              ww8)
+                           ww9
+                           ww10
+                           ww11
+                           ww12
+                           ww13
+                           ww14
+                           ww15
+                           ww16
+                           ww17
+                           ww18) of ww19 { (#,#) ww20 ww21 ->
+                 (ww20, ww21)
+                   `cast`
+                 (Sym (Data.Functor.Identity.N:Identity[0]
+                           <((), Types.TState)>_R)) } }) -}
+c2009ddea5fe23b4b149adfd7e97e10e
+  checkForArityErrs_msg :: Types.Msg
+  {- Unfolding: (GHC.CString.unpackCString#
+                   "Checking for declarations and arity errors"#) -}
+1ece66be746680ddd59b209df7e57b0c
+  classifyFExpr ::
+    Types.Name -> Types.FExpr -> Types.RecursionClassification
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,U><S,1*U>,
+     Unfolding: (\ (name :: Types.Name) (fexpr :: Types.FExpr) ->
+                 case fexpr of wild {
+                   Types.FApp ds fexprs ds1
+                   -> case ds of wild1 { (,) ds2 ds3 ->
+                      case ds2 of wild2 { Lexer.L ds4 x ->
+                      case GHC.Base.eqString x name of wild3 {
+                        GHC.Types.False
+                        -> letrec {
+                             go8 :: [Types.FExpr]
+                                    -> Types.RecursionClassification
+                                    -> Types.RecursionClassification
+                               {- Arity: 2, Strictness: <S,1*U><S,1*U> -}
+                             = \ (ds5 :: [Types.FExpr])
+                                 (eta :: Types.RecursionClassification) ->
+                               case ds5 of wild4 {
+                                 [] -> eta
+                                 : y ys
+                                 -> go8
+                                      ys
+                                      (Function.classifyFExpr1
+                                         eta
+                                         (Function.classifyFExpr' name y)) }
+                           } in
+                           go8 fexprs Types.NonRecursive
+                        GHC.Types.True
+                        -> letrec {
+                             go8 :: [Types.FExpr]
+                                    -> Types.RecursionClassification
+                                    -> Types.RecursionClassification
+                               {- Arity: 2, Strictness: <S,1*U><S,1*U> -}
+                             = \ (ds5 :: [Types.FExpr])
+                                 (eta :: Types.RecursionClassification) ->
+                               case ds5 of wild4 {
+                                 [] -> eta
+                                 : y ys
+                                 -> go8
+                                      ys
+                                      (Function.classifyFExpr1
+                                         eta
+                                         (Function.classifyFExpr' name y)) }
+                           } in
+                           go8 fexprs Types.LeftRecursive } } }
+                   Types.FAExpr ds
+                   -> case ds of wild1 { (,,) ds1 ds2 ds3 ->
+                      case ds1 of wild2 {
+                        Types.FVar ds4
+                        -> case ds4 of wild3 { Lexer.L ds5 x ->
+                           case GHC.Base.eqString x name of wild4 {
+                             GHC.Types.False -> Types.NonRecursive
+                             GHC.Types.True -> Types.NonTerminatingRecursion } }
+                        Types.FCons ipv -> Types.NonRecursive } } }) -}
+7f086af5f90318b1b19a7e00c274c82d
+  classifyFExpr' ::
+    Types.Name -> Types.FExpr -> Types.RecursionClassification
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,U><S,1*U> -}
+fda768fef8d76060e2639206c8fd4aef
+  classifyFExpr1 ::
+    Types.RecursionClassification
+    -> Types.RecursionClassification -> Types.RecursionClassification
+  {- Arity: 2, HasNoCafRefs, Strictness: <S,1*U><L,1*U>,
+     Unfolding: (\ (ds :: Types.RecursionClassification)
+                   (ds1 :: Types.RecursionClassification) ->
+                 case ds of wild {
+                   DEFAULT
+                   -> case ds1 of wild1 {
+                        DEFAULT
+                        -> case wild of wild2 {
+                             Types.NonTerminatingRecursion -> Types.NonTerminatingRecursion
+                             Types.NonRecursive -> wild1 }
+                        Types.MultipleRecursive -> Types.MultipleRecursive }
+                   Types.LeftRecursive
+                   -> case ds1 of wild1 {
+                        DEFAULT -> wild1
+                        Types.LeftRecursive -> Types.MultipleRecursive
+                        Types.RightRecursive -> Types.MultipleRecursive
+                        Types.NonRecursive -> Types.LeftRecursive }
+                   Types.RightRecursive
+                   -> case ds1 of wild1 {
+                        DEFAULT -> wild1
+                        Types.LeftRecursive -> Types.MultipleRecursive
+                        Types.RightRecursive -> Types.MultipleRecursive
+                        Types.NonRecursive -> Types.RightRecursive }
+                   Types.MultipleRecursive -> Types.MultipleRecursive }) -}
+bca5ea7481c29845b40b8599614c6df9
+  classifyRecursion ::
+    Types.Name -> Types.FGuards -> Types.RecursionClassification
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,U><S,1*U>,
+     Unfolding: (\ (name :: Types.Name) (guards :: Types.FGuards) ->
+                 case guards of wild {
+                   Types.FGuards condNexprs
+                   -> letrec {
+                        go8 :: [(Types.FExpr, Types.FExpr)]
+                               -> Types.RecursionClassification -> Types.RecursionClassification
+                          {- Arity: 2, Strictness: <S,1*U><S,1*U> -}
+                        = \ (ds :: [(Types.FExpr, Types.FExpr)])
+                            (eta :: Types.RecursionClassification) ->
+                          case ds of wild1 {
+                            [] -> eta
+                            : y ys
+                            -> go8
+                                 ys
+                                 (Function.classifyRecursion1
+                                    eta
+                                    (case y of wild2 { (,) ds1 f ->
+                                     Function.classifyFExpr name f })) }
+                      } in
+                      go8 condNexprs Types.NonRecursive
+                   Types.NoFGuards fexpr -> Function.classifyFExpr name fexpr }) -}
+16a307760530f94d7eb3943d5181fd36
+  classifyRecursion1 ::
+    Types.RecursionClassification
+    -> Types.RecursionClassification -> Types.RecursionClassification
+  {- Arity: 2, HasNoCafRefs, Strictness: <S,1*U><L,1*U>,
+     Unfolding: (\ (ds :: Types.RecursionClassification)
+                   (ds1 :: Types.RecursionClassification) ->
+                 case ds of wild {
+                   DEFAULT
+                   -> case ds1 of wild1 {
+                        DEFAULT
+                        -> case wild of wild2 {
+                             Types.NonTerminatingRecursion -> Types.NonTerminatingRecursion
+                             Types.NonRecursive -> wild1 }
+                        Types.MultipleRecursive -> Types.MultipleRecursive }
+                   Types.LeftRecursive
+                   -> case ds1 of wild1 {
+                        DEFAULT -> wild1
+                        Types.LeftRecursive -> Types.LeftRecursive
+                        Types.RightRecursive -> Types.MultipleRecursive
+                        Types.NonRecursive -> Types.LeftRecursive }
+                   Types.RightRecursive
+                   -> case ds1 of wild1 {
+                        DEFAULT -> wild1
+                        Types.LeftRecursive -> Types.MultipleRecursive
+                        Types.RightRecursive -> Types.MultipleRecursive
+                        Types.NonRecursive -> Types.RightRecursive }
+                   Types.MultipleRecursive -> Types.MultipleRecursive }) -}
+92035027f805fc90c34145f5ac705149
+  classifyTypes ::
+    [Types.FType] -> Types.FType -> Types.TypeClassification
+  {- Arity: 2, HasNoCafRefs, Strictness: <S,1*U><S,1*U>,
+     Unfolding: (\ (argTypes :: [Types.FType])
+                   (returnType :: Types.FType) ->
+                 case (Function.classifyTypes_go argTypes)
+                        `cast`
+                      (Data.Monoid.N:Any[0]) of wild {
+                   GHC.Types.False
+                   -> case returnType of wild1 {
+                        DEFAULT -> Types.NoRecursiveTypes
+                        Types.Stream ds -> Types.OutputRecursive }
+                   GHC.Types.True
+                   -> case returnType of wild1 {
+                        DEFAULT -> Types.InputRecursive
+                        Types.Stream ds -> Types.OutputInputRecursive } }) -}
+ea64e558fdb05c399f30b0e1c14a97b7
+  classifyTypes_go :: [Types.FType] -> Data.Monoid.Any
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U> -}
+f855d917968bb37f454e26d0892d5f70
+  decide ::
+    [Types.RecursionClassification] -> Types.RecursionClassification
+  {- Arity: 1, HasNoCafRefs,
+     Unfolding: (GHC.List.foldl
+                   @ Types.RecursionClassification
+                   @ Types.RecursionClassification
+                   Function.classifyFExpr1
+                   Types.NonRecursive) -}
+64b0e9bfa4bc20034cfd95569f09d0f2
+  decideAcrossGuards ::
+    [Types.RecursionClassification] -> Types.RecursionClassification
+  {- Arity: 1, HasNoCafRefs,
+     Unfolding: (GHC.List.foldl
+                   @ Types.RecursionClassification
+                   @ Types.RecursionClassification
+                   Function.classifyRecursion1
+                   Types.NonRecursive) -}
+e36b38f7b72d75b5ae875f460649c3e9
+  findEndingExpr ::
+    Types.Name -> [(Types.FExpr, Types.FExpr)] -> Types.FExpr
+  {- Arity: 2, Strictness: <L,U><S,1*U>,
+     Unfolding: (\ (name :: Types.Name)
+                   (eta :: [(Types.FExpr, Types.FExpr)]) ->
+                 case GHC.List.filter
+                        @ (Types.FExpr, Types.FExpr)
+                        (\ (x :: (Types.FExpr, Types.FExpr)) ->
+                         case x of wild { (,) ds1 y ->
+                         case Function.classifyFExpr name y of wild1 {
+                           DEFAULT -> GHC.Types.True
+                           Types.LeftRecursive -> GHC.Types.False
+                           Types.RightRecursive -> GHC.Types.False } })
+                        eta of wild {
+                   [] -> case Function.findEndingExpr1 ret_ty Types.FExpr of {}
+                   : ipv ipv1 -> case ipv of wild1 { (,) ds1 y -> y } }) -}
+9ed7e612fd696b32af397b5d903585e3
+  findEndingExpr1 :: (Types.FExpr, Types.FExpr)
+  {- Strictness: x -}
+f728055b6731c2af97f592153715fb3c
+  fromParsedFunctionToF_AddToState :: Types.TCFunc -> Types.TMM ()
+  {- Arity: 1, Strictness: <S,1*U(U(1*U,1*U),U,U,U)>,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (1, True, False)
+                (\ (w :: Types.TCFunc) ->
+                 case w of ww { Types.TCFunc ww1 ww2 ww3 ww4 ->
+                 Function.$wfromParsedFunctionToF_AddToState ww1 ww2 ww3 ww4 }) -}
+94d72138d59c8d3eb65b3d2b99b98b44
+  fromParsedTypeExprToFunctionType ::
+    Types.CFType -> Types.TMM Types.FType
+  {- Arity: 1, Strictness: <S,U> -}
+9357e02dd1d2309c6b3cf28dcc6750ce
+  getParsedFunctions_TransformToF_AddToState :: Types.TM ()
+  {- Arity: 1,
+     Strictness: <S(LLLLLLS(S)LLLLLLLLLLL),1*U(U,U,U,U,A,U,1*U(U),U,U,U,U,U,U,U,U,U,U,U)>m,
+     Unfolding: InlineRule (0, True, True)
+                Function.getParsedFunctions_TransformToF_AddToState1
+                  `cast`
+                (Sym (Control.Monad.Trans.State.Lazy.N:StateT[0]
+                          <Types.TState>_N <Data.Functor.Identity.Identity>_R <()>_N)) -}
+56ec31335352a7dc2f3b9e8238e70f13
+  getParsedFunctions_TransformToF_AddToState1 ::
+    Types.TState -> Data.Functor.Identity.Identity ((), Types.TState)
+  {- Arity: 1,
+     Strictness: <S(LLLLLLS(S)LLLLLLLLLLL),1*U(U,U,U,U,A,U,1*U(U),U,U,U,U,U,U,U,U,U,U,U)>m,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (1, True, False)
+                (\ (w :: Types.TState) ->
+                 case w of ww { Types.TState ww1 ww2 ww3 ww4 ww5 ww6 ww7 ww8 ww9 ww10 ww11 ww12 ww13 ww14 ww15 ww16 ww17 ww18 ->
+                 case ww7 of ww19 { Types.TCore ww20 ->
+                 case Function.$wgo2
+                        ww20
+                        (Types.TState
+                           ww1
+                           ww2
+                           ww3
+                           ww4
+                           Types.TInterpretationStage
+                           ww6
+                           (Types.TCore ww20)
+                           (GHC.Types.:
+                              @ Types.TLog
+                              Function.getParsedFunctions_TransformToF_AddToState2
+                              ww8)
+                           ww9
+                           ww10
+                           ww11
+                           ww12
+                           ww13
+                           ww14
+                           ww15
+                           ww16
+                           ww17
+                           ww18) of ww21 { (#,#) ww22 ww23 ->
+                 (ww22, ww23)
+                   `cast`
+                 (Sym (Data.Functor.Identity.N:Identity[0]
+                           <((), Types.TState)>_R)) } } }) -}
+21fe07659fe63a1827cf436fc720b301
+  getParsedFunctions_TransformToF_AddToState2 :: Types.TLog
+  {- Unfolding: (Types.TLog
+                   Function.getParsedFunctions_TransformToF_AddToState3
+                   Types.TInterpretationStage) -}
+49d3053936c2e89a184190add30ef07b
+  getParsedFunctions_TransformToF_AddToState3 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackAppendCString#
+                   "Entering stage "#
+                   Types.$fShowTLog4) -}
+f9768723c43e21cf70cc8359ae1c5ea9
+  initialCallExpr ::
+    Types.Name
+    -> [(Types.FVar, Types.FType)]
+    -> Types.FType
+    -> Types.FExpr
+    -> Types.FExpr
+  {- Arity: 4, HasNoCafRefs, Strictness: <L,U><L,1*U><L,U><L,U>m1,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (4, True, False)
+                (\ (w :: Types.Name)
+                   (w1 :: [(Types.FVar, Types.FType)])
+                   (w2 :: Types.FType)
+                   (w3 :: Types.FExpr) ->
+                 Types.FApp
+                   (Lexer.L @ Types.Name Lexer.NoLoc w, Function.accExpr1)
+                   (let {
+                      z3 :: [Types.FExpr]
+                      = GHC.Types.: @ Types.FExpr w3 (GHC.Types.[] @ Types.FExpr)
+                    } in
+                    letrec {
+                      go8 :: [(Types.FVar, Types.FType)] -> [Types.FExpr]
+                        {- Arity: 1, Strictness: <S,1*U> -}
+                      = \ (ds :: [(Types.FVar, Types.FType)]) ->
+                        case ds of wild {
+                          [] -> z3
+                          : y ys
+                          -> GHC.Types.:
+                               @ Types.FExpr
+                               (Function.initialCallExpr1 y)
+                               (go8 ys) }
+                    } in
+                    go8 w1)
+                   w2) -}
+8728adffa1b378e7b96661802aab14c1
+  initialCallExpr1 :: (Types.FVar, Types.FType) -> Types.FExpr
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U(U,U)>m2,
+     Unfolding: InlineRule (1, True, False)
+                (\ (ds :: (Types.FVar, Types.FType)) ->
+                 case ds of wild { (,) fv t ->
+                 Types.FAExpr (Types.FVar fv, Function.accExpr1, t) }) -}
+4366ca77ce49844b58d38a39954915d2
+  isConsExpr :: Types.FGuards -> Types.IsConsExpr
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (gs :: Types.FGuards) ->
+                 case gs of wild {
+                   Types.FGuards condNexprs
+                   -> (Function.isConsExpr_go condNexprs)
+                        `cast`
+                      (Data.Monoid.N:Any[0])
+                   Types.NoFGuards fExpr
+                   -> case fExpr of wild1 {
+                        Types.FApp ds ds1 ds2
+                        -> case ds of wild2 { (,) ds3 ds4 ->
+                           case ds3 of wild3 { Lexer.L ds5 ds6 ->
+                           GHC.Base.eqString ds6 Function.isConsExpr1 } }
+                        Types.FAExpr ipv -> GHC.Types.False } }) -}
+8961fb2e255596c2ea5258b636488861
+  isConsExpr1 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "cons"#) -}
+0d1c9318a05fc9b7533bf2a149991373
+  isConsExpr_go :: [(Types.FExpr, Types.FExpr)] -> Data.Monoid.Any
+  {- Arity: 1, Strictness: <S,1*U> -}
+4507de03e5cc8a69b615b47493035df5
+  isHighOrder :: [Types.FType] -> [GHC.Types.Int]
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U>,
+     Unfolding: (\ (x :: [Types.FType]) ->
+                 Function.isHighOrder_go
+                   (Aux.indexes2
+                      @ (GHC.Base.Maybe GHC.Types.Int)
+                      @ Types.FType
+                      Aux.indexes1
+                      (Function.isHighOrder_isFunctionType @ GHC.Types.Int)
+                      x)) -}
+706b1c25456abd341deb9df4653a46b0
+  isHighOrder_go :: [GHC.Base.Maybe GHC.Types.Int] -> [GHC.Types.Int]
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U> -}
+96c6b33312803f64a90283fd4b46b4b9
+  isHighOrder_isFunctionType :: a -> Types.FType -> GHC.Base.Maybe a
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,U><S,1*U>,
+     Unfolding: InlineRule (2, True, False)
+                (\ @ a (i :: a) (ds :: Types.FType) ->
+                 case ds of wild {
+                   DEFAULT -> GHC.Base.Nothing @ a
+                   Types.Function ds1 -> GHC.Base.Just @ a i }) -}
+4616b2b1493cc16e5996e6327bddea00
+  isRecursive :: Types.Name -> Types.FExpr -> GHC.Types.Bool
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,U><S,1*U>,
+     Unfolding: InlineRule (2, True, False)
+                (\ (name :: Types.Name) (fexpr :: Types.FExpr) ->
+                 case Function.classifyFExpr name fexpr of wild {
+                   DEFAULT -> GHC.Types.False
+                   Types.LeftRecursive -> GHC.Types.True
+                   Types.RightRecursive -> GHC.Types.True }) -}
+17443d9efafd80070135d75139b11b58
+  leftRecExpr :: Types.Name -> Types.FExpr -> Types.FExpr
+  {- Arity: 2, Strictness: <L,U><S,U> -}
+376cdde39d0aca987e138859d8357a99
+  newBody ::
+    (Types.Name, Types.Name)
+    -> [Types.Name]
+    -> [Types.Name]
+    -> [GHC.Types.Int]
+    -> Types.FGuards
+    -> Types.TM Types.FGuards
+  {- Arity: 5, Strictness: <S,1*U(U,U)><L,U><L,U><L,U><S,1*U>,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (5, True, False)
+                (\ (w :: (Types.Name, Types.Name))
+                   (w1 :: [Types.Name])
+                   (w2 :: [Types.Name])
+                   (w3 :: [GHC.Types.Int])
+                   (w4 :: Types.FGuards) ->
+                 case w of ww { (,) ww1 ww2 ->
+                 Function.$wnewBody ww1 ww2 w1 w2 w3 w4 }) -}
+3047407e896f18dcb53d67269186032c
+  restOfName :: [(Types.Name, GHC.Types.Int)] -> GHC.Base.String
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U>,
+     Unfolding: (\ (x :: [([GHC.Types.Char], GHC.Types.Int)]) ->
+                 Function.restOfName_go x) -}
+9774993825341221330078b5955bab60
+  restOfName_go ::
+    [([GHC.Types.Char], GHC.Types.Int)] -> [GHC.Types.Char]
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U> -}
+7066d35713657ab9c641e4aefe55333f
+  rightToLeft :: Types.TM ()
+  {- Arity: 1,
+     Strictness: <S(LLLLLLLLSLLLLLLLLL),1*U(U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U)>m,
+     Unfolding: InlineRule (0, True, True)
+                Function.rightToLeft1
+                  `cast`
+                (Sym (Control.Monad.Trans.State.Lazy.N:StateT[0]
+                          <Types.TState>_N <Data.Functor.Identity.Identity>_R <()>_N)) -}
+de0abe623e07eeb27919eda4715e60fe
+  rightToLeft1 ::
+    Types.TState -> Data.Functor.Identity.Identity ((), Types.TState)
+  {- Arity: 1,
+     Strictness: <S(LLLLLLLLSLLLLLLLLL),1*U(U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U)>m,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (1, True, False)
+                (\ (w :: Types.TState) ->
+                 case w of ww { Types.TState ww1 ww2 ww3 ww4 ww5 ww6 ww7 ww8 ww9 ww10 ww11 ww12 ww13 ww14 ww15 ww16 ww17 ww18 ->
+                 case Function.$wgo3
+                        ww9
+                        (Types.TState
+                           ww1
+                           ww2
+                           ww3
+                           ww4
+                           ww5
+                           ww6
+                           ww7
+                           ww8
+                           ww9
+                           ww10
+                           ww11
+                           ww12
+                           ww13
+                           ww14
+                           ww15
+                           ww16
+                           ww17
+                           ww18) of ww19 { (#,#) ww20 ww21 ->
+                 (ww20, ww21)
+                   `cast`
+                 (Sym (Data.Functor.Identity.N:Identity[0]
+                           <((), Types.TState)>_R)) } }) -}
+ad4a7f508ae6d6878ae4bfc19abcea0d
+  showEx :: Types.FExpr -> GHC.Base.String
+  {- Arity: 1, Strictness: <S,1*U> -}
+16a8911b46625f3f750fb1db0ac3de96
+  showEx' :: Types.FExpr -> [GHC.Types.Char]
+  {- Arity: 1, Strictness: <L,1*U>,
+     Unfolding: (\ (x :: Types.FExpr) ->
+                 GHC.CString.unpackAppendCString#
+                   "("#
+                   (GHC.Base.++
+                      @ GHC.Types.Char
+                      (Function.showEx x)
+                      Function.showEx'1)) -}
+f6b31814176c2617fcd62ee87a601420
+  showEx'1 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# ")"#) -}
+505b2216ce0ff2874b596fc9c68bd34d
+  showF :: Types.F -> GHC.Base.String
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (ds :: Types.F) ->
+                 case ds of wild {
+                   Types.F inpsNTypes fgs fty
+                   -> GHC.Base.++
+                        @ GHC.Types.Char
+                        (Function.showVars inpsNTypes)
+                        (GHC.CString.unpackAppendCString#
+                           " : "#
+                           (GHC.Base.++
+                              @ GHC.Types.Char
+                              (Function.showTy fty)
+                              (GHC.CString.unpackAppendCString# " = "# (Function.showFGS fgs))))
+                   Types.SpecialF -> Function.showF1 }) -}
+ddb7da370172537e7a2f5eccbaf21c14
+  showF1 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "*special func*"#) -}
+0bd6937a5fe362d2009f3a59c0aef39e
+  showFGS :: Types.FGuards -> GHC.Base.String
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (fgs :: Types.FGuards) ->
+                 case fgs of wild {
+                   Types.FGuards ces
+                   -> GHC.CString.unpackAppendCString#
+                        "\n"#
+                        (Data.OldList.unlines
+                           (GHC.Base.map
+                              @ (Types.FExpr, Types.FExpr)
+                              @ [GHC.Types.Char]
+                              Function.showFGS1
+                              ces))
+                   Types.NoFGuards e -> Function.showEx e }) -}
+dba90990d7b5e471eb6d896a0ad8bf4d
+  showFGS1 :: (Types.FExpr, Types.FExpr) -> [GHC.Types.Char]
+  {- Arity: 1, Strictness: <S,1*U(1*U,1*U)>, Inline: INLINE[0],
+     Unfolding: InlineRule (1, True, False)
+                (\ (w :: (Types.FExpr, Types.FExpr)) ->
+                 case w of ww { (,) ww1 ww2 -> Function.$wlvl ww1 ww2 }) -}
+56353e9a443748f9a68e5985e8e24bd9
+  showFunc :: Types.TFunc -> GHC.Base.String
+  {- Arity: 1, Strictness: <S(SLLLLL),1*U(1*U,A,1*U,A,A,A)>,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (1, True, False)
+                (\ (w :: Types.TFunc) ->
+                 case w of ww { (,,,,,) ww1 ww2 ww3 ww4 ww5 ww6 ->
+                 Function.$wshowFunc ww1 ww3 }) -}
+c6da09d7d9403802e21f7f6b1732b1cf
+  showFuncs :: [Types.TFunc] -> GHC.Base.String
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (x :: [Types.TFunc]) ->
+                 case GHC.Base.map
+                        @ (Types.Name, Lexer.SrcLoc, Types.F, Types.Arity,
+                           Types.FunctionClassification, Types.HighOrder)
+                        @ [GHC.Types.Char]
+                        Function.showFunc
+                        x of wild {
+                   [] -> GHC.Types.[] @ GHC.Types.Char
+                   : x1 xs1
+                   -> Data.OldList.intercalate_$spoly_go
+                        @ GHC.Types.Char
+                        x1
+                        (Data.OldList.prependToAll
+                           @ [GHC.Types.Char]
+                           Function.showFuncs1
+                           xs1) }) -}
+4ae81214b83dcf04235b3d16beb00316
+  showFuncs1 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString#
+                   "\n\
+                   \\n"#) -}
+1c2654d2804700564ae40b4b12a47f2f
+  showTy :: Types.FType -> GHC.Base.String
+  {- Arity: 1, Strictness: <S,1*U> -}
+1b6313cb375990bff68ff5c5953935ef
+  showVar ::
+    (Lexer.L [GHC.Types.Char], Types.FType) -> [GHC.Types.Char]
+  {- Arity: 1, Strictness: <S(SL),1*U(1*U(A,1*U),1*U)>,
+     Inline: INLINE[0],
+     Unfolding: InlineRule (1, True, False)
+                (\ (w :: (Lexer.L [GHC.Types.Char], Types.FType)) ->
+                 case w of ww { (,) ww1 ww2 ->
+                 case ww1 of ww3 { Lexer.L ww4 ww5 ->
+                 Function.$wshowVar ww5 ww2 } }) -}
+1b4b804a5fba63b4add25647953bc508
+  showVars ::
+    [(Lexer.L [GHC.Types.Char], Types.FType)] -> [GHC.Types.Char]
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (x :: [(Lexer.L [GHC.Types.Char], Types.FType)]) ->
+                 case GHC.Base.map
+                        @ (Lexer.L [GHC.Types.Char], Types.FType)
+                        @ [GHC.Types.Char]
+                        Function.showVar
+                        x of wild {
+                   [] -> GHC.Types.[] @ GHC.Types.Char
+                   : x1 xs1
+                   -> Data.OldList.intercalate_$spoly_go
+                        @ GHC.Types.Char
+                        x1
+                        (Data.OldList.prependToAll
+                           @ [GHC.Types.Char]
+                           Function.showVars1
+                           xs1) }) -}
+b6dfd761c1da75bf7d132138f5e3a461
+  showVars1 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# " "#) -}
+98511dc2dcaad99a1513cba99e0fb6f6
+  showfvarcons :: Types.FVarCons -> Types.Name
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (fvc :: Types.FVarCons) ->
+                 case fvc of wild {
+                   Types.FVar ds -> case ds of wild1 { Lexer.L ds1 n -> n }
+                   Types.FCons ds
+                   -> case ds of wild1 {
+                        Types.FBin ds1
+                        -> case ds1 of wild2 { Lexer.L ds2 b ->
+                           GHC.CString.unpackAppendCString# "0b"# b }
+                        Types.FHex ds1
+                        -> case ds1 of wild2 { Lexer.L ds2 s ->
+                           GHC.CString.unpackAppendCString# "0x"# s }
+                        Types.FDec ds1
+                        -> case ds1 of wild2 { Lexer.L ds2 i ->
+                           GHC.Show.$fShowInt_$cshow i }
+                        Types.FForeverWait -> Function.showfvarcons1 } }) -}
+33198d66434e6a7d102408c60fa049d3
+  showfvarcons1 :: [GHC.Types.Char]
+  {- Unfolding: (GHC.CString.unpackCString# "_'_"#) -}
+0f8f4f65caaab13da1700175d228a1f3
+  takeOut :: [GHC.Types.Int] -> [a] -> [a]
+  {- Arity: 2, HasNoCafRefs, Strictness: <L,U><S,1*U>,
+     Unfolding: (\ @ a (inds :: [GHC.Types.Int]) (eta :: [a]) ->
+                 Function.takeOut1
+                   @ a
+                   (Aux.indexes2
+                      @ (GHC.Base.Maybe a)
+                      @ a
+                      Aux.indexes1
+                      (\ (i :: GHC.Types.Int) (x :: a)[OneShot] ->
+                       case GHC.List.elem
+                              @ GHC.Types.Int
+                              GHC.Classes.$fEqInt
+                              i
+                              inds of wild {
+                         GHC.Types.False -> GHC.Base.Just @ a x
+                         GHC.Types.True -> GHC.Base.Nothing @ a })
+                      eta)) -}
+de9eec3bb1e8145bb484e1f59c452cce
+  takeOut1 :: [GHC.Base.Maybe a] -> [a]
+  {- Arity: 1, HasNoCafRefs, Strictness: <S,1*U> -}
+2376ef869ddfe45b197ce062775e2457
+  toFVar :: Lexer.LToken -> Types.FVar
+  {- Arity: 1, Strictness: <S(LS),1*U(U,1*U)>m,
+     Unfolding: InlineRule (1, True, False)
+                (\ (ds :: Lexer.L Lexer.Token) ->
+                 case ds of wild { Lexer.L src ds1 ->
+                 case ds1 of wild1 {
+                   DEFAULT -> Function.toFVar1
+                   Lexer.Low s -> Lexer.L @ GHC.Base.String src s } }) -}
+1e398092faa5f33dc7f27ddfa2dec028
+  toFVar1 :: Types.FVar
+  {- Strictness: x -}
+4a2a348f4e7eef1bf9215d399a5f0fa2
+  toName :: Types.FExpr -> Types.Name
+  {- Arity: 1, Strictness: <S,1*U>,
+     Unfolding: (\ (ds :: Types.FExpr) ->
+                 case ds of wild {
+                   Types.FApp ipv ipv1 ipv2 -> Function.toName1 wild
+                   Types.FAExpr ds1
+                   -> case ds1 of wild1 { (,,) ds2 ds3 ds4 ->
+                      case ds2 of wild2 {
+                        Types.FVar ds5
+                        -> case ds5 of wild3 { Lexer.L ds6 x ->
+                           case ds4 of wild4 {
+                             DEFAULT -> Function.toName1 wild Types.Function ds7 -> x } }
+                        Types.FCons ipv -> Function.toName1 wild } } }) -}
+7eae60f6ab26c8c9076e9290f6b42f01
+  toName1 :: Types.FExpr -> Types.Name
+  {- Arity: 1, Strictness: <L,U>x -}
+"SPEC/Function $fEqL @ [Char]" [ALWAYS] forall ($dEq :: GHC.Classes.Eq
+                                                          [GHC.Types.Char])
+  Parser.$fEqL @ [GHC.Types.Char] $dEq = Function.$s$fEqL
+"SPEC/Function $fEqL_$c/= @ [Char]" [ALWAYS] forall ($dEq :: GHC.Classes.Eq
+                                                               [GHC.Types.Char])
+  Parser.$fEqL_$c/= @ [GHC.Types.Char] $dEq
+  = Function.$s$fEqL_$s$fEqL_$c/=
+vectorised variables:
+vectorised tycons:
+vectorised reused tycons:
+parallel variables:
+parallel tycons:
+trusted: none
+require own pkg trusted: False
+

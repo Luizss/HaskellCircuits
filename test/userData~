@@ -1,0 +1,5 @@
+data UserData = UserData Int Int Int
+
+map :: List UserData -> List UserData
+map bs xs Nil = Nil
+map bs xs (Cons x r) = Cons (y bs xs x) (map bs xs r)

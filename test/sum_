@@ -1,6 +1,0 @@
-main :: List Int -> Int
-main s = sum s
-
-sum :: List Int -> Int
-sum Nil = 0
-sum (Cons x xs) = add x (sum xs)
