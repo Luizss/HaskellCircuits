@@ -7,6 +7,7 @@ import Data.List.Split
 import Control.Monad.State
 import System.Environment
 import System.Directory
+import Data.List (intercalate)
 
 ---------------- Internal Imports
 
@@ -195,10 +196,12 @@ a comm filename tbs = do
     makeSystemC filename (systemC st)
     --showE st
     --print expr
+    --writeFile "okfile" (showEStr st)
     putStrLn "Ok! No errors."
   when (getErrs st /= []) $ do
     --print tks
     showE st
+    --writeFile "errfile" (showEStr st)
     --print expr
   
 getErrs = filter isErr . tLogs
@@ -212,3 +215,11 @@ showE state = do
     TLogErr terr _ -> putStrLn $ show terr
     --TLogDebug msg _ -> putStrLn msg
     _ -> return ()
+
+showEStr :: TState -> String
+showEStr state = do
+  intercalate "\n" $ filter (/="") $ for (reverse (tLogs state)) $ \log -> case log of
+    TLogErr   terr _ -> "ERROR: " ++ show terr
+    TLogDebug msg  _ -> "DEBUG: " ++ msg
+    TLog      msg  _ -> "LOG: " ++ msg
+  where for xs f = map f xs

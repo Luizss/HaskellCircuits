@@ -51,7 +51,7 @@ throw err = do
   state <- get
   put (state { tLogs = TLogErr err stg : tLogs state })
   
--- logging debug information
+-- logging --debug information
 debug :: Msg -> TM ()
 debug msg = do
   stg <- getStage
@@ -201,13 +201,6 @@ changeFunction name fgs = do
     addFunc (n, s, F vars fgs ft, a, fc, ho)
     ret ()
 
-{-changeMainName :: Name -> Name -> TM ()
-changeMainName = do
-  cs <- getComponents
-  putComponents $ map ifMainChange cs
-  where ifMainChange ("main",main) = ("mainFunc",main)
-        ifMainChange x = x-}
-
 getTCore :: TM TCore
 getTCore = do
   st <- get
@@ -289,13 +282,10 @@ changeType cft = case cft of
   --     ret $ CTApp (L s (Upp "Stream")) [vec]
   _ -> do
     tcs <- getTypeChanges
-    debug $ "CHANGE TYPE: " ++ show cft
     case find ((== cft) . fst) tcs of
       Nothing -> do
-        debug "NOTHING"
         return $ Just cft
       Just (_,s) -> do
-        debugs s
         return $ Just s
   where noLocUpp = L NoLoc . Upp
         noLocDec = L NoLoc . Dec
@@ -332,11 +322,6 @@ isThereTypeChange cft = do
     Nothing -> False
     Just _  -> True
 
-{-changeType :: CFType -> TM CFType
-changeType cft = case cft of
-  CTAExpr (L _ (Upp _)) -> 
-  cft-}
-  
 addCFuncType :: (Name, [Constraint], [CFType]) -> TM ()
 addCFuncType x = do
   st <- get
@@ -518,8 +503,8 @@ doesLogicalOutputExist :: Name -> TM Bool
 doesLogicalOutputExist x = do
   st <- get
   if elem x (map fst4 (logicalOutputs st))
-    then debug x
-    else debug ("Nope " ++ x)
+    then return ()
+    else return ()
   return (elem x (map fst4 (logicalOutputs st)))
 
 getLogicalOutput :: Name -> TM (Name, FType, Maybe Int)
@@ -637,14 +622,12 @@ getTypeCheckState = do
 
 putTypeCheckState :: ([Constraint],[CFType]) -> TM ()
 putTypeCheckState ft = do
-  debug $ "STATEPUT: " ++ show ft
   st <- get
   let tcs = typeCheckState st
   put ( st { typeCheckState = ft : tcs } )
 
 popTypeCheckState :: TM ()
 popTypeCheckState = do
-  debug "STATE POP"
   st <- get
   let tcs = typeCheckState st
   case tcs of
@@ -654,20 +637,9 @@ popTypeCheckState = do
 modifyTypeCheckState
   :: ([CFType] -> [CFType]) -> TM ()
 modifyTypeCheckState func = do
-  debug $ "STATE MODIFIED"
   st <- get
   let tcs = typeCheckState st
   case tcs of
     []   -> return ()
     (cs,x):xs -> do
       put ( st { typeCheckState = (cs,func x) : xs })
-
-{-
-isEmptyTypeCheckState :: TM Bool
-isEmptyTypeCheckState = do
-
-x <- getTypeCheckState
-  case x of
-    Nothing -> return True
-    Just x  -> return False
--}

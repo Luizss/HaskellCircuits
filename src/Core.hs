@@ -250,7 +250,6 @@ typeCheck :: TMM ()
 typeCheck = do
   mtcore <- typeCheck'
   cont1 mtcore $ \tcore -> do
-    debugs tcore
     putTCore tcore
     ret ()
 
@@ -284,18 +283,8 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
       CGuards ces -> do
         let bool = [CTAExpr (noLocUpp "Bool")]
         mces' <- forM ces $ \(c,e) -> do
-          debug "************"
-          debug $ "COND: " ++ show c
-          debug "************"
           mc' <- typeCheckExpr bool c
-          debug "************"
-          debug $ "EXPR: " ++ show e
-          debug "************"
           me' <- typeCheckExpr ftype e
-          debug "&&&&&&&&&&"
-          debugs "RESULTS"
-          debugs (mc', me')
-          debug "&&&&&&&&&&"
           cont2 mc' me' $ \c' e' -> ret (c',e')
         cont_ mces' $ ret . TCGuards
 
@@ -305,10 +294,7 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     typeCheckExpr' :: [CFType] -> (PExpr,Int) -> TMM TCExpr
     typeCheckExpr' ft (expr,i) = case expr of
       PApp ltk args -> do
-
-        debug $ "INSIDE " ++ show (expr,i)
         mty <- getType ltk
-        debug $ "GETTYPE expr " ++ show (ltk,args) ++ ": " ++ show mty
         
         cont1 mty $ \(cs,_ty) -> do
 
@@ -317,18 +303,13 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
           
           let argsI = zip args [0..]
 
-          debug $ "@@@ENTERING FUNCTION " ++ getName ltk
-          debug $ "ENTERINGARGS: " ++ show argsI
           _ <- mapM (typeCheckExpr' ty) argsI
           margs' <- mapM (typeCheckExpr' ty) argsI
-          debug $ "@@@GETTING OUT FUNCTION " ++ getName ltk
 
-          debug "A"
           cont_ margs' $ \args' -> do
 
             mty' <- getTypeCheckState
 
-            debug "B"
             cont1 mty' $ \(cs',ty') -> do
 
               popTypeCheckState
@@ -339,7 +320,6 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
 
                 Nothing -> do
 
-                  debug $ "HERE1 " ++ show (ft,ty')
                   mr <- match (last ft) (last ty')
                   cont1 mr $ \r -> do
                     ok <- matchConstraint r (nub (cs ++ cs'))
@@ -347,8 +327,6 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
 
                 Just (cs'',ty'') -> do
 
-                  debug $ "HERE2 "++ show (cs,cs',cs'')
-                  debug $ "TY': " ++ show i ++ ": " ++ show (ty',ty'')
                   mr <- match (ty'' !! i) (last ty')
                   cont1 mr $ \r -> do
                     ok <- matchConstraint r (nub (cs ++ cs' ++ cs''))
@@ -356,11 +334,8 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
 
       PAExpr ltk -> do
 
-        debug $ "INSIDE " ++ show (expr,i)
         mTy <- getType ltk
-        debug $ "GETTYPE expr " ++ show ltk ++ ": " ++ show mTy
-        
-        debug "C"
+
         cont1 mTy $ \(cs,ty) -> do
           
           mTy' <- getTypeCheckState
@@ -369,18 +344,14 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
             
             Nothing -> do
 
-              debug $ "HERE3: " ++ show (ft,i)
               mTy'' <- match (last ft) (cTArrow ty)
-              debug "D"
               cont1 mTy'' $ \ty'' -> do
                 ok <- matchConstraint ty'' cs
                 cont [ok] $ ret $ TCAExpr (ltk, ty'')
                 
             Just (cs',ty') -> do
 
-              debug $ "HERE4 " ++ show ty' ++ " >>> " ++ show i
               mTy'' <- match (ty' !! i) (cTArrow ty)
-              debug "E"
               cont1 mTy'' $ \ty'' -> do
                 ok <- matchConstraint ty'' (nub (cs' ++ cs))
                 cont [ok] $ ret $ TCAExpr (ltk, ty'')
@@ -395,10 +366,10 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
                 isIt <- isRecursiveType cft
                 case isIt of
                   False -> mok
-                  True -> debug ("constrainterr " ++ show (var,cons,cft))>> mok
+                  True -> mok
               ("Num",var)
                 | isNumType cft -> mok
-                | otherwise -> debug ("constrainterr " ++ show (var,cons,cft))>> mok
+                | otherwise -> mok
               _ -> mok
 
     isNumType :: CFType -> Bool
@@ -457,38 +428,30 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
     getType' (L _ (Dec d)) = ret ([("Num","a")],[tyvar "a"])
     getType' ltk
       | isInput ltk = do
-          debug $ "FFFFF " ++ show vars
           let mty = snd <$> find ((==ltk) . fst) varsWithTypes
           cont1 mty $ \ty ->
             ret ([], [ty])
       | ltk == L NoLoc (Upp "Cons") = do
-          debug $ "KKKKKK " ++ show (cTArrowInvHead (head ftype), ftype)
+
           mm <- searchCFuncType (getName ltk) (fromListTy (cTArrowInvHead (head ftype)))
           cont1 mm $ \(_,constraints,cfts) -> do
             ret (constraints,cfts)
       | otherwise = do
-          debug $ "GGGGGG " ++ show (cTArrowInvHead (head ftype), ftype)
+
           mm <- searchCFuncType (getName ltk) (cTArrowInvHead (head ftype))
           cont1 mm $ \(_,constraints,cfts) -> do
             ret (constraints,cfts)
 
-    {-match
-      (CTApp (L _ (Upp "List")) [CTApp (L _ (Upp "Int")) _])
-      (CTApp (L _ (Upp "Int")) x)
-      = ret $ CTApp (L NoLoc (Upp "Int")) x-}
     match x y = do
-      debug $ "MATCH OPEN " ++ show (x , y)
       m <- case (x,y) of
         (CTArrow _ _,CTArrow _ _) -> match' x y
         (CTArrow _ _,_) -> match' (cTArrowInvLast x) y
         (_,CTArrow _ _) -> match' x (cTArrowInvLast y)
         _ -> match' x y
-      debug $ "MATCH CLOSE " ++ show m
       return m
       
     match' :: CFType -> CFType -> TMM CFType
     match' (CTArrow l vs1) (CTArrow _ vs2) = do
-      debug "AAAAAAAAAAAAAAAAARRRRRRRRRRRRRRRROOOOOOOOOOOOWWWW"
       mArgs' <- zipWithM match' vs1 vs2
       x <- cont_ mArgs' $ \args' ->
         ret $ CTArrow l args' -- ???
@@ -502,49 +465,31 @@ typeCheckEach (CFunc lname vars cgs ftype) = do
       | otherwise = typeMatchErr (getLoc f)
     match' (CTAExpr (L _ (Low v))) (CTAExpr (L _ (Dec n))) = do
       modifyTypeCheckState (substDec v n)
-      debug $ "***SUBST " ++ v ++ " BY " ++ show n
-      debugShowTypeCheckState
       ret $ CTAExpr (noLocDec n)
     match' (CTAExpr (L _ (Dec n))) (CTAExpr (L _ (Low v))) = do
       modifyTypeCheckState (substDec v n)
-      debug $ "***SUBST " ++ v ++ " BY " ++ show n
-      debugShowTypeCheckState
       ret $ CTAExpr (noLocDec n)
     match' (CTAExpr (L _ (Low v))) (CTAExpr (L _ (Upp c))) = do
       modifyTypeCheckState (substCons v c)
-      debug $ "***SUBST " ++ v ++ " BY " ++ c
-      debugShowTypeCheckState
       ret $ CTAExpr (noLocUpp c)
     match' (CTAExpr (L _ (Upp c))) (CTAExpr (L _ (Low v))) = do
       modifyTypeCheckState (substCons v c)
-      debug $ "***SUBST " ++ v ++ " BY " ++ c
-      debugShowTypeCheckState
       ret $ CTAExpr (noLocUpp c)
     match' (CTAExpr (L _ (Low v))) ctapp@(CTApp _ _) = do
       modifyTypeCheckState (substCTApp v ctapp)
-      debug $ "***SUBST " ++ v ++ " BY " ++ show ctapp
-      debugShowTypeCheckState
       ret ctapp
     match' ctapp@(CTApp _ _) (CTAExpr (L _ (Low v))) = do
       modifyTypeCheckState (substCTApp v ctapp)
-      debug $ "***SUBST " ++ v ++ " BY " ++ show ctapp
-      debugShowTypeCheckState
       ret ctapp
     match' (CTAExpr (L _ (Low v1))) (CTAExpr (L _ (Low v2)))
       | v1 == v2 = ret $ CTAExpr (noLocLow v1)
       | otherwise = do
           modifyTypeCheckState (substVar v2 v1)
-          debug $ "SUBST " ++ v2 ++ " BY " ++ v1
-          debugShowTypeCheckState
           ret $ CTAExpr (noLocLow v1)
     match' fa1 fa2
       | fa1 == fa2 = ret fa1
       | otherwise = typeMatchErr (getLoc' fa1)
 
-    debugShowTypeCheckState = do
-      tstate <- getIt
-      debug $ "IT :" ++ show tstate
-      
     getLoc' :: CFType -> SrcLoc
     getLoc' (CTApp   (L l _) _) = l
     getLoc' (CTArrow  l      _) = l

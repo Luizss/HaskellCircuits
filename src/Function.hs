@@ -84,14 +84,14 @@ fromParsedFunctionToF_AddToState (TCFunc name varsNtypes guards typeExpr) = do
     makeFunctionId name fexs ft = do
       let ftypes = map getTypeFromFExpr fexs ++ [ft]
       id <- getFunctionId name ftypes
-      debug $ "Name: " ++ name ++ " [" ++ show id ++ "]"
+      --debug $ "Name: " ++ name ++ " [" ++ show id ++ "]"
       addFunctionId (name, id, ftypes)
       return id
 
     makeFunctionId' :: Name -> FType -> TM Id
     makeFunctionId' name ft = do
       id <- getFunctionId name [ft]
-      debug $ "Name: " ++ name ++ " [" ++ show id ++ "]"
+      --debug $ "Name: " ++ name ++ " [" ++ show id ++ "]"
       addFunctionId (name, id, [ft])
       return id
     
@@ -294,11 +294,11 @@ newBody (fname,newFname) sInps substs as fg = case fg of
         case isIt of
           True
             | n == fname -> do
-                debug $ "hey " ++ n
+                --debug $ "hey " ++ n
                 fexs' <- mapM newExpr fexs
                 return $ FApp (L s newFname,id) (takeOut as fexs') ft
             | otherwise -> do
-                debug $ "HOHGGH " ++ n
+                --debug $ "HOHGGH " ++ n
                 as' <- highOrderArgs n
                 fexs' <- mapM newExpr fexs
                 let namesNindexes = zip (map toName (indexes as' fexs')) as'
@@ -307,16 +307,16 @@ newBody (fname,newFname) sInps substs as fg = case fg of
                 return $ FApp (L s nnew,id) (takeOut as' fexs') ft
           False
             | n == fname -> do
-                debug $ "hey " ++ n
+                --debug $ "hey " ++ n
                 fexs' <- mapM newExpr fexs
                 return $ FApp (L s newFname,id) (takeOut as fexs') ft
             | elem n sInps -> do
-                debug n
-                debug $ sub n
+                --debug n
+                --debug $ sub n
                 fexs' <- mapM newExpr fexs
                 return $ FApp (L s (sub n),id) fexs' ft
             | otherwise    -> do
-                debug $ "nope " ++ n
+                --debug $ "nope " ++ n
                 fexs' <- mapM newExpr fexs
                 return $ FApp (L s n,id) fexs' ft
       FAExpr (FVar (L s v), id, ft)

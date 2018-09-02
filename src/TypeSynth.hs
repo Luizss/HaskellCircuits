@@ -16,10 +16,7 @@ typeSynth :: TMM ()
 typeSynth = do
   defineListFunctions
   definePatternFunctions
-  debug "--------------------------------------------------"
   dds <- getDataDecls
-  debugs dds
-  debug "--------------------------------------------------"
   changeTypes
   ret ()
 
@@ -27,7 +24,6 @@ defineListFunctions :: TM ()
 defineListFunctions = do
   TCore fs <- getTCore
   let tys = gatherListTypes fs
-  debugs tys
   substListByList_
   forM tys $ \ty -> do
     let nt = getNameFromType ty
@@ -46,7 +42,7 @@ substListByList_ = do
   TCore fs <- getTCore
   fs' <- forM fs $ \(TCFunc name vars fgs ty) -> do
     let vars' = substVars vars
-        fgs' = substGs fgs
+        fgs' = incrementNowAndRest (substGs (collapseRestNows fgs))
         ty' = substTy ty
     return $ TCFunc name vars' fgs' ty'
   putTCore $ TCore fs'
@@ -71,12 +67,82 @@ substListByList_ = do
          CTApp ltk as -> CTApp ltk (map substTy as)
          x -> x
 
+       applyNTimes f 0 var ty = TCAExpr (L NoLoc var, ty)
+       applyNTimes f n var ty =
+         TCApp f [applyNTimes f (n-1) var ty] ty
+
+       countRestDepthAndGetVariable :: TCExpr -> Maybe (Int, Token)
+       countRestDepthAndGetVariable = go 0
+         where
+           go n expr = case expr of
+             TCApp (L s (Low "__get__Cons__1")) [as] ty
+               -> go (n+1) as
+             TCAExpr (L _ tkn, _) -> Just (n, tkn)
+             _ -> Nothing
+       
+       incrementNowAndRest gs = case gs of
+         TCNoGuards e -> TCNoGuards $ incrementNowAndRest' e
+         TCGuards ces ->
+           TCGuards $ for ces (\(c,e) -> (incrementNowAndRest' c, incrementNowAndRest' e))
+           
+       incrementNowAndRest' expr = case expr of
+         TCApp (L s1 (Low "now")) (TCAExpr (_,t) : as) ty
+           -> let (i,as') = countRests 0 as
+              in TCApp (L s1 (Low "now")) (TCAExpr (noLocDec (i+1),CTApp (noLocUpp "Nat") [CTAExpr (noLocDec (i+1))]) : as') ty
+
+         TCApp (L s1 (Low "rest")) (TCAExpr (_,t) : as) ty
+           -> let (i,as') = countRests 0 as
+              in TCApp (L s1 (Low "rest")) (TCAExpr (noLocDec (i+1),CTApp (noLocUpp "Nat") [CTAExpr (noLocDec (i+1))]) : as') ty
+
+         TCApp lt as ty
+           -> TCApp lt (map incrementNowAndRest' as) ty
+
+         x -> x
+
+       countRests n as = case as of
+         TCApp (L s1 (Low "rest")) (_ : as') ty : _
+           -> countRests (n+1) as'
+         x -> (n, x)
+
+       collapseRestNows gs = case gs of
+         TCNoGuards e -> TCNoGuards $ collapseRestNows' e
+         TCGuards ces ->
+           TCGuards $ for ces (\(c,e) -> (collapseRestNows' c, collapseRestNows' e))
+       collapseRestNows' expr = case expr of
+
+         TCApp (L s (Upp "Cons"))
+           [TCApp (L s0 (Low "__get__Cons__0")) as0 ty0
+           ,TCApp (L s1 (Upp "Cons")) as1 ty1] ty
+           -> collapseRestNows'
+              (TCApp (L s (Upp "Cons"))
+               [TCApp (L s0 (Low "__get__Cons__0")) as0 ty0
+               ,collapseRestNows' (TCApp (L s1 (Upp "Cons")) as1 ty1)] ty)
+           
+         id@(TCApp (L s (Upp "Cons"))
+           [a1@(TCApp (L s0 (Low "__get__Cons__0")) [as0] ty0)
+           ,a2@(TCApp (L s1 (Low "__get__Cons__1")) [as1] ty1)] ty)
+           -> case (countRestDepthAndGetVariable as0, countRestDepthAndGetVariable as1) of
+                (Just (r0,v0),Just (r1,v1))
+                  -> case v0 == v1 && r0 == r1 of
+                       True  -> collapseRestNows' (
+                         applyNTimes
+                           (L s0 (Low "__get__Cons__1"))
+                           r0
+                           v0
+                           ty)
+                       False -> id
+                _ -> id
+                
+         TCApp f as ty -> TCApp f (map collapseRestNows' as) ty
+
+         x -> x
+       
        substGs gs = case gs of
          TCNoGuards e -> TCNoGuards $ substExpr e
          TCGuards ces ->
            TCGuards $ for ces (\(c,e) -> (substExpr c, substExpr e))
        substExpr expr = case expr of
-         
+                           
          TCApp (L s (Upp "Cons")) [a1,a2] ty
            -> TCApp (L s (Low "cons"))
               [TCApp (noLocLow "cat")
@@ -111,8 +177,27 @@ substListByList_ = do
                 ((TCAExpr (noLocDec 1, CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec 1)]) : map substExpr as))
                 (substTy t)]
               (CTAExpr (noLocUpp "Bit"))
+
+         TCApp (L s (Low "__is__Cons")) as@(TCApp _ _ t : _) ty
+           -> TCApp (noLocLow "sli")
+              [TCAExpr (noLocDec 0, CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec 0)])
+              ,TCAExpr (noLocDec 0, CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec 0)])
+              ,TCApp (noLocLow "now")
+                ((TCAExpr (noLocDec 1, CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec 1)]) : map substExpr as))
+                (substTy t)]
+              (CTAExpr (noLocUpp "Bit"))
               
          TCApp (L s (Low "__get__Cons__0")) as@(TCAExpr (_,t) : _) ty
+           -> TCApp (noLocLow "sli")
+              [TCAExpr (noLocDec 1, CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec 1)])
+              ,TCAExpr (noLocDec 0, CTAExpr (noLocLow ("_Nat_" ++ getNameTy' t)))
+              ,TCApp (noLocLow "now")
+                (TCAExpr (noLocDec 1, CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec 1)])
+                  : map substExpr as)
+                (substTy t)]
+              (substTy ty)
+
+         TCApp (L s (Low "__get__Cons__0")) as@(TCApp _ _ t : _) ty
            -> TCApp (noLocLow "sli")
               [TCAExpr (noLocDec 1, CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec 1)])
               ,TCAExpr (noLocDec 0, CTAExpr (noLocLow ("_Nat_" ++ getNameTy' t)))
@@ -222,7 +307,6 @@ definePatternFunctionsRec (L s name, constrs', _, used) = do
       mm <- calcVecNumber constrs name
       cont1 mm $ \(m, lens) -> do
         let len = n + m
-        debug $ "H: " ++ show len
         addTypeChangeStream name len
         forM_ constrsNtags $ \(CConstr (L s (Upp datacons)) cfts,tag,i) -> do
           let typeCons = CTAExpr (L s (Upp name))
@@ -272,7 +356,6 @@ definePatternFunctionsRec (L s name, constrs', _, used) = do
                 False -> definePatternFunctions' (getNameFromType cft)
               mcft' <- changeType' cft
               cont1 mcft' $ \cft' -> do
-                debugs (j,m)
                 let (_,lens') = lens !! i
                     ki = sum (take j lens') + n
                     k = lens' !! j
@@ -312,7 +395,6 @@ definePatternFunctionsNonRec (L s name, constrs, _, used) = do
       mm <- calcVecNumber constrs name
       cont1 mm $ \(m, lens) -> do
         let len = n + m
-        debug $ "H: " ++ show len
         addTypeChange name len
         forM_ constrsNtags $ \(CConstr (L s (Upp datacons)) cfts,tag,i) -> do
           let typeCons = CTAExpr (L s (Upp name))
@@ -362,7 +444,6 @@ definePatternFunctionsNonRec (L s name, constrs, _, used) = do
                 False -> definePatternFunctions' (getNameFromType cft)
               mcft' <- changeType' cft
               cont1 mcft' $ \cft' -> do
-                debugs (j,m)
                 let (_,lens') = lens !! i
                     ki = sum (take j lens') + n
                     k = lens' !! j
@@ -414,45 +495,30 @@ changeType' cft = case cft of
         mt <- changeType (toTypeFromName name)
         cont1 mt $ \t -> do
           let n = getNumberFromType t
-          debug $ "NAT!! " ++ show n
           ret $ CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec n)]
     | isPrefixOf "_Vec_" x -> do
         let name = drop 5 x
         mt <- changeType (toTypeFromName name)
         cont1 mt $ \t -> do
           let n = getNumberFromType t
-          debug $ "VEC!! " ++ show (n+1)
           ret $ CTApp (L s (Upp "Vec")) [CTAExpr (noLocDec (n+1))]
-    {-  | isPrefixOf "_Plus1_" x -> do
-        let name = drop 7 x
-        mt <- changeType (toTypeFromName name)
-        cont1 mt $ \t -> do
-          let n = getNumberFromType t
-          debug $ "PLUS!! " ++ show (n+1)
-          ret $ CTApp (L s (Upp "Nat")) [CTAExpr (noLocDec (n+1))]-}
   x -> changeType x
 
 changeTypes :: TMM ()
 changeTypes = do
   TCore fs <- getTCore
   mfs' <- forM fs $ \j@(TCFunc ltk vars tcgs ty) -> do
-    debug $ "Changetypes name : " ++ show j
     mvars' <- forM vars $ \(vltk, vty) -> do
       mvty' <- changeType' vty
       cont1 mvty' $ \vty' -> do
-        debug "lllllllllll"
         ret (vltk, vty')
     mty' <- changeType' ty
     mtcgs' <- changeTypeGs tcgs
     cont_ mvars' $ \vars' -> do
-      debug "kkkkkkkkkk"
       cont1 mty' $ \ty' -> do
-        debug "jjjjjjjjjjjjjj"
         cont1 mtcgs' $ \tcgs' -> do
-          debug "ggggggggg"
           ret $ TCFunc ltk vars' tcgs' ty'
   cont_ mfs' $ \fs' -> do
-    debug $ "aaaaaaa " ++ show (fs == fs')
     putTCore (TCore fs')
     ret ()
 
@@ -482,13 +548,6 @@ plusOne e = case e of
 
 changeTypeExpr :: TCExpr -> TMM TCExpr
 changeTypeExpr tcexpr = case tcexpr of
-  -- TCApp name@(L _ (Low "consR")) args ty -> do
-  --   margs' <- mapM changeTypeExpr args
-  --   mty' <- changeType' ty
-  --   cont_ margs' $ \[a1,a2] -> do
-  --     cont1 mty' $ \ty' -> do
-  --       debug $ "DEEEEEEEEEEEEEEEEE " ++ show (plusOne a1)
-  --       ret $ TCApp name [plusOne a1,a2] ty'
   TCApp name args ty -> do
    margs' <- mapM changeTypeExpr args
    mty' <- changeType' ty

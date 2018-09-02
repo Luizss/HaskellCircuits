@@ -26,7 +26,6 @@ toC :: Name -> TMM ()
 toC name
   | special name = mok
   | otherwise = do
-      debug $ "NAME " ++name
       maybeC <- searchComponent name
       case maybeC of
         Just c -> mok
@@ -71,8 +70,6 @@ synthNonRecursiveFunction tfunc@(name,_,f@(F _ _ returnType),_,_,_) = do
   cont cs $ do
     okDeps <- mapM (makeInstancesFromDep name) deps
     mapM (makeInstancesFromConst name) consts
-    debug "44444"
-    debugs constStreams
     mapM (makeInstancesFromConstStreams name) constStreams
     -- throw err with okdeps
     cont okDeps $ do
@@ -132,10 +129,7 @@ synthLeftRecursionWithInputStream tfunc@(name,_,f@(F _ _ returnType),_,_,_) = do
   cont cs $ do
     okDeps <- mapM (makeInstancesFromDep name) deps
     mapM_ (makeInstancesFromConst name) consts
-    debug "11111"
-    debugs constStreams
     mapM (makeInstancesFromConstStreams name) constStreams
-    -- throw err with okdeps
     cont okDeps $ do
       connect tfunc
       insts <- getInstancesFromComponent name
@@ -160,8 +154,6 @@ synthLeftRecursionWithNormalTypes tfunc@(name,_,f@(F _ _ returnType),_,_,_) = do
   cont cs $ do
     okDeps <- mapM (makeInstancesFromDep name) deps
     mapM_ (makeInstancesFromConst name) consts
-    debug "22222"
-    debugs constStreams
     mapM (makeInstancesFromConstStreams name) constStreams
     -- throw err with okdeps
     cont okDeps $ do
@@ -378,9 +370,6 @@ procedureLeftRecursiveWithStreamInput tfunc@(name,_,f@(F inps fguards rType),a,_
   FGuards fgs -> do
 
     v <- getLogicalOutputs
-    debugs v
-    --getInputs ++ putStates ++ while
-    --while = getStates ++ -- parei aqui
     let isRecursiveGuard i fgs = case fgs !! (i-1) of
           (_, FApp (L _ x,_) _ _)
             | x == name -> (True, Nothing)
@@ -1065,8 +1054,6 @@ makeInstancesFromConst compName (const, fid, ftype) = case const of
 makeInstancesFromConstStreams :: Name -> ([FCons],Id,FType) -> TM ()
 makeInstancesFromConstStreams compName (stream,fid,ftype) = do
   let nameInst = "const_stream" ++ makename' stream
-  debug "lllllllllll"
-  debug nameInst
   id <- getIdForInstance compName nameInst
   let inst = (compName
              , fid
@@ -1512,7 +1499,6 @@ connect (comp, _, F inps fguards ftype, arity,_,_) = case fguards of
                   pos = appendNats nats
           
               minst <- getNextInstance comp (put_ instName ++ pos)
-              debug $ "hey1 " ++ instName
               mayThrow minst (TErr
                               CouldntGetNextInstance
                               Nothing
@@ -1935,7 +1921,6 @@ connect (comp, _, F inps fguards ftype, arity,_,_) = case fguards of
           let nats = takeNats args
               pos = appendNats nats
           minst <- getNextInstance comp (put_ instName ++ pos)
-          debug $ "hey2 " ++ instName
           mayThrow minst (TErr
                           CouldntGetNextInstance
                           Nothing
@@ -2372,7 +2357,6 @@ connect (comp, _, F inps fguards ftype, arity,_,_) = case fguards of
           let nats = takeNats args
               pos = appendNats nats
           minst <- getNextInstance comp (put_ instName ++ pos)
-          debug $ "hey3 " ++ show args
           mayThrow minst (TErr
                           CouldntGetNextInstance
                           Nothing
